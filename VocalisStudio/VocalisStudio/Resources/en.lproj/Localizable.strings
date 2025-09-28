@@ -1,0 +1,34 @@
+/* 
+  Localizable.strings
+  VocalisStudio (English)
+*/
+
+// MARK: - Recording
+"recording.start.button" = "Start Recording";
+"recording.stop.button" = "Stop Recording";
+"recording.status.idle" = "Ready to record";
+"recording.status.recording" = "Recording...";
+"recording.title" = "Voice Training";
+"recording.history.title" = "Recording History";
+"recording.duration.label" = "Duration: %@";
+
+// MARK: - Settings
+"settings.title" = "Settings";
+"settings.language.title" = "Language";
+"settings.language.description" = "Choose your preferred language";
+"settings.language.english" = "English";
+"settings.language.japanese" = "日本語";
+
+// MARK: - Navigation
+"navigation.recording" = "Recording";
+"navigation.settings" = "Settings";
+
+// MARK: - Alerts
+"alert.language.changed.title" = "Language Changed";
+"alert.language.changed.message" = "The app language has been changed to %@. Some changes may require restarting the app.";
+"alert.language.changed.ok" = "OK";
+
+// MARK: - General
+"general.cancel" = "Cancel";
+"general.save" = "Save";
+"general.done" = "Done";
