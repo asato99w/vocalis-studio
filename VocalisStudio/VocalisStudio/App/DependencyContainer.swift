@@ -1,65 +1,67 @@
 import Foundation
 
+@MainActor
 public class DependencyContainer {
     public static let shared = DependencyContainer()
-    
-    private init() {}
-    
-    // Infrastructure
-    public lazy var audioRecorder: AudioRecording = {
+
+    private init() {
+        // Initialize dependencies
+        setupInfrastructure()
+        setupUseCases()
+    }
+
+    // MARK: - Infrastructure Layer
+
+    private lazy var scalePlayer: ScalePlayerProtocol = {
+        AVAudioEngineScalePlayer()
+    }()
+
+    private lazy var audioRecorder: AudioRecorderProtocol = {
         AVAudioRecorderWrapper()
     }()
-    
-    public lazy var recordingRepository: RecordingRepository = {
-        do {
-            return try RecordingRepositoryImpl()
-        } catch {
-            fatalError("Failed to initialize RecordingRepository: \(error)")
-        }
+
+    public lazy var audioPlayer: AudioPlayerProtocol = {
+        AVAudioPlayerWrapper()
     }()
-    
-    public lazy var languageSettingsRepository: LanguageSettingsRepositoryProtocol = {
-        UserDefaultsLanguageSettingsRepository()
+
+    public lazy var recordingRepository: RecordingRepositoryProtocol = {
+        FileRecordingRepository()
     }()
-    
-    // Use Cases
-    public lazy var startRecordingUseCase: StartRecordingUseCase = {
-        StartRecordingUseCase(
-            recordingRepository: recordingRepository,
+
+    // MARK: - Application Layer
+
+    private lazy var startRecordingUseCase: StartRecordingWithScaleUseCaseProtocol = {
+        StartRecordingWithScaleUseCase(
+            scalePlayer: scalePlayer,
             audioRecorder: audioRecorder
         )
     }()
-    
-    public lazy var stopRecordingUseCase: StopRecordingUseCase = {
+
+    private lazy var stopRecordingUseCase: StopRecordingUseCaseProtocol = {
         StopRecordingUseCase(
-            recordingRepository: recordingRepository,
-            audioRecorder: audioRecorder
+            audioRecorder: audioRecorder,
+            scalePlayer: scalePlayer,
+            recordingRepository: recordingRepository
         )
     }()
-    
-    public lazy var getLanguageSettingsUseCase: GetLanguageSettingsUseCase = {
-        GetLanguageSettingsUseCase(repository: languageSettingsRepository)
-    }()
-    
-    public lazy var changeLanguageUseCase: ChangeLanguageUseCase = {
-        ChangeLanguageUseCase(repository: languageSettingsRepository)
-    }()
-    
-    // ViewModels
-    @MainActor
+
+    // MARK: - Presentation Layer
+
     public lazy var recordingViewModel: RecordingViewModel = {
         RecordingViewModel(
             startRecordingUseCase: startRecordingUseCase,
             stopRecordingUseCase: stopRecordingUseCase,
-            recordingRepository: recordingRepository
+            audioPlayer: audioPlayer
         )
     }()
-    
-    @MainActor
-    public lazy var settingsViewModel: SettingsViewModel = {
-        SettingsViewModel(
-            getLanguageSettingsUseCase: getLanguageSettingsUseCase,
-            changeLanguageUseCase: changeLanguageUseCase
-        )
-    }()
+
+    // MARK: - Setup
+
+    private func setupInfrastructure() {
+        // Configure audio session if needed
+    }
+
+    private func setupUseCases() {
+        // Initialize use cases
+    }
 }

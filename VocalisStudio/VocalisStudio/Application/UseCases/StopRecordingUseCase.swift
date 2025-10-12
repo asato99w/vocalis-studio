@@ -1,28 +1,57 @@
 import Foundation
 
-public class StopRecordingUseCase {
-    private let recordingRepository: RecordingRepository
-    private let audioRecorder: AudioRecording
-    
+/// Use case for stopping a recording session
+public protocol StopRecordingUseCaseProtocol {
+    func execute() async throws -> StopRecordingResult
+}
+
+public class StopRecordingUseCase: StopRecordingUseCaseProtocol {
+    private let audioRecorder: AudioRecorderProtocol
+    private let scalePlayer: ScalePlayerProtocol
+    private let recordingRepository: RecordingRepositoryProtocol
+    private var currentRecordingURL: URL?
+    private var currentSettings: ScaleSettings?
+
     public init(
-        recordingRepository: RecordingRepository,
-        audioRecorder: AudioRecording
+        audioRecorder: AudioRecorderProtocol,
+        scalePlayer: ScalePlayerProtocol,
+        recordingRepository: RecordingRepositoryProtocol
     ) {
-        self.recordingRepository = recordingRepository
         self.audioRecorder = audioRecorder
+        self.scalePlayer = scalePlayer
+        self.recordingRepository = recordingRepository
     }
-    
-    public func execute(_ recording: Recording) async throws -> Recording {
-        // 1. Stop audio recording
-        try await audioRecorder.stopRecording()
-        
-        // 2. Update recording with end time
-        var updatedRecording = recording
-        updatedRecording.complete(at: Date())
-        
-        // 3. Save updated recording
-        try await recordingRepository.save(updatedRecording)
-        
-        return updatedRecording
+
+    /// Set the current recording context (called by StartRecordingUseCase)
+    public func setRecordingContext(url: URL, settings: ScaleSettings) {
+        self.currentRecordingURL = url
+        self.currentSettings = settings
+    }
+
+    public func execute() async throws -> StopRecordingResult {
+        // Stop the scale player first
+        await scalePlayer.stop()
+
+        // Stop the audio recorder
+        let duration = try await audioRecorder.stopRecording()
+
+        // Save recording to repository if we have context
+        if let url = currentRecordingURL, let settings = currentSettings {
+            let recording = Recording(
+                fileURL: url,
+                createdAt: Date(),
+                duration: Duration(seconds: duration),
+                scaleSettings: settings
+            )
+            try await recordingRepository.save(recording)
+            print("Recording saved to repository: \(url.lastPathComponent)")
+        }
+
+        // Clear context
+        currentRecordingURL = nil
+        currentSettings = nil
+
+        // Return result
+        return StopRecordingResult(duration: duration)
     }
 }

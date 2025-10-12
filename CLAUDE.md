@@ -70,7 +70,7 @@ VocalisStudio/
 
 ### Test Distribution
 - **Unit Tests (70%)**: Domain entities, use cases, ViewModels
-- **Integration Tests (20%)**: Repository and external service integration  
+- **Integration Tests (20%)**: Repository and external service integration
 - **UI Tests (10%)**: Critical user flows
 
 ### Test Infrastructure
@@ -82,6 +82,105 @@ VocalisStudio/
 - All tests: `⌘+U` in Xcode
 - Specific test class: Right-click test class → "Run Tests"
 - Test results viewable in Xcode's Test Navigator
+
+## Test-Driven Development (TDD) - CRITICAL RULES
+
+**⚠️ MANDATORY: Read `docs/TDD_PRINCIPLES.md` for full details**
+
+### Absolute Rules (NO EXCEPTIONS)
+
+1. **ALWAYS write tests FIRST**
+   - Write 1 test before ANY implementation code
+   - No exceptions, no shortcuts
+   - Test defines the API design
+
+2. **ALWAYS run tests and verify Red**
+   - Run immediately after writing test
+   - Confirm test fails for the right reason
+   - Never skip this step
+
+3. **Write minimal implementation for Green**
+   - Only write code to make test pass
+   - Avoid over-engineering
+   - YAGNI (You Aren't Gonna Need It)
+
+4. **ALWAYS run tests and verify Green**
+   - Run immediately after implementation
+   - All tests must pass
+   - Never proceed with failing tests
+
+5. **ALWAYS run tests after refactoring**
+   - Refactor only when all tests are Green
+   - Run tests after each refactoring change
+   - Ensure no regression
+
+### Red-Green-Refactor Cycle (Target: 3-5 minutes per cycle)
+
+```
+🔴 Red (30 sec - 1 min):
+   1. Write 1 failing test
+   2. Run test → verify it fails
+   3. Read failure message
+
+🟢 Green (1-2 min):
+   1. Write minimal code to pass test
+   2. Run test → verify it passes
+   3. Celebrate small victory
+
+🔵 Refactor (1-2 min):
+   1. Improve code quality
+   2. Run all tests → verify still pass
+   3. Commit if stable
+
+→ Repeat for next test
+```
+
+### Common Anti-Patterns to AVOID
+
+❌ **Implementation-First**: Writing code before tests
+❌ **Test-After**: Adding tests to existing code
+❌ **No Execution**: Writing tests but not running them
+❌ **Batch Testing**: Writing many tests at once
+❌ **Skip Red**: Not verifying test failure
+❌ **Skip Green**: Not verifying test success
+
+### Quick Check Before Moving On
+
+- [ ] Did I write the test first?
+- [ ] Did I run and see Red?
+- [ ] Did I write minimal code?
+- [ ] Did I run and see Green?
+- [ ] Did I refactor safely?
+- [ ] Are ALL tests still passing?
+
+**If any answer is NO, stop and fix immediately.**
+
+### Test Execution Commands
+
+```bash
+# Run all tests (use frequently)
+⌘+U in Xcode
+
+# Run specific test class (during focused work)
+xcodebuild test -only-testing:VocalisStudioTests/MIDINoteTests
+
+# Run single test method (for debugging)
+xcodebuild test -only-testing:VocalisStudioTests/MIDINoteTests/testInit
+```
+
+### Why This Matters
+
+- **Tests as Design Tool**: Tests define how code should be used
+- **Immediate Feedback**: Catch errors in seconds, not hours
+- **Safe Refactoring**: Change code fearlessly with test safety net
+- **No Over-Engineering**: Build only what tests require
+- **Living Documentation**: Tests show how code works
+
+### Reference Documents
+
+- **Full TDD Guidelines**: `docs/TDD_PRINCIPLES.md` (comprehensive explanation)
+- **MVP Specification**: `docs/MVP_SPECIFICATION.md` (what to build)
+- **Architecture Design**: `docs/MVP_ARCHITECTURE.md` (how to structure)
 
 ## Code Organization Rules
 

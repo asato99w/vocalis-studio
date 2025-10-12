@@ -1,33 +1,46 @@
 import Foundation
 
-public struct Recording: Equatable {
+/// Recording entity
+public struct Recording: Equatable, Identifiable, Codable {
     public let id: RecordingId
-    public let audioFileUrl: URL
-    public let startTime: Date
-    public private(set) var endTime: Date?
-    
+    public let fileURL: URL
+    public let createdAt: Date
+    public let duration: Duration
+    public let scaleSettings: ScaleSettings
+
     public init(
-        id: RecordingId,
-        audioFileUrl: URL,
-        startTime: Date,
-        endTime: Date? = nil
+        id: RecordingId = RecordingId(),
+        fileURL: URL,
+        createdAt: Date = Date(),
+        duration: Duration,
+        scaleSettings: ScaleSettings
     ) {
         self.id = id
-        self.audioFileUrl = audioFileUrl
-        self.startTime = startTime
-        self.endTime = endTime
+        self.fileURL = fileURL
+        self.createdAt = createdAt
+        self.duration = duration
+        self.scaleSettings = scaleSettings
     }
-    
-    public var duration: Duration? {
-        guard let endTime = endTime else { return nil }
-        return Duration(from: startTime, to: endTime)
+
+    /// Formatted creation date for display
+    public var formattedDate: String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .long
+        formatter.timeStyle = .short
+        return formatter.string(from: createdAt)
     }
-    
-    public var isInProgress: Bool {
-        return endTime == nil
+}
+
+// MARK: - Codable conformance for Duration
+extension Duration: Codable {
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let seconds = try container.decode(TimeInterval.self)
+        self.init(seconds: seconds)
     }
-    
-    public mutating func complete(at endTime: Date) {
-        self.endTime = endTime
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(seconds)
     }
 }

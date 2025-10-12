@@ -1,224 +1,257 @@
 import SwiftUI
-#if os(iOS)
-import AVFoundation
-#endif
 
+/// Main recording screen view
 public struct RecordingView: View {
     @StateObject private var viewModel: RecordingViewModel
-    
+    @State private var showRecordingList = false
+
     public init(viewModel: RecordingViewModel) {
         _viewModel = StateObject(wrappedValue: viewModel)
     }
-    
+
     public var body: some View {
-        NavigationView {
-            VStack(spacing: 30) {
-                // Recording status
-                VStack(spacing: 10) {
-                    Image(systemName: viewModel.isRecording ? "mic.fill" : "mic")
-                        .font(.system(size: 60))
-                        .foregroundColor(viewModel.isRecording ? .red : .gray)
-                        .animation(.easeInOut(duration: 0.3), value: viewModel.isRecording)
-                    
-                    if viewModel.isRecording {
-                        Text(formatTime(viewModel.recordingDuration))
-                            .font(.title)
-                            .fontWeight(.medium)
-                    }
-                }
-                .padding(.top, 40)
-                
-                // Recording button
-                Button(action: {
-                    Task {
-                        await viewModel.toggleRecording()
-                    }
-                }) {
-                    ZStack {
-                        Circle()
-                            .fill(viewModel.isRecording ? Color.red : Color.blue)
-                            .frame(width: 100, height: 100)
-                        
-                        Image(systemName: viewModel.isRecording ? "stop.fill" : "circle.fill")
-                            .font(.system(size: 40))
-                            .foregroundColor(.white)
-                    }
-                }
-                
-                // Status text
-                Text(viewModel.isRecording ? "recording.status.recording".localized : "recording.status.idle".localized)
-                    .font(.title2)
-                    .foregroundColor(.primary)
-                
-                // Error message
-                if let errorMessage = viewModel.errorMessage {
-                    Text(errorMessage)
-                        .foregroundColor(.red)
-                        .padding()
-                        .multilineTextAlignment(.center)
-                }
-                
+        ZStack {
+            // Background
+            Color.black
+                .ignoresSafeArea()
+
+            VStack(spacing: 40) {
                 Spacer()
-                
-                // Recordings list
-                if !viewModel.recordings.isEmpty {
-                    VStack(alignment: .leading) {
-                        Text("recording.history.title".localized)
-                            .font(.headline)
-                            .padding(.horizontal)
-                        
-                        List {
-                            ForEach(viewModel.recordings, id: \.id.value) { recording in
-                                RecordingRowView(recording: recording)
-                            }
-                            .onDelete { indexSet in
-                                Task {
-                                    for index in indexSet {
-                                        await viewModel.deleteRecording(viewModel.recordings[index])
-                                    }
-                                }
+
+                // Status Display
+                statusView
+
+                Spacer()
+
+                // Control Buttons
+                controlButtons
+
+                Spacer()
+            }
+            .padding()
+
+            // Recording List Button (top-right)
+            VStack {
+                HStack {
+                    Spacer()
+                    Button {
+                        showRecordingList = true
+                    } label: {
+                        Image(systemName: "list.bullet")
+                            .font(.title2)
+                            .foregroundColor(.white)
+                            .padding()
+                            .background(Color.gray.opacity(0.3))
+                            .clipShape(Circle())
+                    }
+                    .padding()
+                }
+                Spacer()
+            }
+        }
+        .sheet(isPresented: $showRecordingList) {
+            RecordingListView(
+                viewModel: RecordingListViewModel(
+                    recordingRepository: DependencyContainer.shared.recordingRepository,
+                    audioPlayer: DependencyContainer.shared.audioPlayer
+                )
+            )
+        }
+        .alert(isPresented: .constant(viewModel.errorMessage != nil)) {
+            Alert(
+                title: Text("recording_error_title"),
+                message: Text(viewModel.errorMessage ?? ""),
+                dismissButton: .default(Text("ok"))
+            )
+        }
+    }
+
+    // MARK: - Status View
+
+    @ViewBuilder
+    private var statusView: some View {
+        switch viewModel.recordingState {
+        case .idle:
+            Text("ready_to_record")
+                .font(.title)
+                .foregroundColor(.white)
+
+        case .countdown:
+            VStack(spacing: 20) {
+                Text("countdown_message")
+                    .font(.headline)
+                    .foregroundColor(.white.opacity(0.8))
+
+                Text("\(viewModel.countdownValue)")
+                    .font(.system(size: 120, weight: .bold))
+                    .foregroundColor(.white)
+            }
+
+        case .recording:
+            VStack(spacing: 20) {
+                // Recording indicator
+                HStack(spacing: 10) {
+                    Circle()
+                        .fill(Color.red)
+                        .frame(width: 20, height: 20)
+                        .opacity(recordingPulse ? 0.3 : 1.0)
+                        .animation(
+                            .easeInOut(duration: 1.0).repeatForever(autoreverses: true),
+                            value: recordingPulse
+                        )
+                        .onAppear { recordingPulse.toggle() }
+
+                    Text("recording_in_progress")
+                        .font(.title2)
+                        .foregroundColor(.white)
+                }
+
+                // Progress bar
+                if viewModel.progress > 0 {
+                    ProgressView(value: viewModel.progress)
+                        .progressViewStyle(.linear)
+                        .tint(.white)
+                        .frame(maxWidth: 300)
+                }
+            }
+        }
+    }
+
+    @State private var recordingPulse = false
+
+    // MARK: - Control Buttons
+
+    @ViewBuilder
+    private var controlButtons: some View {
+        switch viewModel.recordingState {
+        case .idle:
+            VStack(spacing: 20) {
+                Button {
+                    Task {
+                        await viewModel.startRecording()
+                    }
+                } label: {
+                    HStack {
+                        Image(systemName: "mic.fill")
+                        Text("start_recording")
+                    }
+                    .font(.title2)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 40)
+                    .padding(.vertical, 20)
+                    .background(Color.red)
+                    .cornerRadius(12)
+                }
+
+                // Play last recording button
+                if viewModel.lastRecordingURL != nil {
+                    Button {
+                        Task {
+                            if viewModel.isPlayingRecording {
+                                await viewModel.stopPlayback()
+                            } else {
+                                await viewModel.playLastRecording()
                             }
                         }
-                        .listStyle(PlainListStyle())
-                        .frame(maxHeight: 300)
+                    } label: {
+                        HStack {
+                            Image(systemName: viewModel.isPlayingRecording ? "stop.fill" : "play.fill")
+                            Text(viewModel.isPlayingRecording ? "stop_playback" : "play_recording")
+                        }
+                        .font(.title3)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 30)
+                        .padding(.vertical, 15)
+                        .background(Color.blue)
+                        .cornerRadius(12)
                     }
                 }
             }
-            .navigationTitle("recording.title".localized)
-            .onAppear {
+
+        case .countdown:
+            Button {
                 Task {
-                    await viewModel.loadRecordings()
+                    await viewModel.cancelCountdown()
                 }
+            } label: {
+                Text("cancel")
+                    .font(.title3)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 30)
+                    .padding(.vertical, 15)
+                    .background(Color.gray)
+                    .cornerRadius(12)
             }
-        }
-    }
-    
-    private func formatTime(_ time: TimeInterval) -> String {
-        let minutes = Int(time) / 60
-        let seconds = Int(time) % 60
-        let milliseconds = Int((time.truncatingRemainder(dividingBy: 1)) * 10)
-        return String(format: "%02d:%02d.%01d", minutes, seconds, milliseconds)
-    }
-}
 
-struct RecordingRowView: View {
-    let recording: Recording
-    @State private var isPlaying = false
-    private let audioPlayer = AudioPlayer()
-    
-    var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(formatDate(recording.startTime))
-                    .font(.headline)
-                
-                if let duration = recording.duration {
-                    Text("recording.duration.label".localized(with: duration.formatted))
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+        case .recording:
+            Button {
+                Task {
+                    await viewModel.stopRecording()
                 }
+            } label: {
+                HStack {
+                    Image(systemName: "stop.fill")
+                    Text("stop_recording")
+                }
+                .font(.title2)
+                .foregroundColor(.white)
+                .padding(.horizontal, 40)
+                .padding(.vertical, 20)
+                .background(Color.gray)
+                .cornerRadius(12)
             }
-            
-            Spacer()
-            
-            Button(action: {
-                togglePlayback()
-            }) {
-                Image(systemName: isPlaying ? "stop.circle.fill" : "play.circle.fill")
-                    .font(.system(size: 30))
-                    .foregroundColor(.blue)
-            }
-        }
-        .padding(.vertical, 4)
-    }
-    
-    private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .short
-        return formatter.string(from: date)
-    }
-    
-    private func togglePlayback() {
-        if isPlaying {
-            audioPlayer.stop()
-            isPlaying = false
-        } else {
-            audioPlayer.play(url: recording.audioFileUrl) {
-                isPlaying = false
-            }
-            isPlaying = true
         }
     }
 }
 
-#if os(iOS)
-// Simple audio player for playback
-class AudioPlayer: NSObject, AVAudioPlayerDelegate {
-    private var player: AVAudioPlayer?
-    private var completion: (() -> Void)?
-    
-    func play(url: URL, completion: @escaping () -> Void) {
-        self.completion = completion
-        
-        do {
-            // Configure audio session for playback with compatibility for recording
-            let audioSession = AVAudioSession.sharedInstance()
-            // Use playAndRecord to maintain compatibility with recording session
-            try audioSession.setCategory(.playAndRecord, 
-                                        mode: .default, 
-                                        options: [.defaultToSpeaker, .allowBluetooth])
-            try audioSession.setActive(true)
-            
-            // Check if file exists
-            guard FileManager.default.fileExists(atPath: url.path) else {
-                print("Audio file does not exist at path: \(url.path)")
-                completion()
-                return
-            }
-            
-            player = try AVAudioPlayer(contentsOf: url)
-            player?.delegate = self
-            player?.volume = 1.0  // Set volume to maximum
-            player?.prepareToPlay()
-            
-            let success = player?.play() ?? false
-            if !success {
-                print("Failed to start audio playback")
-                completion()
-            } else {
-                print("Audio playback started successfully for: \(url.lastPathComponent)")
-            }
-        } catch {
-            print("Failed to play audio: \(error)")
-            print("Error details: \(error.localizedDescription)")
-            completion()
-        }
-    }
-    
-    func stop() {
-        player?.stop()
-        player = nil
-        completion?()
-    }
-    
-    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-        completion?()
+// MARK: - Preview
+
+#if DEBUG
+struct RecordingView_Previews: PreviewProvider {
+    static var previews: some View {
+        // Preview requires mock use cases
+        RecordingView(
+            viewModel: RecordingViewModel(
+                startRecordingUseCase: PreviewMockStartRecordingUseCase(),
+                stopRecordingUseCase: PreviewMockStopRecordingUseCase(),
+                audioPlayer: PreviewMockAudioPlayer()
+            )
+        )
     }
 }
-#else
-// macOS用のダミー実装
-class AudioPlayer: NSObject {
-    private var completion: (() -> Void)?
-    
-    func play(url: URL, completion: @escaping () -> Void) {
-        self.completion = completion
-        print("Playing audio: \(url)")
-        completion()
+
+// Mocks for preview
+private class PreviewMockStartRecordingUseCase: StartRecordingWithScaleUseCaseProtocol {
+    func execute(settings: ScaleSettings) async throws -> RecordingSession {
+        // Simulate delay
+        try await Task.sleep(nanoseconds: 1_000_000_000)
+
+        return RecordingSession(
+            recordingURL: URL(fileURLWithPath: "/tmp/preview.m4a"),
+            settings: settings,
+            startedAt: Date()
+        )
     }
-    
-    func stop() {
-        completion?()
+}
+
+private class PreviewMockStopRecordingUseCase: StopRecordingUseCaseProtocol {
+    func execute() async throws -> StopRecordingResult {
+        // Simulate delay
+        try await Task.sleep(nanoseconds: 500_000_000)
+
+        return StopRecordingResult(duration: 5.0)
+    }
+}
+
+private class PreviewMockAudioPlayer: AudioPlayerProtocol {
+    var isPlaying: Bool = false
+
+    func play(url: URL) async throws {
+        // Simulate playback
+    }
+
+    func stop() async {
+        // Simulate stop
     }
 }
 #endif

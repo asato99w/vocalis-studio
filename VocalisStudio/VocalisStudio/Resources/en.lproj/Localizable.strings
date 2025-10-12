@@ -12,6 +12,28 @@
 "recording.history.title" = "Recording History";
 "recording.duration.label" = "Duration: %@";
 
+// RecordingView
+"ready_to_record" = "Ready to Record";
+"countdown_message" = "Starting soon...";
+"recording_in_progress" = "Recording";
+"start_recording" = "Start Recording";
+"stop_recording" = "Stop";
+"cancel" = "Cancel";
+"recording_error_title" = "Error";
+"ok" = "OK";
+"play_recording" = "Play";
+"stop_playback" = "Stop";
+
+// RecordingListView
+"recording_list_title" = "Recordings";
+"close" = "Close";
+"error_title" = "Error";
+"no_recordings" = "No Recordings";
+"no_recordings_message" = "Tap the record button to create your first recording";
+"delete_confirmation_title" = "Delete Recording";
+"delete_confirmation_message" = "Are you sure you want to delete this recording?";
+"delete" = "Delete";
+
 // MARK: - Settings
 "settings.title" = "Settings";
 "settings.language.title" = "Language";

@@ -1,0 +1,147 @@
+import Foundation
+import AVFoundation
+
+/// Scale player implementation using AVAudioEngine and AVAudioUnitSampler
+public class AVAudioEngineScalePlayer: ScalePlayerProtocol {
+    private let engine: AVAudioEngine
+    private let sampler: AVAudioUnitSampler
+    private var scale: [MIDINote] = []
+    private var tempo: Tempo?
+    private var playbackTask: Task<Void, Error>?
+    private var _currentNoteIndex: Int = 0
+    private var _isPlaying: Bool = false
+
+    public var isPlaying: Bool {
+        _isPlaying
+    }
+
+    public var currentNoteIndex: Int {
+        _currentNoteIndex
+    }
+
+    public var progress: Double {
+        guard !scale.isEmpty else { return 0.0 }
+        // Progress is 0.0 at start, 1.0 at completion
+        // During playback: currentNoteIndex ranges from 0 to scale.count-1
+        // After completion: currentNoteIndex = scale.count
+        return min(1.0, Double(_currentNoteIndex) / Double(scale.count))
+    }
+
+    public init() {
+        engine = AVAudioEngine()
+        sampler = AVAudioUnitSampler()
+
+        // Connect sampler to engine's main mixer
+        engine.attach(sampler)
+        engine.connect(sampler, to: engine.mainMixerNode, format: nil)
+    }
+
+    public func loadScale(_ notes: [MIDINote], tempo: Tempo) async throws {
+        self.scale = notes
+        self.tempo = tempo
+        self._currentNoteIndex = 0
+
+        // Load audio unit preset for piano sound
+        // This works on both iOS and macOS without requiring external sound banks
+        do {
+            #if os(iOS)
+            // On iOS, use AUAudioUnit preset
+            if let pianoPreset = sampler.auAudioUnit.factoryPresets?.first(where: { $0.name.contains("Piano") }) {
+                sampler.auAudioUnit.currentPreset = pianoPreset
+                print("Loaded preset: \(pianoPreset.name)")
+            } else if let firstPreset = sampler.auAudioUnit.factoryPresets?.first {
+                sampler.auAudioUnit.currentPreset = firstPreset
+                print("Loaded preset: \(firstPreset.name)")
+            } else {
+                print("No presets available, using default sampler sound")
+            }
+            #else
+            // On macOS, load DLS sound bank
+            try sampler.loadSoundBankInstrument(
+                at: URL(fileURLWithPath: "/System/Library/Components/CoreAudio.component/Contents/Resources/gs_instruments.dls"),
+                program: 0,
+                bankMSB: UInt8(kAUSampler_DefaultMelodicBankMSB),
+                bankLSB: UInt8(kAUSampler_DefaultBankLSB)
+            )
+            #endif
+        } catch {
+            print("Failed to load sound: \(error.localizedDescription)")
+            // Continue anyway - sampler will use default sound
+        }
+    }
+
+    public func play() async throws {
+        guard tempo != nil else {
+            throw ScalePlayerError.notLoaded
+        }
+
+        guard !_isPlaying else {
+            throw ScalePlayerError.alreadyPlaying
+        }
+
+        guard !scale.isEmpty else {
+            // Empty scale completes immediately
+            _currentNoteIndex = 0
+            return
+        }
+
+        _isPlaying = true
+
+        do {
+            // Ensure audio session is active before starting engine
+            // This is typically configured by AVAudioRecorderWrapper
+            let audioSession = AVAudioSession.sharedInstance()
+            if !audioSession.isOtherAudioPlaying {
+                try audioSession.setActive(true)
+            }
+
+            try engine.start()
+
+            playbackTask = Task {
+                for (index, note) in scale.enumerated() {
+                    try Task.checkCancellation()
+
+                    _currentNoteIndex = index
+
+                    // Play note (legato: stop previous note just before next one plays)
+                    sampler.startNote(note.value, withVelocity: 64, onChannel: 0)
+
+                    // Most of the note duration
+                    try await Task.sleep(nanoseconds: UInt64(tempo!.secondsPerNote * 0.9 * 1_000_000_000))
+
+                    sampler.stopNote(note.value, onChannel: 0)
+
+                    // Small gap between notes
+                    try await Task.sleep(nanoseconds: UInt64(tempo!.secondsPerNote * 0.1 * 1_000_000_000))
+                }
+
+                // Playback completed
+                _currentNoteIndex = scale.count
+                _isPlaying = false
+                engine.stop()
+            }
+
+            try await playbackTask?.value
+        } catch is CancellationError {
+            // Task was cancelled (stopped), this is expected
+            _isPlaying = false
+        } catch {
+            _isPlaying = false
+            throw ScalePlayerError.playbackFailed(error.localizedDescription)
+        }
+    }
+
+    public func stop() async {
+        playbackTask?.cancel()
+        playbackTask = nil
+        _isPlaying = false
+        engine.stop()
+
+        // Stop all notes
+        for channel in 0..<16 {
+            for note in 0..<128 {
+                sampler.stopNote(UInt8(note), onChannel: UInt8(channel))
+            }
+        }
+    }
+}
