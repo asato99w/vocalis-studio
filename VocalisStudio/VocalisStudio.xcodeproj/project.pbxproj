@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		E3CE2EF02E9E410900481878 /* VocalisDomain in Frameworks */ = {isa = PBXBuildFile; productRef = D6BF83C72E890B390076B2FC /* VocalisDomain */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		D6BF83AA2E890B380076B2FC /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -52,6 +56,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E3CE2EF02E9E410900481878 /* VocalisDomain in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -198,7 +203,7 @@
 			mainGroup = D6BF83932E890B370076B2FC;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				D6BF83C62E890B390076B2FC /* XCLocalSwiftPackageReference "VocalisDomain" */,
+				D6BF83C62E890B390076B2FC /* XCLocalSwiftPackageReference "Packages/VocalisDomain" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = D6BF839D2E890B370076B2FC /* Products */;
@@ -567,7 +572,7 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		D6BF83C62E890B390076B2FC /* XCLocalSwiftPackageReference "VocalisDomain" */ = {
+		D6BF83C62E890B390076B2FC /* XCLocalSwiftPackageReference "Packages/VocalisDomain" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Packages/VocalisDomain;
 		};
@@ -576,7 +581,7 @@
 /* Begin XCSwiftPackageProductDependency section */
 		D6BF83C72E890B390076B2FC /* VocalisDomain */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = D6BF83C62E890B390076B2FC /* XCLocalSwiftPackageReference "VocalisDomain" */;
+			package = D6BF83C62E890B390076B2FC /* XCLocalSwiftPackageReference "Packages/VocalisDomain" */;
 			productName = VocalisDomain;
 		};
 /* End XCSwiftPackageProductDependency section */

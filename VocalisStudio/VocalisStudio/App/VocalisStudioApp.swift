@@ -8,9 +8,7 @@ public struct VocalisStudioApp: App {
 
     public var body: some Scene {
         WindowGroup {
-            RecordingView(
-                viewModel: DependencyContainer.shared.recordingViewModel
-            )
+            HomeView()
         }
     }
 }

@@ -4,42 +4,32 @@ import VocalisDomain
 /// Recording list screen
 public struct RecordingListView: View {
     @StateObject private var viewModel: RecordingListViewModel
-    @Environment(\.dismiss) private var dismiss
 
     public init(viewModel: RecordingListViewModel) {
         _viewModel = StateObject(wrappedValue: viewModel)
     }
 
     public var body: some View {
-        NavigationView {
-            ZStack {
-                if viewModel.isLoading {
-                    ProgressView()
-                } else if viewModel.recordings.isEmpty {
-                    emptyState
-                } else {
-                    recordingList
-                }
+        ZStack {
+            if viewModel.isLoading {
+                ProgressView()
+            } else if viewModel.recordings.isEmpty {
+                emptyState
+            } else {
+                recordingList
             }
-            .navigationTitle("recording_list_title")
-            .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("close") {
-                        dismiss()
-                    }
-                }
-            }
-            .task {
-                await viewModel.loadRecordings()
-            }
-            .alert(isPresented: .constant(viewModel.errorMessage != nil)) {
-                Alert(
-                    title: Text("error_title"),
-                    message: Text(viewModel.errorMessage ?? ""),
-                    dismissButton: .default(Text("ok"))
-                )
-            }
+        }
+        .navigationTitle("録音一覧")
+        .navigationBarTitleDisplayMode(.large)
+        .task {
+            await viewModel.loadRecordings()
+        }
+        .alert(isPresented: .constant(viewModel.errorMessage != nil)) {
+            Alert(
+                title: Text("エラー"),
+                message: Text(viewModel.errorMessage ?? ""),
+                dismissButton: .default(Text("OK"))
+            )
         }
     }
 
@@ -51,11 +41,11 @@ public struct RecordingListView: View {
                 .font(.system(size: 60))
                 .foregroundColor(.gray)
 
-            Text("no_recordings")
+            Text("録音がありません")
                 .font(.title2)
                 .foregroundColor(.gray)
 
-            Text("no_recordings_message")
+            Text("録音画面から練習を始めましょう")
                 .font(.body)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
@@ -119,25 +109,34 @@ private struct RecordingRow: View {
 
             Spacer()
 
+            // Analysis button
+            NavigationLink(destination: AnalysisView(recording: recording)) {
+                Image(systemName: "waveform.path.ecg")
+                    .foregroundColor(.blue)
+                    .font(.title3)
+            }
+            .buttonStyle(PlainButtonStyle())
+
             // Delete button
             Button(action: { showDeleteConfirmation = true }) {
                 Image(systemName: "trash")
                     .foregroundColor(.red)
+                    .font(.title3)
             }
             .buttonStyle(PlainButtonStyle())
         }
         .padding(.vertical, 8)
         .confirmationDialog(
-            "delete_confirmation_title",
+            "削除の確認",
             isPresented: $showDeleteConfirmation,
             titleVisibility: .visible
         ) {
-            Button("delete", role: .destructive) {
+            Button("削除", role: .destructive) {
                 onDelete()
             }
-            Button("cancel", role: .cancel) {}
+            Button("キャンセル", role: .cancel) {}
         } message: {
-            Text("delete_confirmation_message")
+            Text("この録音を削除しますか？")
         }
     }
 }
