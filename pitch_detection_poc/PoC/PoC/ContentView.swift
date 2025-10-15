@@ -17,6 +17,25 @@ struct ContentView: View {
                     // Header
                     headerSection
 
+                    // Method Comparison Button
+                    NavigationLink(destination: ComparisonView()) {
+                        HStack {
+                            Image(systemName: "chart.bar.xaxis")
+                                .font(.title3)
+                            Text("Compare Detection Methods")
+                                .fontWeight(.semibold)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.green.opacity(0.1))
+                        .foregroundColor(.green)
+                        .cornerRadius(12)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.green, lineWidth: 2)
+                        )
+                    }
+
                     // Recording Controls
                     recordingControlsSection
 
