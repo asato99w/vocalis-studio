@@ -48,7 +48,7 @@ public class RecordingViewModel: ObservableObject {
     // MARK: - Public Methods
 
     /// Start the recording process with countdown
-    public func startRecording() async {
+    public func startRecording(settings: ScaleSettings? = nil) async {
         // Don't start if already recording or in countdown
         guard recordingState == .idle else { return }
 
@@ -71,7 +71,7 @@ public class RecordingViewModel: ObservableObject {
             if Task.isCancelled { return }
 
             // Countdown complete, start recording
-            await executeRecording()
+            await executeRecording(settings: settings)
         }
     }
 
@@ -145,17 +145,17 @@ public class RecordingViewModel: ObservableObject {
 
     // MARK: - Private Methods
 
-    private func executeRecording() async {
+    private func executeRecording(settings: ScaleSettings? = nil) async {
         do {
-            // Use MVP default settings
-            let settings = ScaleSettings.mvpDefault
+            // Use provided settings or MVP default
+            let scaleSettings = settings ?? ScaleSettings.mvpDefault
 
             // Execute use case
-            let session = try await startRecordingUseCase.execute(settings: settings)
+            let session = try await startRecordingUseCase.execute(settings: scaleSettings)
 
             // Set recording context for stop use case
             if let stopUseCase = stopRecordingUseCase as? StopRecordingUseCase {
-                stopUseCase.setRecordingContext(url: session.recordingURL, settings: settings)
+                stopUseCase.setRecordingContext(url: session.recordingURL, settings: scaleSettings)
             }
 
             // Update state

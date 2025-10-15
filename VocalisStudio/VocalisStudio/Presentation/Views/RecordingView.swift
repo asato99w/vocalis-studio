@@ -53,12 +53,12 @@ public struct RecordingView: View {
         HStack(spacing: 0) {
             // Left side: Settings panel
             RecordingSettingsPanel(viewModel: settingsViewModel)
-                .frame(width: 280)
+                .frame(width: 240)
 
             Divider()
 
             // Right side: Real-time display and controls
-            VStack(spacing: 16) {
+            VStack(spacing: 8) {
                 RealtimeDisplayArea(
                     recordingState: viewModel.recordingState
                 )
@@ -70,7 +70,8 @@ public struct RecordingView: View {
                     isPlayingRecording: viewModel.isPlayingRecording,
                     onStart: {
                         Task {
-                            await viewModel.startRecording()
+                            let settings = settingsViewModel.generateScaleSettings()
+                            await viewModel.startRecording(settings: settings)
                         }
                     },
                     onStop: {
@@ -93,7 +94,8 @@ public struct RecordingView: View {
                         }
                     }
                 )
-                .padding()
+                .padding(.horizontal, 12)
+                .padding(.bottom, 12)
             }
         }
     }
@@ -116,7 +118,8 @@ public struct RecordingView: View {
                     isPlayingRecording: viewModel.isPlayingRecording,
                     onStart: {
                         Task {
-                            await viewModel.startRecording()
+                            let settings = settingsViewModel.generateScaleSettings()
+                            await viewModel.startRecording(settings: settings)
                         }
                     },
                     onStop: {
@@ -152,27 +155,28 @@ struct RecordingSettingsPanel: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 16) {
                 Text("スケール設定")
                     .font(.headline)
+                    .padding(.bottom, 4)
 
                 // Scale selection
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 6) {
                     Text("スケール選択")
-                        .font(.subheadline)
+                        .font(.caption)
                         .foregroundColor(.secondary)
 
                     Picker("スケール", selection: $viewModel.scaleType) {
-                        Text("5トーンスケール").tag(ScaleType.fiveTone)
+                        Text("5トーン").tag(ScaleType.fiveTone)
                         Text("オフ").tag(ScaleType.off)
                     }
                     .pickerStyle(.segmented)
                 }
 
                 // Start pitch
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 6) {
                     Text("スタートピッチ")
-                        .font(.subheadline)
+                        .font(.caption)
                         .foregroundColor(.secondary)
 
                     Picker("ピッチ", selection: $viewModel.startPitchIndex) {
@@ -185,36 +189,33 @@ struct RecordingSettingsPanel: View {
                 }
 
                 // Tempo
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 6) {
                     Text("テンポ")
-                        .font(.subheadline)
+                        .font(.caption)
                         .foregroundColor(.secondary)
 
-                    HStack {
-                        Text("\(viewModel.tempo) BPM")
-                            .frame(width: 80, alignment: .leading)
+                    HStack(spacing: 8) {
+                        Text("\(viewModel.tempo)")
+                            .font(.callout)
+                            .monospacedDigit()
+                            .frame(width: 50, alignment: .leading)
+
                         Slider(value: Binding(
                             get: { Double(viewModel.tempo) },
                             set: { viewModel.tempo = Int($0) }
                         ), in: 60...180, step: 1)
+
+                        Text("BPM")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
                     .disabled(!viewModel.isSettingsEnabled)
-
-                    HStack {
-                        Text("60")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        Spacer()
-                        Text("180")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
                 }
 
                 // Ascending count
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 6) {
                     Text("上昇回数")
-                        .font(.subheadline)
+                        .font(.caption)
                         .foregroundColor(.secondary)
 
                     Picker("上昇回数", selection: $viewModel.ascendingCount) {
@@ -225,10 +226,8 @@ struct RecordingSettingsPanel: View {
                     .pickerStyle(.menu)
                     .disabled(!viewModel.isSettingsEnabled)
                 }
-
-                Spacer()
             }
-            .padding()
+            .padding(12)
         }
         .background(Color(.systemGray6))
     }
@@ -293,11 +292,12 @@ struct RealtimeDisplayArea: View {
     let recordingState: RecordingState
 
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 12) {
             // Spectrogram
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text("リアルタイムスペクトル")
-                    .font(.headline)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
 
                 MockSpectrogramView(isActive: recordingState == .recording)
                     .frame(maxHeight: .infinity)
@@ -306,14 +306,15 @@ struct RealtimeDisplayArea: View {
             Divider()
 
             // Pitch indicator
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text("ピッチインジケーター")
-                    .font(.headline)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
 
                 MockPitchIndicator(isActive: recordingState == .recording)
             }
         }
-        .padding()
+        .padding(12)
     }
 }
 
@@ -364,54 +365,54 @@ struct MockPitchIndicator: View {
     @State private var cents = 0
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 8) {
             // Target scale
-            HStack(spacing: 8) {
+            HStack(spacing: 6) {
                 Text("目標:")
-                    .font(.subheadline)
+                    .font(.caption)
                     .foregroundColor(.secondary)
 
                 ForEach(["ド", "レ", "ミ", "ファ", "ソ"], id: \.self) { note in
                     Text(note)
-                        .font(.caption)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
+                        .font(.caption2)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
                         .background(Color.gray.opacity(0.2))
-                        .cornerRadius(4)
+                        .cornerRadius(3)
                 }
             }
 
             // Detected pitch
-            HStack(spacing: 12) {
+            HStack(spacing: 8) {
                 Text("検出:")
-                    .font(.subheadline)
+                    .font(.caption)
                     .foregroundColor(.secondary)
 
                 if isActive {
                     HStack(spacing: 4) {
                         Circle()
                             .fill(centsColor)
-                            .frame(width: 12, height: 12)
+                            .frame(width: 10, height: 10)
 
                         Text(currentNote)
-                            .font(.title3)
+                            .font(.callout)
                             .fontWeight(.bold)
 
                         Text(cents >= 0 ? "+\(cents)¢" : "\(cents)¢")
-                            .font(.subheadline)
+                            .font(.caption)
                             .foregroundColor(centsColor)
                     }
                 } else {
                     Text("--")
-                        .font(.title3)
+                        .font(.callout)
                         .foregroundColor(.secondary)
                 }
             }
         }
-        .padding()
+        .padding(8)
         .frame(maxWidth: .infinity)
         .background(Color(.systemGray6))
-        .cornerRadius(8)
+        .cornerRadius(6)
         .onAppear {
             if isActive {
                 // Simulate pitch detection
@@ -445,22 +446,22 @@ struct RecordingControls: View {
     let onPlayLast: () -> Void
 
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 10) {
             switch recordingState {
             case .idle:
-                VStack(spacing: 12) {
+                VStack(spacing: 8) {
                     Button(action: onStart) {
                         HStack {
                             Image(systemName: "mic.fill")
                             Text("録音開始")
                         }
-                        .font(.title3)
+                        .font(.callout)
                         .fontWeight(.semibold)
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
+                        .padding(.vertical, 12)
                         .background(Color.red)
-                        .cornerRadius(12)
+                        .cornerRadius(10)
                     }
 
                     if hasLastRecording {
@@ -469,29 +470,30 @@ struct RecordingControls: View {
                                 Image(systemName: isPlayingRecording ? "stop.fill" : "play.fill")
                                 Text(isPlayingRecording ? "停止" : "最後の録音を再生")
                             }
-                            .font(.callout)
+                            .font(.caption)
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
+                            .padding(.vertical, 10)
                             .background(Color.blue)
-                            .cornerRadius(12)
+                            .cornerRadius(8)
                         }
                     }
                 }
 
             case .countdown:
-                VStack(spacing: 12) {
+                VStack(spacing: 8) {
                     Text("カウントダウン中...")
-                        .font(.headline)
+                        .font(.subheadline)
+                        .fontWeight(.medium)
 
                     Button(action: onCancel) {
                         Text("キャンセル")
-                            .font(.callout)
+                            .font(.caption)
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
+                            .padding(.vertical, 10)
                             .background(Color.gray)
-                            .cornerRadius(12)
+                            .cornerRadius(8)
                     }
                 }
 
@@ -501,13 +503,13 @@ struct RecordingControls: View {
                         Image(systemName: "stop.fill")
                         Text("録音停止")
                     }
-                    .font(.title3)
+                    .font(.callout)
                     .fontWeight(.semibold)
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
+                    .padding(.vertical, 12)
                     .background(Color.gray)
-                    .cornerRadius(12)
+                    .cornerRadius(10)
                 }
             }
         }
@@ -523,7 +525,7 @@ enum ScaleType {
 
 class MockRecordingSettingsViewModel: ObservableObject {
     @Published var scaleType: ScaleType = .fiveTone
-    @Published var startPitchIndex: Int = 12 // C3
+    @Published var startPitchIndex: Int = 12 // C3 (MIDI 48)
     @Published var tempo: Int = 120
     @Published var ascendingCount: Int = 3
 
@@ -537,6 +539,36 @@ class MockRecordingSettingsViewModel: ObservableObject {
 
     var isSettingsEnabled: Bool {
         scaleType != .off
+    }
+
+    /// Generate ScaleSettings from current UI settings
+    func generateScaleSettings() -> ScaleSettings? {
+        guard scaleType == .fiveTone else {
+            return nil // Scale off - no settings
+        }
+
+        // Calculate MIDI note number: C2 = 36
+        let midiNoteNumber = 36 + startPitchIndex
+
+        // Calculate end note (one octave up)
+        let endNoteNumber = midiNoteNumber + 12
+
+        // Calculate tempo (convert BPM to seconds per note)
+        // At 120 BPM, each quarter note is 0.5 seconds
+        let secondsPerNote = 60.0 / Double(tempo)
+
+        do {
+            let settings = ScaleSettings(
+                startNote: try MIDINote(UInt8(midiNoteNumber)),
+                endNote: try MIDINote(UInt8(endNoteNumber)),
+                notePattern: .fiveToneScale,
+                tempo: try Tempo(secondsPerNote: secondsPerNote)
+            )
+            return settings
+        } catch {
+            print("Error creating ScaleSettings: \(error)")
+            return nil
+        }
     }
 }
 

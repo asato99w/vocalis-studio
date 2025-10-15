@@ -31,7 +31,7 @@ public struct AnalysisView: View {
     private var landscapeLayout: some View {
         HStack(spacing: 0) {
             // Left side: Recording info and playback controls
-            VStack(spacing: 16) {
+            VStack(spacing: 12) {
                 RecordingInfoPanel(recording: recording)
 
                 PlaybackControl(
@@ -44,13 +44,13 @@ public struct AnalysisView: View {
 
                 Spacer()
             }
-            .frame(width: 280)
-            .padding()
+            .frame(width: 240)
+            .padding(12)
 
             Divider()
 
             // Right side: Visualization area
-            VStack(spacing: 16) {
+            VStack(spacing: 12) {
                 // Spectrogram (top half)
                 SpectrogramView(currentTime: viewModel.currentTime)
                     .frame(maxHeight: .infinity)
@@ -61,7 +61,7 @@ public struct AnalysisView: View {
                 PitchAnalysisView(currentTime: viewModel.currentTime)
                     .frame(maxHeight: .infinity)
             }
-            .padding()
+            .padding(12)
         }
     }
 
@@ -97,9 +97,10 @@ struct RecordingInfoPanel: View {
     let recording: Recording
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 8) {
             Text("録音情報")
-                .font(.headline)
+                .font(.subheadline)
+                .fontWeight(.semibold)
 
             Group {
                 InfoRow(label: "日時", value: formatDate(recording.createdAt))
@@ -110,9 +111,9 @@ struct RecordingInfoPanel: View {
                 InfoRow(label: "上昇回数", value: "3回")
             }
         }
-        .padding()
+        .padding(10)
         .background(Color(.systemGray6))
-        .cornerRadius(12)
+        .cornerRadius(8)
     }
 
     private func formatDate(_ date: Date) -> String {
@@ -167,7 +168,7 @@ struct InfoRow: View {
             Text(value)
                 .fontWeight(.medium)
         }
-        .font(.subheadline)
+        .font(.caption)
     }
 }
 
@@ -181,30 +182,31 @@ struct PlaybackControl: View {
     let onSeek: (Double) -> Void
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 8) {
             Text("再生コントロール")
-                .font(.headline)
+                .font(.subheadline)
+                .fontWeight(.semibold)
 
             // Playback buttons
-            HStack(spacing: 30) {
+            HStack(spacing: 20) {
                 Button(action: { onSeek(max(0, currentTime - 5)) }) {
                     Image(systemName: "backward.fill")
-                        .font(.title2)
+                        .font(.callout)
                 }
 
                 Button(action: onPlayPause) {
                     Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                        .font(.system(size: 50))
+                        .font(.system(size: 40))
                 }
 
                 Button(action: { onSeek(min(duration, currentTime + 5)) }) {
                     Image(systemName: "forward.fill")
-                        .font(.title2)
+                        .font(.callout)
                 }
             }
 
             // Progress bar
-            VStack(spacing: 4) {
+            VStack(spacing: 3) {
                 Slider(value: Binding(
                     get: { currentTime },
                     set: { onSeek($0) }
@@ -215,13 +217,13 @@ struct PlaybackControl: View {
                     Spacer()
                     Text(formatTime(duration))
                 }
-                .font(.caption)
+                .font(.caption2)
                 .foregroundColor(.secondary)
             }
         }
-        .padding()
+        .padding(10)
         .background(Color(.systemGray6))
-        .cornerRadius(12)
+        .cornerRadius(8)
     }
 
     private func formatTime(_ seconds: Double) -> String {
@@ -237,9 +239,10 @@ struct SpectrogramView: View {
     let currentTime: Double
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             Text("スペクトログラム")
-                .font(.headline)
+                .font(.subheadline)
+                .fontWeight(.semibold)
 
             ZStack {
                 // Mock spectrogram visualization
@@ -310,9 +313,10 @@ struct PitchAnalysisView: View {
     let currentTime: Double
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             Text("ピッチ分析グラフ")
-                .font(.headline)
+                .font(.subheadline)
+                .fontWeight(.semibold)
 
             GeometryReader { geometry in
                 Canvas { context, size in

@@ -35,11 +35,7 @@ public struct HomeView: View {
                     // Menu Buttons
                     VStack(spacing: 20) {
                         NavigationLink(destination: RecordingView(
-                            viewModel: RecordingViewModel(
-                                startRecordingUseCase: MockStartRecordingUseCase(),
-                                stopRecordingUseCase: MockStopRecordingUseCase(),
-                                audioPlayer: MockAudioPlayer()
-                            )
+                            viewModel: DependencyContainer.shared.recordingViewModel
                         )) {
                             MenuButton(title: "録音を開始", icon: "mic.fill")
                         }
@@ -89,38 +85,6 @@ struct MenuButton: View {
             RoundedRectangle(cornerRadius: 12)
                 .stroke(Color.white.opacity(0.3), lineWidth: 1)
         )
-    }
-}
-
-// MARK: - Mock implementations for UI preview
-
-private class MockStartRecordingUseCase: StartRecordingWithScaleUseCaseProtocol {
-    func execute(settings: ScaleSettings) async throws -> RecordingSession {
-        try await Task.sleep(nanoseconds: 100_000_000)
-        return RecordingSession(
-            recordingURL: URL(fileURLWithPath: "/tmp/mock.m4a"),
-            settings: settings,
-            startedAt: Date()
-        )
-    }
-}
-
-private class MockStopRecordingUseCase: StopRecordingUseCaseProtocol {
-    func execute() async throws -> StopRecordingResult {
-        try await Task.sleep(nanoseconds: 100_000_000)
-        return StopRecordingResult(duration: 10.0)
-    }
-}
-
-private class MockAudioPlayer: AudioPlayerProtocol {
-    var isPlaying: Bool = false
-
-    func play(url: URL) async throws {
-        isPlaying = true
-    }
-
-    func stop() async {
-        isPlaying = false
     }
 }
 
