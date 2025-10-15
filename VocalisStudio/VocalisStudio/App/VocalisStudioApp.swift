@@ -1,4 +1,5 @@
 import SwiftUI
+import VocalisDomain
 
 @available(iOS 15.0, macOS 11.0, *)
 @main

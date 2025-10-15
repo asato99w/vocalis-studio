@@ -1,0 +1,11 @@
+{
+  "": {
+    "swift-dependencies": "/Users/asatokazu/Documents/dev/mine/music/vocalis-studio/VocalisStudio/Packages/VocalisDomain/.build/arm64-apple-macosx/debug/VocalisDomainPackageTests.build/master.swiftdeps"
+  },
+  "/Users/asatokazu/Documents/dev/mine/music/vocalis-studio/VocalisStudio/Packages/VocalisDomain/.build/arm64-apple-macosx/debug/VocalisDomainPackageTests.derived/runner.swift": {
+    "dependencies": "/Users/asatokazu/Documents/dev/mine/music/vocalis-studio/VocalisStudio/Packages/VocalisDomain/.build/arm64-apple-macosx/debug/VocalisDomainPackageTests.build/runner.d",
+    "object": "/Users/asatokazu/Documents/dev/mine/music/vocalis-studio/VocalisStudio/Packages/VocalisDomain/.build/arm64-apple-macosx/debug/VocalisDomainPackageTests.build/runner.swift.o",
+    "swiftmodule": "/Users/asatokazu/Documents/dev/mine/music/vocalis-studio/VocalisStudio/Packages/VocalisDomain/.build/arm64-apple-macosx/debug/VocalisDomainPackageTests.build/runner~partial.swiftmodule",
+    "swift-dependencies": "/Users/asatokazu/Documents/dev/mine/music/vocalis-studio/VocalisStudio/Packages/VocalisDomain/.build/arm64-apple-macosx/debug/VocalisDomainPackageTests.build/runner.swiftdeps"
+  }
+}

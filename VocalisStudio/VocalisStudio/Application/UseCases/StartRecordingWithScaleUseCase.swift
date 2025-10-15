@@ -1,4 +1,5 @@
 import Foundation
+import VocalisDomain
 
 /// Use case for starting a recording session with scale playback
 public protocol StartRecordingWithScaleUseCaseProtocol {

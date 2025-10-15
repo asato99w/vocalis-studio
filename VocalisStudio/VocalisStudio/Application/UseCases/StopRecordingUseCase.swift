@@ -1,4 +1,5 @@
 import Foundation
+import VocalisDomain
 
 /// Use case for stopping a recording session
 public protocol StopRecordingUseCaseProtocol {

@@ -1,4 +1,5 @@
 import Foundation
+import VocalisDomain
 
 /// File-based recording repository using FileManager and UserDefaults
 public class FileRecordingRepository: RecordingRepositoryProtocol {

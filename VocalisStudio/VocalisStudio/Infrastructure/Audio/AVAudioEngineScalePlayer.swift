@@ -1,4 +1,5 @@
 import Foundation
+import VocalisDomain
 import AVFoundation
 
 /// Scale player implementation using AVAudioEngine and AVAudioUnitSampler
@@ -34,6 +35,9 @@ public class AVAudioEngineScalePlayer: ScalePlayerProtocol {
         // Connect sampler to engine's main mixer
         engine.attach(sampler)
         engine.connect(sampler, to: engine.mainMixerNode, format: nil)
+
+        // Set volume to maximum for playback
+        engine.mainMixerNode.outputVolume = 1.0
     }
 
     public func loadScale(_ notes: [MIDINote], tempo: Tempo) async throws {
@@ -42,10 +46,19 @@ public class AVAudioEngineScalePlayer: ScalePlayerProtocol {
         self._currentNoteIndex = 0
 
         // Load audio unit preset for piano sound
-        // This works on both iOS and macOS without requiring external sound banks
         do {
-            #if os(iOS)
-            // On iOS, use AUAudioUnit preset
+            #if targetEnvironment(simulator)
+            // iOS Simulator: use DLS sound bank (like macOS)
+            // Simulator doesn't have factory presets but can access DLS files
+            try sampler.loadSoundBankInstrument(
+                at: URL(fileURLWithPath: "/System/Library/Components/CoreAudio.component/Contents/Resources/gs_instruments.dls"),
+                program: 0,
+                bankMSB: UInt8(kAUSampler_DefaultMelodicBankMSB),
+                bankLSB: UInt8(kAUSampler_DefaultBankLSB)
+            )
+            print("Loaded DLS sound bank for simulator")
+            #elseif os(iOS)
+            // Real iOS device: use AUAudioUnit factory presets
             if let pianoPreset = sampler.auAudioUnit.factoryPresets?.first(where: { $0.name.contains("Piano") }) {
                 sampler.auAudioUnit.currentPreset = pianoPreset
                 print("Loaded preset: \(pianoPreset.name)")
@@ -53,16 +66,17 @@ public class AVAudioEngineScalePlayer: ScalePlayerProtocol {
                 sampler.auAudioUnit.currentPreset = firstPreset
                 print("Loaded preset: \(firstPreset.name)")
             } else {
-                print("No presets available, using default sampler sound")
+                print("Warning: No presets available on device")
             }
             #else
-            // On macOS, load DLS sound bank
+            // macOS: load DLS sound bank
             try sampler.loadSoundBankInstrument(
                 at: URL(fileURLWithPath: "/System/Library/Components/CoreAudio.component/Contents/Resources/gs_instruments.dls"),
                 program: 0,
                 bankMSB: UInt8(kAUSampler_DefaultMelodicBankMSB),
                 bankLSB: UInt8(kAUSampler_DefaultBankLSB)
             )
+            print("Loaded DLS sound bank for macOS")
             #endif
         } catch {
             print("Failed to load sound: \(error.localizedDescription)")

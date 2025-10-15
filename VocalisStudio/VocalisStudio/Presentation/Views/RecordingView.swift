@@ -1,4 +1,5 @@
 import SwiftUI
+import VocalisDomain
 
 /// Main recording screen view
 public struct RecordingView: View {

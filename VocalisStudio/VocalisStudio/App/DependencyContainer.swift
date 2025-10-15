@@ -1,4 +1,5 @@
 import Foundation
+import VocalisDomain
 
 @MainActor
 public class DependencyContainer {

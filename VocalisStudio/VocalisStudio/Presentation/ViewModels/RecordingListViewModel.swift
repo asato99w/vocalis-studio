@@ -1,4 +1,5 @@
 import Foundation
+import VocalisDomain
 import Combine
 
 /// ViewModel for recording list screen

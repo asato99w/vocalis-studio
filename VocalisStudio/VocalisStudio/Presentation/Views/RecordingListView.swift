@@ -1,4 +1,5 @@
 import SwiftUI
+import VocalisDomain
 
 /// Recording list screen
 public struct RecordingListView: View {

@@ -1,0 +1,4 @@
+module VocalisDomainPackageTests {
+    header "/Users/asatokazu/Documents/dev/mine/music/vocalis-studio/VocalisStudio/Packages/VocalisDomain/.build/arm64-apple-macosx/debug/VocalisDomainPackageTests.build/VocalisDomainPackageTests-Swift.h"
+    requires objc
+}

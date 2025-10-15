@@ -1,0 +1,4 @@
+module VocalisDomain {
+    header "/Users/asatokazu/Documents/dev/mine/music/vocalis-studio/VocalisStudio/Packages/VocalisDomain/.build/arm64-apple-macosx/debug/VocalisDomain.build/VocalisDomain-Swift.h"
+    requires objc
+}

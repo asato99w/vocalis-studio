@@ -112,6 +112,7 @@
 			);
 			name = VocalisStudio;
 			packageProductDependencies = (
+				D6BF83C72E890B390076B2FC /* VocalisDomain */,
 			);
 			productName = VocalisStudio;
 			productReference = D6BF839C2E890B370076B2FC /* VocalisStudio.app */;
@@ -196,6 +197,9 @@
 			);
 			mainGroup = D6BF83932E890B370076B2FC;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				D6BF83C62E890B390076B2FC /* XCLocalSwiftPackageReference "VocalisDomain" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = D6BF839D2E890B370076B2FC /* Products */;
 			projectDirPath = "";
@@ -561,6 +565,21 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		D6BF83C62E890B390076B2FC /* XCLocalSwiftPackageReference "VocalisDomain" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/VocalisDomain;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		D6BF83C72E890B390076B2FC /* VocalisDomain */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D6BF83C62E890B390076B2FC /* XCLocalSwiftPackageReference "VocalisDomain" */;
+			productName = VocalisDomain;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = D6BF83942E890B370076B2FC /* Project object */;
 }

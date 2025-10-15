@@ -1,4 +1,5 @@
 import Foundation
+import VocalisDomain
 import Combine
 
 /// Recording state for the main recording screen

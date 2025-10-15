@@ -1,4 +1,5 @@
 import Foundation
+import VocalisDomain
 import AVFoundation
 
 /// Wrapper for AVAudioRecorder that implements AudioRecorderProtocol
