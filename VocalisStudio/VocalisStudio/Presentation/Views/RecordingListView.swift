@@ -4,6 +4,7 @@ import VocalisDomain
 /// Recording list screen
 public struct RecordingListView: View {
     @StateObject private var viewModel: RecordingListViewModel
+    @StateObject private var localization = LocalizationManager.shared
 
     public init(viewModel: RecordingListViewModel) {
         _viewModel = StateObject(wrappedValue: viewModel)
@@ -19,16 +20,16 @@ public struct RecordingListView: View {
                 recordingList
             }
         }
-        .navigationTitle("録音一覧")
+        .navigationTitle("list.title".localized)
         .navigationBarTitleDisplayMode(.large)
         .task {
             await viewModel.loadRecordings()
         }
         .alert(isPresented: .constant(viewModel.errorMessage != nil)) {
             Alert(
-                title: Text("エラー"),
+                title: Text("error".localized),
                 message: Text(viewModel.errorMessage ?? ""),
-                dismissButton: .default(Text("OK"))
+                dismissButton: .default(Text("ok".localized))
             )
         }
     }
@@ -41,11 +42,11 @@ public struct RecordingListView: View {
                 .font(.system(size: 60))
                 .foregroundColor(.gray)
 
-            Text("録音がありません")
+            Text("list.empty_title".localized)
                 .font(.title2)
                 .foregroundColor(.gray)
 
-            Text("録音画面から練習を始めましょう")
+            Text("list.empty_message".localized)
                 .font(.body)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
@@ -127,16 +128,16 @@ private struct RecordingRow: View {
         }
         .padding(.vertical, 8)
         .confirmationDialog(
-            "削除の確認",
+            "list.delete_confirmation_title".localized,
             isPresented: $showDeleteConfirmation,
             titleVisibility: .visible
         ) {
-            Button("削除", role: .destructive) {
+            Button("delete".localized, role: .destructive) {
                 onDelete()
             }
-            Button("キャンセル", role: .cancel) {}
+            Button("cancel".localized, role: .cancel) {}
         } message: {
-            Text("この録音を削除しますか？")
+            Text("list.delete_confirmation_message".localized)
         }
     }
 }

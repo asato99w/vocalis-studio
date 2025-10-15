@@ -5,6 +5,7 @@ import VocalisDomain
 public struct RecordingView: View {
     @StateObject private var viewModel: RecordingViewModel
     @StateObject private var settingsViewModel = MockRecordingSettingsViewModel()
+    @StateObject private var localization = LocalizationManager.shared
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
 
     public init(viewModel: RecordingViewModel) {
@@ -21,7 +22,7 @@ public struct RecordingView: View {
                 portraitLayout
             }
         }
-        .navigationTitle("録音")
+        .navigationTitle("recording.title".localized)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
@@ -33,16 +34,16 @@ public struct RecordingView: View {
                 )) {
                     HStack(spacing: 4) {
                         Image(systemName: "list.bullet")
-                        Text("一覧")
+                        Text("recording.list_button".localized)
                     }
                 }
             }
         }
         .alert(isPresented: .constant(viewModel.errorMessage != nil)) {
             Alert(
-                title: Text("エラー"),
+                title: Text("error".localized),
                 message: Text(viewModel.errorMessage ?? ""),
-                dismissButton: .default(Text("OK"))
+                dismissButton: .default(Text("ok".localized))
             )
         }
     }
@@ -156,30 +157,30 @@ struct RecordingSettingsPanel: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text("スケール設定")
+                Text("recording.settings_title".localized)
                     .font(.headline)
                     .padding(.bottom, 4)
 
                 // Scale selection
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("スケール選択")
+                    Text("recording.scale_label".localized)
                         .font(.caption)
                         .foregroundColor(.secondary)
 
-                    Picker("スケール", selection: $viewModel.scaleType) {
-                        Text("5トーン").tag(ScaleType.fiveTone)
-                        Text("オフ").tag(ScaleType.off)
+                    Picker("recording.scale_label".localized, selection: $viewModel.scaleType) {
+                        Text("recording.scale_five_tone".localized).tag(ScaleType.fiveTone)
+                        Text("recording.scale_off".localized).tag(ScaleType.off)
                     }
                     .pickerStyle(.segmented)
                 }
 
                 // Start pitch
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("スタートピッチ")
+                    Text("recording.start_pitch_label".localized)
                         .font(.caption)
                         .foregroundColor(.secondary)
 
-                    Picker("ピッチ", selection: $viewModel.startPitchIndex) {
+                    Picker("recording.start_pitch_label".localized, selection: $viewModel.startPitchIndex) {
                         ForEach(0..<viewModel.availablePitches.count, id: \.self) { index in
                             Text(viewModel.availablePitches[index]).tag(index)
                         }
@@ -190,7 +191,7 @@ struct RecordingSettingsPanel: View {
 
                 // Tempo
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("テンポ")
+                    Text("recording.tempo_label".localized)
                         .font(.caption)
                         .foregroundColor(.secondary)
 
@@ -205,7 +206,7 @@ struct RecordingSettingsPanel: View {
                             set: { viewModel.tempo = Int($0) }
                         ), in: 60...180, step: 1)
 
-                        Text("BPM")
+                        Text("recording.tempo_unit".localized)
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -214,13 +215,13 @@ struct RecordingSettingsPanel: View {
 
                 // Ascending count
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("上昇回数")
+                    Text("recording.ascending_count_label".localized)
                         .font(.caption)
                         .foregroundColor(.secondary)
 
-                    Picker("上昇回数", selection: $viewModel.ascendingCount) {
+                    Picker("recording.ascending_count_label".localized, selection: $viewModel.ascendingCount) {
                         ForEach(1...10, id: \.self) { count in
-                            Text("\(count)回").tag(count)
+                            Text("\(count) " + "recording.ascending_count_unit".localized).tag(count)
                         }
                     }
                     .pickerStyle(.menu)
@@ -238,21 +239,21 @@ struct RecordingSettingsCompact: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("設定")
+            Text("recording.settings_title".localized)
                 .font(.headline)
 
             HStack {
-                Text("スケール:")
+                Text("recording.scale_label".localized + ":")
                 Picker("", selection: $viewModel.scaleType) {
-                    Text("5トーン").tag(ScaleType.fiveTone)
-                    Text("オフ").tag(ScaleType.off)
+                    Text("recording.scale_five_tone".localized).tag(ScaleType.fiveTone)
+                    Text("recording.scale_off".localized).tag(ScaleType.off)
                 }
                 .pickerStyle(.segmented)
             }
 
             if viewModel.isSettingsEnabled {
                 HStack {
-                    Text("ピッチ:")
+                    Text("recording.start_pitch_label".localized + ":")
                     Picker("", selection: $viewModel.startPitchIndex) {
                         ForEach(0..<viewModel.availablePitches.count, id: \.self) { index in
                             Text(viewModel.availablePitches[index]).tag(index)
@@ -262,7 +263,7 @@ struct RecordingSettingsCompact: View {
                 }
 
                 VStack(alignment: .leading) {
-                    Text("テンポ: \(viewModel.tempo) BPM")
+                    Text("recording.tempo_label".localized + ": \(viewModel.tempo) " + "recording.tempo_unit".localized)
                     Slider(value: Binding(
                         get: { Double(viewModel.tempo) },
                         set: { viewModel.tempo = Int($0) }
@@ -270,10 +271,10 @@ struct RecordingSettingsCompact: View {
                 }
 
                 HStack {
-                    Text("上昇回数:")
+                    Text("recording.ascending_count_label".localized + ":")
                     Picker("", selection: $viewModel.ascendingCount) {
                         ForEach(1...10, id: \.self) { count in
-                            Text("\(count)回").tag(count)
+                            Text("\(count) " + "recording.ascending_count_unit".localized).tag(count)
                         }
                     }
                     .pickerStyle(.menu)
@@ -295,7 +296,7 @@ struct RealtimeDisplayArea: View {
         VStack(spacing: 12) {
             // Spectrogram
             VStack(alignment: .leading, spacing: 6) {
-                Text("リアルタイムスペクトル")
+                Text("recording.realtime_spectrum_title".localized)
                     .font(.subheadline)
                     .fontWeight(.semibold)
 
@@ -307,7 +308,7 @@ struct RealtimeDisplayArea: View {
 
             // Pitch indicator
             VStack(alignment: .leading, spacing: 6) {
-                Text("ピッチインジケーター")
+                Text("recording.pitch_indicator_title".localized)
                     .font(.subheadline)
                     .fontWeight(.semibold)
 
@@ -368,11 +369,17 @@ struct MockPitchIndicator: View {
         VStack(spacing: 8) {
             // Target scale
             HStack(spacing: 6) {
-                Text("目標:")
+                Text("recording.pitch_target".localized)
                     .font(.caption)
                     .foregroundColor(.secondary)
 
-                ForEach(["ド", "レ", "ミ", "ファ", "ソ"], id: \.self) { note in
+                ForEach([
+                    "scale.note_do".localized,
+                    "scale.note_re".localized,
+                    "scale.note_mi".localized,
+                    "scale.note_fa".localized,
+                    "scale.note_so".localized
+                ], id: \.self) { note in
                     Text(note)
                         .font(.caption2)
                         .padding(.horizontal, 6)
@@ -384,7 +391,7 @@ struct MockPitchIndicator: View {
 
             // Detected pitch
             HStack(spacing: 8) {
-                Text("検出:")
+                Text("recording.pitch_detected".localized)
                     .font(.caption)
                     .foregroundColor(.secondary)
 
@@ -453,7 +460,7 @@ struct RecordingControls: View {
                     Button(action: onStart) {
                         HStack {
                             Image(systemName: "mic.fill")
-                            Text("録音開始")
+                            Text("recording.start_button".localized)
                         }
                         .font(.callout)
                         .fontWeight(.semibold)
@@ -468,7 +475,7 @@ struct RecordingControls: View {
                         Button(action: onPlayLast) {
                             HStack {
                                 Image(systemName: isPlayingRecording ? "stop.fill" : "play.fill")
-                                Text(isPlayingRecording ? "停止" : "最後の録音を再生")
+                                Text(isPlayingRecording ? "recording.stop_playback_button".localized : "recording.play_last_button".localized)
                             }
                             .font(.caption)
                             .foregroundColor(.white)
@@ -482,12 +489,12 @@ struct RecordingControls: View {
 
             case .countdown:
                 VStack(spacing: 8) {
-                    Text("カウントダウン中...")
+                    Text("recording.countdown_message".localized)
                         .font(.subheadline)
                         .fontWeight(.medium)
 
                     Button(action: onCancel) {
-                        Text("キャンセル")
+                        Text("cancel".localized)
                             .font(.caption)
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
@@ -501,7 +508,7 @@ struct RecordingControls: View {
                 Button(action: onStop) {
                     HStack {
                         Image(systemName: "stop.fill")
-                        Text("録音停止")
+                        Text("recording.stop_button".localized)
                     }
                     .font(.callout)
                     .fontWeight(.semibold)

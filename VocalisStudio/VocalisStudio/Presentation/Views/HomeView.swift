@@ -3,6 +3,8 @@ import VocalisDomain
 
 /// Home screen - main entry point with navigation to all features
 public struct HomeView: View {
+    @StateObject private var localization = LocalizationManager.shared
+
     public init() {}
 
     public var body: some View {
@@ -25,7 +27,7 @@ public struct HomeView: View {
                             .font(.system(size: 80))
                             .foregroundColor(.white)
 
-                        Text("Vocalis Studio")
+                        Text("app_name".localized)
                             .font(.system(size: 36, weight: .bold))
                             .foregroundColor(.white)
                     }
@@ -37,7 +39,7 @@ public struct HomeView: View {
                         NavigationLink(destination: RecordingView(
                             viewModel: DependencyContainer.shared.recordingViewModel
                         )) {
-                            MenuButton(title: "録音を開始", icon: "mic.fill")
+                            MenuButton(title: "home.record_button".localized, icon: "mic.fill")
                         }
 
                         NavigationLink(destination: RecordingListView(
@@ -46,11 +48,11 @@ public struct HomeView: View {
                                 audioPlayer: DependencyContainer.shared.audioPlayer
                             )
                         )) {
-                            MenuButton(title: "録音一覧", icon: "list.bullet")
+                            MenuButton(title: "home.list_button".localized, icon: "list.bullet")
                         }
 
                         NavigationLink(destination: SettingsView()) {
-                            MenuButton(title: "設定", icon: "gearshape")
+                            MenuButton(title: "home.settings_button".localized, icon: "gearshape")
                         }
                     }
                     .padding(.horizontal, 40)

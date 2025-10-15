@@ -1,56 +1,76 @@
-/* 
-  Localizable.strings
-  VocalisStudio (Japanese)
+/*
+  Localizable.strings (Japanese)
+  VocalisStudio
 */
 
-// MARK: - Recording
-"recording.start.button" = "録音開始";
-"recording.stop.button" = "録音停止";
-"recording.status.idle" = "録音準備完了";
-"recording.status.recording" = "録音中...";
-"recording.title" = "ボイストレーニング";
-"recording.history.title" = "録音履歴";
-"recording.duration.label" = "長さ: %@";
-
-// RecordingView
-"ready_to_record" = "録音準備完了";
-"countdown_message" = "まもなく開始します";
-"recording_in_progress" = "録音中";
-"start_recording" = "録音開始";
-"stop_recording" = "停止";
-"cancel" = "キャンセル";
-"recording_error_title" = "エラー";
+// MARK: - Common
+"app_name" = "Vocalis Studio";
 "ok" = "OK";
-"play_recording" = "再生";
-"stop_playback" = "停止";
-
-// RecordingListView
-"recording_list_title" = "録音リスト";
-"close" = "閉じる";
-"error_title" = "エラー";
-"no_recordings" = "録音がありません";
-"no_recordings_message" = "録音ボタンを押して最初の録音を作成しましょう";
-"delete_confirmation_title" = "録音を削除";
-"delete_confirmation_message" = "この録音を削除してもよろしいですか？";
+"cancel" = "キャンセル";
 "delete" = "削除";
+"error" = "エラー";
 
-// MARK: - Settings
+// MARK: - HomeView
+"home.record_button" = "録音を開始";
+"home.list_button" = "録音一覧";
+"home.settings_button" = "設定";
+
+// MARK: - RecordingView
+"recording.title" = "録音";
+"recording.list_button" = "一覧";
+"recording.settings_title" = "スケール設定";
+"recording.scale_label" = "スケール選択";
+"recording.scale_five_tone" = "5トーン";
+"recording.scale_off" = "オフ";
+"recording.start_pitch_label" = "スタートピッチ";
+"recording.tempo_label" = "テンポ";
+"recording.tempo_unit" = "BPM";
+"recording.ascending_count_label" = "上昇回数";
+"recording.ascending_count_unit" = "回";
+"recording.realtime_spectrum_title" = "リアルタイムスペクトル";
+"recording.pitch_indicator_title" = "ピッチインジケーター";
+"recording.pitch_target" = "目標:";
+"recording.pitch_detected" = "検出:";
+"recording.start_button" = "録音開始";
+"recording.stop_button" = "録音停止";
+"recording.play_last_button" = "最後の録音を再生";
+"recording.stop_playback_button" = "停止";
+"recording.countdown_message" = "カウントダウン中...";
+
+// MARK: - RecordingListView
+"list.title" = "録音一覧";
+"list.empty_title" = "録音がありません";
+"list.empty_message" = "録音画面から練習を始めましょう";
+"list.delete_confirmation_title" = "削除の確認";
+"list.delete_confirmation_message" = "この録音を削除しますか？";
+
+// MARK: - AnalysisView
+"analysis.title" = "録音分析";
+"analysis.info_title" = "録音情報";
+"analysis.info_datetime" = "日時";
+"analysis.info_duration" = "長さ";
+"analysis.info_scale" = "スケール";
+"analysis.info_pitch" = "ピッチ";
+"analysis.info_tempo" = "テンポ";
+"analysis.info_ascending_count" = "上昇回数";
+"analysis.playback_title" = "再生コントロール";
+"analysis.spectrogram_title" = "スペクトログラム";
+"analysis.pitch_graph_title" = "ピッチ分析グラフ";
+"analysis.target_scale" = "目標音階";
+"analysis.detected_pitch" = "検出ピッチ";
+
+// MARK: - SettingsView
 "settings.title" = "設定";
-"settings.language.title" = "言語";
-"settings.language.description" = "お好みの言語を選択してください";
-"settings.language.english" = "English";
-"settings.language.japanese" = "日本語";
+"settings.language_section" = "言語設定";
+"settings.language_label" = "言語";
+"settings.language_japanese" = "日本語";
+"settings.language_english" = "English";
+"settings.info_section" = "情報";
+"settings.version_label" = "バージョン";
 
-// MARK: - Navigation
-"navigation.recording" = "録音";
-"navigation.settings" = "設定";
-
-// MARK: - Alerts
-"alert.language.changed.title" = "言語が変更されました";
-"alert.language.changed.message" = "アプリの言語が%@に変更されました。一部の変更にはアプリの再起動が必要です。";
-"alert.language.changed.ok" = "OK";
-
-// MARK: - General
-"general.cancel" = "キャンセル";
-"general.save" = "保存";
-"general.done" = "完了";
+// MARK: - Scale Notes
+"scale.note_do" = "ド";
+"scale.note_re" = "レ";
+"scale.note_mi" = "ミ";
+"scale.note_fa" = "ファ";
+"scale.note_so" = "ソ";

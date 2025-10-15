@@ -2,35 +2,31 @@ import SwiftUI
 
 /// Settings screen - language selection and app information
 public struct SettingsView: View {
-    @AppStorage("appLanguage") private var language = "ja"
+    @StateObject private var localization = LocalizationManager.shared
 
     public init() {}
 
     public var body: some View {
         Form {
-            Section("言語設定") {
-                Picker("言語", selection: $language) {
-                    Text("日本語").tag("ja")
-                    Text("English").tag("en")
+            Section("settings.language_section".localized) {
+                Picker("settings.language_label".localized, selection: $localization.currentLanguage) {
+                    Text("settings.language_japanese".localized).tag("ja")
+                    Text("settings.language_english".localized).tag("en")
                 }
                 .pickerStyle(.inline)
             }
 
-            Section("情報") {
+            Section("settings.info_section".localized) {
                 HStack {
-                    Text("バージョン")
+                    Text("settings.version_label".localized)
                     Spacer()
                     Text("1.0.0")
                         .foregroundColor(.secondary)
                 }
             }
         }
-        .navigationTitle("設定")
+        .navigationTitle("settings.title".localized)
         .navigationBarTitleDisplayMode(.large)
-        .onChange(of: language) {
-            // TODO: Update localization when implemented
-            print("Language changed to: \(language)")
-        }
     }
 }
 

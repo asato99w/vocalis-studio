@@ -5,6 +5,7 @@ import VocalisDomain
 public struct AnalysisView: View {
     let recording: Recording
     @StateObject private var viewModel: MockAnalysisViewModel
+    @StateObject private var localization = LocalizationManager.shared
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
 
     public init(recording: Recording) {
@@ -22,7 +23,7 @@ public struct AnalysisView: View {
                 portraitLayout
             }
         }
-        .navigationTitle("録音分析")
+        .navigationTitle("analysis.title".localized)
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -98,17 +99,17 @@ struct RecordingInfoPanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("録音情報")
+            Text("analysis.info_title".localized)
                 .font(.subheadline)
                 .fontWeight(.semibold)
 
             Group {
-                InfoRow(label: "日時", value: formatDate(recording.createdAt))
-                InfoRow(label: "長さ", value: recording.duration.formatted)
-                InfoRow(label: "スケール", value: "5トーン")
-                InfoRow(label: "ピッチ", value: "C3")
-                InfoRow(label: "テンポ", value: "120 BPM")
-                InfoRow(label: "上昇回数", value: "3回")
+                InfoRow(label: "analysis.info_datetime".localized, value: formatDate(recording.createdAt))
+                InfoRow(label: "analysis.info_duration".localized, value: recording.duration.formatted)
+                InfoRow(label: "analysis.info_scale".localized, value: "recording.scale_five_tone".localized)
+                InfoRow(label: "analysis.info_pitch".localized, value: "C3")
+                InfoRow(label: "analysis.info_tempo".localized, value: "120 " + "recording.tempo_unit".localized)
+                InfoRow(label: "analysis.info_ascending_count".localized, value: "3 " + "recording.ascending_count_unit".localized)
             }
         }
         .padding(10)
@@ -128,18 +129,18 @@ struct RecordingInfoCompact: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("録音情報")
+            Text("analysis.info_title".localized)
                 .font(.headline)
             HStack {
                 Text(formatDate(recording.createdAt))
                 Text("|")
                 Text(recording.duration.formatted)
                 Text("|")
-                Text("5トーン C3 120BPM")
+                Text("recording.scale_five_tone".localized + " C3 120" + "recording.tempo_unit".localized)
             }
             .font(.subheadline)
             .foregroundColor(.secondary)
-            Text("上昇回数: 3回")
+            Text("analysis.info_ascending_count".localized + ": 3 " + "recording.ascending_count_unit".localized)
                 .font(.subheadline)
                 .foregroundColor(.secondary)
         }
@@ -183,7 +184,7 @@ struct PlaybackControl: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            Text("再生コントロール")
+            Text("analysis.playback_title".localized)
                 .font(.subheadline)
                 .fontWeight(.semibold)
 
@@ -240,7 +241,7 @@ struct SpectrogramView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("スペクトログラム")
+            Text("analysis.spectrogram_title".localized)
                 .font(.subheadline)
                 .fontWeight(.semibold)
 
@@ -314,14 +315,20 @@ struct PitchAnalysisView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("ピッチ分析グラフ")
+            Text("analysis.pitch_graph_title".localized)
                 .font(.subheadline)
                 .fontWeight(.semibold)
 
             GeometryReader { geometry in
                 Canvas { context, size in
                     // Draw target scale line (horizontal reference lines)
-                    let notes = ["ド", "レ", "ミ", "ファ", "ソ"]
+                    let notes = [
+                        "scale.note_do".localized,
+                        "scale.note_re".localized,
+                        "scale.note_mi".localized,
+                        "scale.note_fa".localized,
+                        "scale.note_so".localized
+                    ]
                     let noteHeight = size.height * 0.6
                     let noteSpacing = size.width / CGFloat(notes.count + 1)
 
@@ -383,7 +390,7 @@ struct PitchAnalysisView: View {
                         with: .color(.gray.opacity(0.5)),
                         style: StrokeStyle(lineWidth: 2, dash: [5, 5])
                     )
-                    context.draw(Text("目標音階").font(.caption), at: CGPoint(x: 80, y: legendY))
+                    context.draw(Text("analysis.target_scale".localized).font(.caption), at: CGPoint(x: 80, y: legendY))
 
                     context.stroke(
                         Path { path in
@@ -393,7 +400,7 @@ struct PitchAnalysisView: View {
                         with: .color(.blue),
                         lineWidth: 2
                     )
-                    context.draw(Text("検出ピッチ").font(.caption), at: CGPoint(x: 80, y: legendY + 20))
+                    context.draw(Text("analysis.detected_pitch".localized).font(.caption), at: CGPoint(x: 80, y: legendY + 20))
                 }
             }
             .background(Color(.systemGray6))

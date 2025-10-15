@@ -1,56 +1,76 @@
-/* 
-  Localizable.strings
-  VocalisStudio (English)
+/*
+  Localizable.strings (English)
+  VocalisStudio
 */
 
-// MARK: - Recording
-"recording.start.button" = "Start Recording";
-"recording.stop.button" = "Stop Recording";
-"recording.status.idle" = "Ready to record";
-"recording.status.recording" = "Recording...";
-"recording.title" = "Voice Training";
-"recording.history.title" = "Recording History";
-"recording.duration.label" = "Duration: %@";
-
-// RecordingView
-"ready_to_record" = "Ready to Record";
-"countdown_message" = "Starting soon...";
-"recording_in_progress" = "Recording";
-"start_recording" = "Start Recording";
-"stop_recording" = "Stop";
-"cancel" = "Cancel";
-"recording_error_title" = "Error";
+// MARK: - Common
+"app_name" = "Vocalis Studio";
 "ok" = "OK";
-"play_recording" = "Play";
-"stop_playback" = "Stop";
-
-// RecordingListView
-"recording_list_title" = "Recordings";
-"close" = "Close";
-"error_title" = "Error";
-"no_recordings" = "No Recordings";
-"no_recordings_message" = "Tap the record button to create your first recording";
-"delete_confirmation_title" = "Delete Recording";
-"delete_confirmation_message" = "Are you sure you want to delete this recording?";
+"cancel" = "Cancel";
 "delete" = "Delete";
+"error" = "Error";
 
-// MARK: - Settings
+// MARK: - HomeView
+"home.record_button" = "Start Recording";
+"home.list_button" = "Recording List";
+"home.settings_button" = "Settings";
+
+// MARK: - RecordingView
+"recording.title" = "Recording";
+"recording.list_button" = "List";
+"recording.settings_title" = "Scale Settings";
+"recording.scale_label" = "Scale";
+"recording.scale_five_tone" = "5-Tone";
+"recording.scale_off" = "Off";
+"recording.start_pitch_label" = "Start Pitch";
+"recording.tempo_label" = "Tempo";
+"recording.tempo_unit" = "BPM";
+"recording.ascending_count_label" = "Ascending Count";
+"recording.ascending_count_unit" = "times";
+"recording.realtime_spectrum_title" = "Real-time Spectrum";
+"recording.pitch_indicator_title" = "Pitch Indicator";
+"recording.pitch_target" = "Target:";
+"recording.pitch_detected" = "Detected:";
+"recording.start_button" = "Start Recording";
+"recording.stop_button" = "Stop Recording";
+"recording.play_last_button" = "Play Last Recording";
+"recording.stop_playback_button" = "Stop";
+"recording.countdown_message" = "Counting down...";
+
+// MARK: - RecordingListView
+"list.title" = "Recording List";
+"list.empty_title" = "No Recordings";
+"list.empty_message" = "Start practicing from the recording screen";
+"list.delete_confirmation_title" = "Delete Confirmation";
+"list.delete_confirmation_message" = "Are you sure you want to delete this recording?";
+
+// MARK: - AnalysisView
+"analysis.title" = "Recording Analysis";
+"analysis.info_title" = "Recording Info";
+"analysis.info_datetime" = "Date/Time";
+"analysis.info_duration" = "Duration";
+"analysis.info_scale" = "Scale";
+"analysis.info_pitch" = "Pitch";
+"analysis.info_tempo" = "Tempo";
+"analysis.info_ascending_count" = "Ascending Count";
+"analysis.playback_title" = "Playback Control";
+"analysis.spectrogram_title" = "Spectrogram";
+"analysis.pitch_graph_title" = "Pitch Analysis";
+"analysis.target_scale" = "Target Scale";
+"analysis.detected_pitch" = "Detected Pitch";
+
+// MARK: - SettingsView
 "settings.title" = "Settings";
-"settings.language.title" = "Language";
-"settings.language.description" = "Choose your preferred language";
-"settings.language.english" = "English";
-"settings.language.japanese" = "日本語";
+"settings.language_section" = "Language";
+"settings.language_label" = "Language";
+"settings.language_japanese" = "日本語";
+"settings.language_english" = "English";
+"settings.info_section" = "Information";
+"settings.version_label" = "Version";
 
-// MARK: - Navigation
-"navigation.recording" = "Recording";
-"navigation.settings" = "Settings";
-
-// MARK: - Alerts
-"alert.language.changed.title" = "Language Changed";
-"alert.language.changed.message" = "The app language has been changed to %@. Some changes may require restarting the app.";
-"alert.language.changed.ok" = "OK";
-
-// MARK: - General
-"general.cancel" = "Cancel";
-"general.save" = "Save";
-"general.done" = "Done";
+// MARK: - Scale Notes
+"scale.note_do" = "C";
+"scale.note_re" = "D";
+"scale.note_mi" = "E";
+"scale.note_fa" = "F";
+"scale.note_so" = "G";
