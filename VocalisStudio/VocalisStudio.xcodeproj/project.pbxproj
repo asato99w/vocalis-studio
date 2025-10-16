@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		E3CE2EF02E9E410900481878 /* VocalisDomain in Frameworks */ = {isa = PBXBuildFile; productRef = D6BF83C72E890B390076B2FC /* VocalisDomain */; };
+		E3CE2FB92EA0BD4400481878 /* AudioKit in Frameworks */ = {isa = PBXBuildFile; productRef = E3CE2FB82EA0BD4400481878 /* AudioKit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -56,6 +57,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E3CE2FB92EA0BD4400481878 /* AudioKit in Frameworks */,
 				E3CE2EF02E9E410900481878 /* VocalisDomain in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -118,6 +120,7 @@
 			name = VocalisStudio;
 			packageProductDependencies = (
 				D6BF83C72E890B390076B2FC /* VocalisDomain */,
+				E3CE2FB82EA0BD4400481878 /* AudioKit */,
 			);
 			productName = VocalisStudio;
 			productReference = D6BF839C2E890B370076B2FC /* VocalisStudio.app */;
@@ -204,6 +207,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				D6BF83C62E890B390076B2FC /* XCLocalSwiftPackageReference "Packages/VocalisDomain" */,
+				E3CE2FB72EA0BD4400481878 /* XCRemoteSwiftPackageReference "AudioKit" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = D6BF839D2E890B370076B2FC /* Products */;
@@ -578,11 +582,27 @@
 		};
 /* End XCLocalSwiftPackageReference section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		E3CE2FB72EA0BD4400481878 /* XCRemoteSwiftPackageReference "AudioKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/AudioKit/AudioKit";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.6.5;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		D6BF83C72E890B390076B2FC /* VocalisDomain */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = D6BF83C62E890B390076B2FC /* XCLocalSwiftPackageReference "Packages/VocalisDomain" */;
 			productName = VocalisDomain;
+		};
+		E3CE2FB82EA0BD4400481878 /* AudioKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E3CE2FB72EA0BD4400481878 /* XCRemoteSwiftPackageReference "AudioKit" */;
+			productName = AudioKit;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

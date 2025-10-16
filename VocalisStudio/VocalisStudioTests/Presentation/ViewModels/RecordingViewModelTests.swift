@@ -1,5 +1,6 @@
 import XCTest
 import Combine
+import VocalisDomain
 @testable import VocalisStudio
 
 @MainActor
@@ -9,6 +10,8 @@ final class RecordingViewModelTests: XCTestCase {
     var mockStartRecordingUseCase: MockStartRecordingWithScaleUseCase!
     var mockStopRecordingUseCase: MockStopRecordingUseCase!
     var mockAudioPlayer: MockAudioPlayer!
+    var mockScalePlayer: MockScalePlayer!
+    var pitchDetector: RealtimePitchDetector!
     var cancellables: Set<AnyCancellable>!
 
     override func setUp() async throws {
@@ -16,10 +19,14 @@ final class RecordingViewModelTests: XCTestCase {
         mockStartRecordingUseCase = MockStartRecordingWithScaleUseCase()
         mockStopRecordingUseCase = MockStopRecordingUseCase()
         mockAudioPlayer = MockAudioPlayer()
+        mockScalePlayer = MockScalePlayer()
+        pitchDetector = RealtimePitchDetector()
         sut = RecordingViewModel(
             startRecordingUseCase: mockStartRecordingUseCase,
             stopRecordingUseCase: mockStopRecordingUseCase,
-            audioPlayer: mockAudioPlayer
+            audioPlayer: mockAudioPlayer,
+            pitchDetector: pitchDetector,
+            scalePlayer: mockScalePlayer
         )
         cancellables = []
     }
@@ -27,6 +34,8 @@ final class RecordingViewModelTests: XCTestCase {
     override func tearDown() async throws {
         cancellables = nil
         sut = nil
+        pitchDetector = nil
+        mockScalePlayer = nil
         mockAudioPlayer = nil
         mockStopRecordingUseCase = nil
         mockStartRecordingUseCase = nil

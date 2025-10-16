@@ -99,6 +99,7 @@ public struct RecordingView: View {
 
                 RealtimeDisplayArea(
                     recordingState: viewModel.recordingState,
+                    isPlayingRecording: viewModel.isPlayingRecording,
                     targetPitch: viewModel.targetPitch,
                     detectedPitch: viewModel.detectedPitch,
                     pitchAccuracy: viewModel.pitchAccuracy
@@ -177,6 +178,7 @@ public struct RecordingView: View {
 
                 RealtimeDisplayArea(
                     recordingState: viewModel.recordingState,
+                    isPlayingRecording: viewModel.isPlayingRecording,
                     targetPitch: viewModel.targetPitch,
                     detectedPitch: viewModel.detectedPitch,
                     pitchAccuracy: viewModel.pitchAccuracy
@@ -361,6 +363,7 @@ struct RecordingSettingsCompact: View {
 
 struct RealtimeDisplayArea: View {
     let recordingState: RecordingState
+    let isPlayingRecording: Bool
     let targetPitch: DetectedPitch?
     let detectedPitch: DetectedPitch?
     let pitchAccuracy: PitchAccuracy
@@ -387,6 +390,7 @@ struct RealtimeDisplayArea: View {
 
                 PitchIndicator(
                     isActive: recordingState == .recording,
+                    isPlayingRecording: isPlayingRecording,
                     targetPitch: targetPitch,
                     detectedPitch: detectedPitch,
                     pitchAccuracy: pitchAccuracy
@@ -440,6 +444,7 @@ struct MockSpectrogramView: View {
 
 struct PitchIndicator: View {
     let isActive: Bool
+    let isPlayingRecording: Bool
     let targetPitch: DetectedPitch?
     let detectedPitch: DetectedPitch?
     let pitchAccuracy: PitchAccuracy
@@ -480,7 +485,7 @@ struct PitchIndicator: View {
                     .foregroundColor(.secondary)
                     .frame(width: 60, alignment: .leading)
 
-                if isActive, let detected = detectedPitch {
+                if (isActive || isPlayingRecording), let detected = detectedPitch {
                     HStack(spacing: 6) {
                         // Accuracy indicator
                         Circle()
@@ -509,7 +514,7 @@ struct PitchIndicator: View {
                         }
                     }
                 } else {
-                    Text(isActive ? "..." : "--")
+                    Text((isActive || isPlayingRecording) ? "..." : "--")
                         .font(.callout)
                         .foregroundColor(.secondary)
                 }
@@ -725,6 +730,7 @@ private class PreviewMockStopRecordingUseCase: StopRecordingUseCaseProtocol {
 
 private class PreviewMockAudioPlayer: AudioPlayerProtocol {
     var isPlaying: Bool = false
+    var currentTime: TimeInterval = 0
 
     func play(url: URL) async throws {
         isPlaying = true

@@ -5,6 +5,7 @@ public protocol AudioPlayerProtocol {
     func play(url: URL) async throws
     func stop() async
     var isPlaying: Bool { get }
+    var currentTime: TimeInterval { get }
 }
 
 public enum AudioPlayerError: LocalizedError, Equatable {

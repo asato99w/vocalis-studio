@@ -1,4 +1,5 @@
 import Foundation
+import VocalisDomain
 @testable import VocalisStudio
 
 final class MockStartRecordingWithScaleUseCase: StartRecordingWithScaleUseCaseProtocol {

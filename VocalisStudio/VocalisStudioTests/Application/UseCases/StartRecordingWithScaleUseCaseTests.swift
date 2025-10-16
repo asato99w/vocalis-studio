@@ -1,4 +1,5 @@
 import XCTest
+import VocalisDomain
 @testable import VocalisStudio
 
 final class StartRecordingWithScaleUseCaseTests: XCTestCase {

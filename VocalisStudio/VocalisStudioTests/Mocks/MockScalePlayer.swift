@@ -1,4 +1,5 @@
 import Foundation
+import VocalisDomain
 @testable import VocalisStudio
 
 final class MockScalePlayer: ScalePlayerProtocol {
@@ -31,6 +32,10 @@ final class MockScalePlayer: ScalePlayerProtocol {
         0.0
     }
 
+    var currentScaleElement: ScaleElement? {
+        nil
+    }
+
     func loadScale(_ notes: [MIDINote], tempo: Tempo) async throws {
         loadScaleCalled = true
         loadScaleCallTime = Date()
@@ -42,7 +47,17 @@ final class MockScalePlayer: ScalePlayerProtocol {
         }
     }
 
-    func play() async throws {
+    func loadScaleElements(_ elements: [ScaleElement], tempo: Tempo) async throws {
+        loadScaleCalled = true
+        loadScaleCallTime = Date()
+        loadedTempo = tempo
+
+        if loadScaleShouldFail {
+            throw ScalePlayerError.notLoaded
+        }
+    }
+
+    func play(muted: Bool) async throws {
         playCalled = true
         playCallTime = Date()
         _isPlaying = true

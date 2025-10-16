@@ -1,5 +1,6 @@
 import XCTest
 import AVFoundation
+import VocalisDomain
 @testable import VocalisStudio
 
 final class AVAudioEngineScalePlayerTests: XCTestCase {

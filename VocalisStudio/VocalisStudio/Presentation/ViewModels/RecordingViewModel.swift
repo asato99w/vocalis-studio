@@ -41,6 +41,7 @@ public class RecordingViewModel: ObservableObject {
 
     private var countdownTask: Task<Void, Never>?
     private var progressMonitorTask: Task<Void, Never>?
+    private var pitchDetectionTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
 
     // MARK: - Initialization
@@ -190,17 +191,23 @@ public class RecordingViewModel: ObservableObject {
                 startTargetPitchMonitoring(settings: settings)
             }
 
-            // Play the actual recording
-            try await audioPlayer.play(url: url)
-            print("✅ Playback started")
+            // Start playback pitch detection from file (it will wait for playback to start)
+            startPlaybackPitchDetection(url: url)
 
-            // Wait for playback to complete (simplified - in production use delegate)
-            try await Task.sleep(nanoseconds: 10_000_000_000) // Max 10 seconds
+            // Play the actual recording (blocks until playback completes)
+            try await audioPlayer.play(url: url)
+            print("✅ Playback completed")
 
             // Stop target pitch monitoring
             progressMonitorTask?.cancel()
             progressMonitorTask = nil
             targetPitch = nil
+
+            // Stop playback pitch detection
+            pitchDetectionTask?.cancel()
+            pitchDetectionTask = nil
+            detectedPitch = nil
+            pitchAccuracy = .none
 
             // Stop muted scale player
             await scalePlayer.stop()
@@ -212,7 +219,11 @@ public class RecordingViewModel: ObservableObject {
             isPlayingRecording = false
             progressMonitorTask?.cancel()
             progressMonitorTask = nil
+            pitchDetectionTask?.cancel()
+            pitchDetectionTask = nil
             targetPitch = nil
+            detectedPitch = nil
+            pitchAccuracy = .none
             print("❌ Playback failed: \(error.localizedDescription)")
         }
     }
@@ -223,7 +234,11 @@ public class RecordingViewModel: ObservableObject {
         await scalePlayer.stop()
         progressMonitorTask?.cancel()
         progressMonitorTask = nil
+        pitchDetectionTask?.cancel()
+        pitchDetectionTask = nil
         targetPitch = nil
+        detectedPitch = nil
+        pitchAccuracy = .none
         isPlayingRecording = false
     }
 
@@ -319,6 +334,15 @@ public class RecordingViewModel: ObservableObject {
         guard let pitch = pitch else {
             detectedPitch = nil
             pitchAccuracy = .none
+            print("🎤 Pitch cleared")
+            return
+        }
+
+        // Validate frequency is reasonable (avoid NaN/infinite in log calculation)
+        guard pitch.frequency > 0 && pitch.frequency < 10000 else {
+            detectedPitch = nil
+            pitchAccuracy = .none
+            print("🎤 Invalid frequency: \(pitch.frequency) Hz")
             return
         }
 
@@ -326,6 +350,14 @@ public class RecordingViewModel: ObservableObject {
         if let target = targetPitch {
             let targetFreq = target.frequency
             let detectedFreq = pitch.frequency
+
+            guard targetFreq > 0 else {
+                detectedPitch = pitch
+                pitchAccuracy = .none
+                print("🎤 Invalid target frequency")
+                return
+            }
+
             let cents = Int(round(1200 * log2(detectedFreq / targetFreq)))
 
             detectedPitch = DetectedPitch(
@@ -336,9 +368,58 @@ public class RecordingViewModel: ObservableObject {
             )
 
             pitchAccuracy = PitchAccuracy.from(cents: cents)
+            print("🎤 Updated UI: \(pitch.noteName) (\(String(format: "%.1f", pitch.frequency)) Hz), cents: \(cents), accuracy: \(pitchAccuracy)")
         } else {
             detectedPitch = pitch
             pitchAccuracy = PitchAccuracy.from(cents: pitch.cents)
+            print("🎤 Updated UI (no target): \(pitch.noteName) (\(String(format: "%.1f", pitch.frequency)) Hz)")
+        }
+    }
+
+    /// Start detecting pitch from recording file during playback
+    private func startPlaybackPitchDetection(url: URL) {
+        pitchDetectionTask = Task {
+            print("🎵 Started playback pitch detection for: \(url.path)")
+
+            // Wait for playback to start (max 3 seconds)
+            var waitCount = 0
+            while !audioPlayer.isPlaying && waitCount < 30 {
+                try? await Task.sleep(nanoseconds: 100_000_000) // 100ms
+                waitCount += 1
+            }
+
+            if !audioPlayer.isPlaying {
+                print("⚠️ Playback never started after 3 seconds")
+                return
+            }
+
+            print("🎵 Playback started, beginning pitch detection")
+            var loopCount = 0
+
+            while !Task.isCancelled && audioPlayer.isPlaying {
+                loopCount += 1
+
+                // Get current playback time
+                let currentTime = audioPlayer.currentTime
+
+                // Analyze pitch at current time (await completion before next iteration)
+                await withCheckedContinuation { continuation in
+                    pitchDetector.analyzePitchFromFile(url, atTime: currentTime) { [weak self] pitch in
+                        guard let self = self else {
+                            continuation.resume()
+                            return
+                        }
+                        Task { @MainActor in
+                            self.updateDetectedPitch(pitch)
+                            continuation.resume()
+                        }
+                    }
+                }
+
+                // Check every 100ms
+                try? await Task.sleep(nanoseconds: 100_000_000)
+            }
+            print("🎵 Stopped playback pitch detection (looped \(loopCount) times)")
         }
     }
 }

@@ -2,20 +2,33 @@ import Foundation
 import AVFoundation
 import VocalisDomain
 import Combine
+import Accelerate
 
-/// Real-time pitch detector using AudioKit FFT algorithm
+/// Real-time pitch detector using FFT-based analysis
 @MainActor
 public class RealtimePitchDetector: ObservableObject {
     @Published public private(set) var detectedPitch: DetectedPitch?
     @Published public private(set) var isDetecting: Bool = false
 
     private let audioEngine = AVAudioEngine()
-    private var detectionTimer: Timer?
     private var audioBuffer: [Float] = []
     private let bufferSize = 4096
     private let hopSize = 2048
 
-    public init() {}
+    // FFT setup
+    private var fftSetup: vDSP_DFT_Setup?
+    private let log2n: vDSP_Length
+
+    public init() {
+        log2n = vDSP_Length(log2(Double(bufferSize)))
+        fftSetup = vDSP_DFT_zop_CreateSetup(nil, vDSP_Length(bufferSize), vDSP_DFT_Direction.FORWARD)
+    }
+
+    deinit {
+        if let setup = fftSetup {
+            vDSP_DFT_DestroySetup(setup)
+        }
+    }
 
     /// Start real-time pitch detection from microphone
     public func startRealtimeDetection() throws {
@@ -78,50 +91,123 @@ public class RealtimePitchDetector: ObservableObject {
         }
     }
 
-    /// Detect pitch from audio samples using autocorrelation
+    /// Detect pitch from audio samples using FFT-based analysis
     private func detectPitchFromSamples(_ samples: [Float]) {
         // Calculate RMS amplitude
         let rms = sqrt(samples.map { $0 * $0 }.reduce(0, +) / Float(samples.count))
 
         // Silence threshold
-        guard rms > 0.01 else {
+        guard rms > 0.02 else {
             detectedPitch = nil
             return
         }
 
-        // Autocorrelation-based pitch detection
+        guard let setup = fftSetup else {
+            detectedPitch = nil
+            return
+        }
+
         let sampleRate = 44100.0
-        let minLag = Int(sampleRate / 1000.0)  // Max 1000 Hz
-        let maxLag = Int(sampleRate / 80.0)    // Min 80 Hz
+        let minFreq = 100.0  // G2 - avoid low frequency noise
+        let maxFreq = 800.0  // G5 - typical singing range for realtime
 
-        var bestLag = 0
-        var bestCorrelation: Float = 0
+        // Prepare buffers for FFT
+        var realPartIn = [Float](repeating: 0, count: bufferSize)
+        var imagPartIn = [Float](repeating: 0, count: bufferSize)
+        var realPartOut = [Float](repeating: 0, count: bufferSize)
+        var imagPartOut = [Float](repeating: 0, count: bufferSize)
 
-        for lag in minLag..<min(maxLag, samples.count / 2) {
-            var correlation: Float = 0
-            for i in 0..<(samples.count - lag) {
-                correlation += samples[i] * samples[i + lag]
-            }
+        // Apply Hanning window to reduce spectral leakage
+        var window = [Float](repeating: 0, count: bufferSize)
+        vDSP_hann_window(&window, vDSP_Length(bufferSize), Int32(vDSP_HANN_NORM))
 
-            if correlation > bestCorrelation {
-                bestCorrelation = correlation
-                bestLag = lag
+        var windowedSamples = [Float](repeating: 0, count: bufferSize)
+        vDSP_vmul(samples, 1, window, 1, &windowedSamples, 1, vDSP_Length(bufferSize))
+
+        // Copy windowed samples to real part
+        realPartIn = windowedSamples
+
+        // Perform FFT
+        vDSP_DFT_Execute(setup, &realPartIn, &imagPartIn, &realPartOut, &imagPartOut)
+
+        // Calculate magnitude spectrum
+        var magnitudes = [Float](repeating: 0, count: bufferSize / 2)
+        realPartOut.withUnsafeMutableBufferPointer { realPtr in
+            imagPartOut.withUnsafeMutableBufferPointer { imagPtr in
+                var splitComplex = DSPSplitComplex(realp: realPtr.baseAddress!, imagp: imagPtr.baseAddress!)
+                vDSP_zvabs(&splitComplex, 1, &magnitudes, 1, vDSP_Length(bufferSize / 2))
             }
         }
 
-        guard bestLag > 0 else {
+        // Apply Harmonic Product Spectrum (HPS) to find fundamental frequency
+        let minBin = Int(minFreq * Double(bufferSize) / sampleRate)
+        let maxBin = Int(maxFreq * Double(bufferSize) / sampleRate)
+
+        guard minBin < maxBin && maxBin < magnitudes.count else {
             detectedPitch = nil
             return
         }
 
-        let frequency = sampleRate / Double(bestLag)
+        // Create HPS by multiplying harmonics (start from fundamental, then multiply by harmonics)
+        let numHarmonics = 5 // Use harmonics 1, 2, 3, 4, 5
+        var hps = [Float](repeating: 0.0, count: maxBin)
 
-        // Confidence based on correlation strength and RMS
-        let normalizedCorrelation = bestCorrelation / Float(samples.count - bestLag)
-        let confidence = min(Double(rms * normalizedCorrelation * 10.0), 1.0)
+        // Initialize with fundamental (1st harmonic)
+        for bin in minBin..<maxBin {
+            hps[bin] = magnitudes[bin]
+        }
+
+        // Multiply by higher harmonics (2nd through 5th)
+        for harmonic in 2...numHarmonics {
+            for bin in minBin..<maxBin {
+                let downsampledBin = bin * harmonic
+                if downsampledBin < magnitudes.count {
+                    hps[bin] *= magnitudes[downsampledBin]
+                }
+            }
+        }
+
+        // Find peak in HPS (this will be the fundamental frequency)
+        var maxMagnitude: Float = 0
+        var peakBin = 0
+
+        for bin in minBin..<maxBin {
+            if hps[bin] > maxMagnitude {
+                maxMagnitude = hps[bin]
+                peakBin = bin
+            }
+        }
+
+        guard maxMagnitude > 0.01 else {
+            detectedPitch = nil
+            return
+        }
+
+        // Parabolic interpolation using HPS values for sub-bin accuracy
+        var interpolatedBin = Double(peakBin)
+        if peakBin > 0 && peakBin < hps.count - 1 {
+            let alpha = Double(hps[peakBin - 1])
+            let beta = Double(hps[peakBin])
+            let gamma = Double(hps[peakBin + 1])
+
+            let denominator = alpha - 2.0 * beta + gamma
+            if abs(denominator) > 0.0001 {  // Avoid division by near-zero
+                let offset = 0.5 * (alpha - gamma) / denominator
+                // Clamp offset to reasonable range
+                let clampedOffset = max(-0.5, min(0.5, offset))
+                interpolatedBin = Double(peakBin) + clampedOffset
+            }
+        }
+
+        // Convert bin to frequency
+        let frequency = interpolatedBin * sampleRate / Double(bufferSize)
+
+        // Calculate confidence based on peak prominence
+        let avgMagnitude = magnitudes[minBin..<maxBin].reduce(0, +) / Float(maxBin - minBin)
+        let confidence = min(Double(maxMagnitude / (avgMagnitude + 0.001)), 1.0)
 
         // Only report if confidence is high enough
-        guard confidence > 0.3 else {
+        guard confidence > 0.4 else {
             detectedPitch = nil
             return
         }
@@ -176,6 +262,13 @@ public class RealtimePitchDetector: ObservableObject {
                     count: Int(buffer.frameLength)
                 ))
 
+                // Debug: Check sample values
+                let maxSample = samples.max() ?? 0
+                let minSample = samples.min() ?? 0
+                let avgSample = samples.reduce(0, +) / Float(samples.count)
+                print("📊 File samples - count: \(samples.count), max: \(maxSample), min: \(minSample), avg: \(avgSample)")
+                print("📊 Sample rate: \(sampleRate), format: \(format)")
+
                 // Detect pitch from samples
                 let pitch = await detectPitchFromSamplesSync(samples, sampleRate: sampleRate)
                 await MainActor.run { completion(pitch) }
@@ -187,40 +280,136 @@ public class RealtimePitchDetector: ObservableObject {
         }
     }
 
-    /// Synchronous pitch detection for file analysis
+    /// Synchronous pitch detection for file analysis using FFT
     private func detectPitchFromSamplesSync(_ samples: [Float], sampleRate: Double) async -> DetectedPitch? {
         // Calculate RMS amplitude
         let rms = sqrt(samples.map { $0 * $0 }.reduce(0, +) / Float(samples.count))
+        print("🔍 RMS: \(rms) (threshold: 0.001)")
 
-        guard rms > 0.01 else { return nil }
+        // Lower threshold for recorded playback (recorded files tend to have lower amplitude)
+        if rms <= 0.001 {
+            print("🔇 RMS too low, skipping")
+            return nil
+        }
 
-        // Autocorrelation
-        let minLag = Int(sampleRate / 1000.0)
-        let maxLag = Int(sampleRate / 80.0)
+        guard let setup = fftSetup else {
+            print("❌ FFT setup is nil")
+            return nil
+        }
 
-        var bestLag = 0
-        var bestCorrelation: Float = 0
+        // Focus on fundamental frequency range for singing voice
+        let minFreq = 100.0  // G2 - avoid low frequency noise
+        let maxFreq = 500.0  // B4 - typical singing range
+        let size = min(samples.count, bufferSize)
 
-        for lag in minLag..<min(maxLag, samples.count / 2) {
-            var correlation: Float = 0
-            for i in 0..<(samples.count - lag) {
-                correlation += samples[i] * samples[i + lag]
-            }
+        // Prepare buffers
+        var realPartIn = [Float](repeating: 0, count: bufferSize)
+        var imagPartIn = [Float](repeating: 0, count: bufferSize)
+        var realPartOut = [Float](repeating: 0, count: bufferSize)
+        var imagPartOut = [Float](repeating: 0, count: bufferSize)
 
-            if correlation > bestCorrelation {
-                bestCorrelation = correlation
-                bestLag = lag
+        // Apply window
+        var window = [Float](repeating: 0, count: size)
+        vDSP_hann_window(&window, vDSP_Length(size), Int32(vDSP_HANN_NORM))
+
+        var windowedSamples = [Float](repeating: 0, count: size)
+        vDSP_vmul(Array(samples.prefix(size)), 1, window, 1, &windowedSamples, 1, vDSP_Length(size))
+
+        realPartIn[0..<size] = windowedSamples[0..<size]
+
+        // Perform FFT
+        vDSP_DFT_Execute(setup, &realPartIn, &imagPartIn, &realPartOut, &imagPartOut)
+
+        // Calculate magnitudes
+        var magnitudes = [Float](repeating: 0, count: bufferSize / 2)
+        realPartOut.withUnsafeMutableBufferPointer { realPtr in
+            imagPartOut.withUnsafeMutableBufferPointer { imagPtr in
+                var splitComplex = DSPSplitComplex(realp: realPtr.baseAddress!, imagp: imagPtr.baseAddress!)
+                vDSP_zvabs(&splitComplex, 1, &magnitudes, 1, vDSP_Length(bufferSize / 2))
             }
         }
 
-        guard bestLag > 0 else { return nil }
+        // Apply Harmonic Product Spectrum (HPS) to find fundamental frequency
+        let minBin = Int(minFreq * Double(bufferSize) / sampleRate)
+        let maxBin = Int(maxFreq * Double(bufferSize) / sampleRate)
 
-        let frequency = sampleRate / Double(bestLag)
-        let normalizedCorrelation = bestCorrelation / Float(samples.count - bestLag)
-        let confidence = min(Double(rms * normalizedCorrelation * 10.0), 1.0)
+        guard minBin < maxBin && maxBin < magnitudes.count else { return nil }
 
-        guard confidence > 0.3 else { return nil }
+        // Create HPS by multiplying harmonics (start from fundamental, then multiply by harmonics)
+        let numHarmonics = 5 // Use harmonics 1, 2, 3, 4, 5
+        var hps = [Float](repeating: 0.0, count: maxBin)
 
-        return DetectedPitch.fromFrequency(frequency, confidence: confidence)
+        // Initialize with fundamental (1st harmonic)
+        for bin in minBin..<maxBin {
+            hps[bin] = magnitudes[bin]
+        }
+
+        // Multiply by higher harmonics (2nd through 5th)
+        for harmonic in 2...numHarmonics {
+            for bin in minBin..<maxBin {
+                let downsampledBin = bin * harmonic
+                if downsampledBin < magnitudes.count {
+                    hps[bin] *= magnitudes[downsampledBin]
+                }
+            }
+        }
+
+        // Find peak in HPS (this will be the fundamental frequency)
+        var maxMagnitude: Float = 0
+        var peakBin = 0
+
+        for bin in minBin..<maxBin {
+            if hps[bin] > maxMagnitude {
+                maxMagnitude = hps[bin]
+                peakBin = bin
+            }
+        }
+
+        print("🔍 Peak magnitude: \(maxMagnitude) at bin \(peakBin) (threshold: 0.001)")
+
+        if maxMagnitude <= 0.001 {  // Lowered from 0.01
+            print("🔇 Peak magnitude too low, skipping")
+            return nil
+        }
+
+        // Parabolic interpolation using HPS values
+        var interpolatedBin = Double(peakBin)
+        if peakBin > 0 && peakBin < hps.count - 1 {
+            let alpha = Double(hps[peakBin - 1])
+            let beta = Double(hps[peakBin])
+            let gamma = Double(hps[peakBin + 1])
+
+            let denominator = alpha - 2.0 * beta + gamma
+            if abs(denominator) > 0.0001 {  // Avoid division by near-zero
+                let offset = 0.5 * (alpha - gamma) / denominator
+                // Clamp offset to reasonable range
+                let clampedOffset = max(-0.5, min(0.5, offset))
+                interpolatedBin = Double(peakBin) + clampedOffset
+            }
+        }
+
+        let frequency = interpolatedBin * sampleRate / Double(bufferSize)
+
+        // Validate frequency is in expected range
+        guard frequency >= minFreq && frequency <= maxFreq else {
+            print("🔇 Frequency out of range: \(frequency) Hz")
+            return nil
+        }
+
+        // Calculate confidence
+        let avgMagnitude = magnitudes[minBin..<maxBin].reduce(0, +) / Float(maxBin - minBin)
+        let confidence = min(Double(maxMagnitude / (avgMagnitude + 0.001)), 1.0)
+
+        print("🔍 Frequency: \(String(format: "%.1f", frequency)) Hz, Confidence: \(String(format: "%.2f", confidence)) (threshold: 0.3)")
+
+        // Lower confidence threshold for playback analysis
+        if confidence <= 0.3 {  // Lowered from 0.4
+            print("🔇 Confidence too low, skipping")
+            return nil
+        }
+
+        let pitch = DetectedPitch.fromFrequency(frequency, confidence: confidence)
+        print("✅ Detected pitch: \(pitch.noteName) (\(String(format: "%.1f", pitch.frequency)) Hz)")
+        return pitch
     }
 }

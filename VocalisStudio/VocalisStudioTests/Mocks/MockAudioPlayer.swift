@@ -1,4 +1,5 @@
 import Foundation
+import VocalisDomain
 @testable import VocalisStudio
 
 final class MockAudioPlayer: AudioPlayerProtocol {
@@ -10,6 +11,10 @@ final class MockAudioPlayer: AudioPlayerProtocol {
 
     var isPlaying: Bool {
         _isPlaying
+    }
+
+    var currentTime: TimeInterval {
+        return 0.0
     }
 
     func play(url: URL) async throws {
