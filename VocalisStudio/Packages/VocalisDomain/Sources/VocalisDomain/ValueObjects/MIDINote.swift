@@ -31,3 +31,25 @@ public enum MIDINoteError: LocalizedError {
         }
     }
 }
+
+// MARK: - MIDINote Extensions
+
+extension MIDINote {
+    /// Get note name from MIDI note number
+    public static func noteName(for midiNumber: UInt8) -> String {
+        let noteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+        let octave = Int(midiNumber / 12) - 1
+        let noteIndex = Int(midiNumber % 12)
+        return "\(noteNames[noteIndex])\(octave)"
+    }
+
+    /// Get note name for this MIDI note
+    public var noteName: String {
+        MIDINote.noteName(for: value)
+    }
+
+    /// Calculate frequency for this MIDI note
+    public var frequency: Double {
+        440.0 * pow(2.0, (Double(value) - 69.0) / 12.0)
+    }
+}

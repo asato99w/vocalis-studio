@@ -31,6 +31,20 @@ public class AVAudioEngineScalePlayer: ScalePlayerProtocol {
         return min(1.0, Double(_currentNoteIndex) / Double(totalCount))
     }
 
+    public var currentScaleElement: ScaleElement? {
+        guard _isPlaying else { return nil }
+        guard _currentNoteIndex >= 0 else { return nil }
+
+        if !scaleElements.isEmpty {
+            guard _currentNoteIndex < scaleElements.count else { return nil }
+            return scaleElements[_currentNoteIndex]
+        } else if !scale.isEmpty {
+            guard _currentNoteIndex < scale.count else { return nil }
+            return .scaleNote(scale[_currentNoteIndex])
+        }
+        return nil
+    }
+
     public init() {
         engine = AVAudioEngine()
         sampler = AVAudioUnitSampler()
@@ -102,7 +116,7 @@ public class AVAudioEngineScalePlayer: ScalePlayerProtocol {
         }
     }
 
-    public func play() async throws {
+    public func play(muted: Bool = false) async throws {
         guard tempo != nil else {
             throw ScalePlayerError.notLoaded
         }
@@ -110,6 +124,9 @@ public class AVAudioEngineScalePlayer: ScalePlayerProtocol {
         guard !_isPlaying else {
             throw ScalePlayerError.alreadyPlaying
         }
+
+        // Set output volume based on muted parameter
+        engine.mainMixerNode.outputVolume = muted ? 0.0 : 1.0
 
         // Choose playback mode based on what's loaded
         if !scaleElements.isEmpty {

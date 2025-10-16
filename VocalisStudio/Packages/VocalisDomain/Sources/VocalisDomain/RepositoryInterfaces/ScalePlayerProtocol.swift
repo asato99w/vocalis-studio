@@ -16,7 +16,8 @@ public protocol ScalePlayerProtocol {
     func loadScaleElements(_ elements: [ScaleElement], tempo: Tempo) async throws
 
     /// Start playing the loaded scale
-    func play() async throws
+    /// - Parameter muted: If true, playback is silent but progress tracking continues
+    func play(muted: Bool) async throws
 
     /// Stop the current playback
     func stop() async
@@ -29,6 +30,18 @@ public protocol ScalePlayerProtocol {
 
     /// Playback progress (0.0 - 1.0)
     var progress: Double { get }
+
+    /// Current scale element being played (nil if not playing or completed)
+    var currentScaleElement: ScaleElement? { get }
+}
+
+// MARK: - ScalePlayerProtocol Extensions
+
+extension ScalePlayerProtocol {
+    /// Convenience method to play without muting (default behavior)
+    public func play() async throws {
+        try await play(muted: false)
+    }
 }
 
 /// Errors that can occur during scale playback

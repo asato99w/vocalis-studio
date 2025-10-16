@@ -13,7 +13,7 @@ public class DependencyContainer {
 
     // MARK: - Infrastructure Layer
 
-    private lazy var scalePlayer: ScalePlayerProtocol = {
+    public lazy var scalePlayer: ScalePlayerProtocol = {
         AVAudioEngineScalePlayer()
     }()
 
@@ -27,6 +27,10 @@ public class DependencyContainer {
 
     public lazy var recordingRepository: RecordingRepositoryProtocol = {
         FileRecordingRepository()
+    }()
+
+    public lazy var pitchDetector: RealtimePitchDetector = {
+        RealtimePitchDetector()
     }()
 
     // MARK: - Application Layer
@@ -52,7 +56,9 @@ public class DependencyContainer {
         RecordingViewModel(
             startRecordingUseCase: startRecordingUseCase,
             stopRecordingUseCase: stopRecordingUseCase,
-            audioPlayer: audioPlayer
+            audioPlayer: audioPlayer,
+            pitchDetector: pitchDetector,
+            scalePlayer: scalePlayer
         )
     }()
 

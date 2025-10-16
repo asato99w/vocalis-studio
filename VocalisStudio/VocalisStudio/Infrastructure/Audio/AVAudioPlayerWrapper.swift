@@ -23,8 +23,9 @@ public class AVAudioPlayerWrapper: NSObject, AudioPlayerProtocol {
             audioPlayer?.delegate = self
 
             // Configure audio session for playback
+            // Use playAndRecord to be compatible with pitch detection
             let audioSession = AVAudioSession.sharedInstance()
-            try audioSession.setCategory(.playback, mode: .default)
+            try audioSession.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP])
             try audioSession.setActive(true)
 
             // Play

@@ -98,7 +98,10 @@ public struct RecordingView: View {
                 .padding(.top, 8)
 
                 RealtimeDisplayArea(
-                    recordingState: viewModel.recordingState
+                    recordingState: viewModel.recordingState,
+                    targetPitch: viewModel.targetPitch,
+                    detectedPitch: viewModel.detectedPitch,
+                    pitchAccuracy: viewModel.pitchAccuracy
                 )
                 .frame(maxHeight: .infinity)
 
@@ -173,7 +176,10 @@ public struct RecordingView: View {
                 }
 
                 RealtimeDisplayArea(
-                    recordingState: viewModel.recordingState
+                    recordingState: viewModel.recordingState,
+                    targetPitch: viewModel.targetPitch,
+                    detectedPitch: viewModel.detectedPitch,
+                    pitchAccuracy: viewModel.pitchAccuracy
                 )
                 .frame(height: isSettingsPanelVisible ? 200 : 350)
 
@@ -355,10 +361,13 @@ struct RecordingSettingsCompact: View {
 
 struct RealtimeDisplayArea: View {
     let recordingState: RecordingState
+    let targetPitch: DetectedPitch?
+    let detectedPitch: DetectedPitch?
+    let pitchAccuracy: PitchAccuracy
 
     var body: some View {
         VStack(spacing: 12) {
-            // Spectrogram
+            // Spectrogram (temporarily keep mock)
             VStack(alignment: .leading, spacing: 6) {
                 Text("recording.realtime_spectrum_title".localized)
                     .font(.subheadline)
@@ -370,13 +379,18 @@ struct RealtimeDisplayArea: View {
 
             Divider()
 
-            // Pitch indicator
+            // Pitch indicator (real implementation)
             VStack(alignment: .leading, spacing: 6) {
                 Text("recording.pitch_indicator_title".localized)
                     .font(.subheadline)
                     .fontWeight(.semibold)
 
-                MockPitchIndicator(isActive: recordingState == .recording)
+                PitchIndicator(
+                    isActive: recordingState == .recording,
+                    targetPitch: targetPitch,
+                    detectedPitch: detectedPitch,
+                    pitchAccuracy: pitchAccuracy
+                )
             }
         }
         .padding(12)
@@ -424,83 +438,97 @@ struct MockSpectrogramView: View {
     }
 }
 
-struct MockPitchIndicator: View {
+struct PitchIndicator: View {
     let isActive: Bool
-    @State private var currentNote = "C4"
-    @State private var cents = 0
+    let targetPitch: DetectedPitch?
+    let detectedPitch: DetectedPitch?
+    let pitchAccuracy: PitchAccuracy
 
     var body: some View {
-        VStack(spacing: 8) {
-            // Target scale
-            HStack(spacing: 6) {
+        VStack(spacing: 10) {
+            // Target pitch row
+            HStack(spacing: 8) {
                 Text("recording.pitch_target".localized)
                     .font(.caption)
                     .foregroundColor(.secondary)
+                    .frame(width: 60, alignment: .leading)
 
-                ForEach([
-                    "scale.note_do".localized,
-                    "scale.note_re".localized,
-                    "scale.note_mi".localized,
-                    "scale.note_fa".localized,
-                    "scale.note_so".localized
-                ], id: \.self) { note in
-                    Text(note)
-                        .font(.caption2)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 3)
-                        .background(Color.gray.opacity(0.2))
-                        .cornerRadius(3)
-                }
-            }
-
-            // Detected pitch
-            HStack(spacing: 8) {
-                Text("recording.pitch_detected".localized)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-
-                if isActive {
-                    HStack(spacing: 4) {
-                        Circle()
-                            .fill(centsColor)
-                            .frame(width: 10, height: 10)
-
-                        Text(currentNote)
+                if let target = targetPitch {
+                    HStack(spacing: 6) {
+                        Text(target.noteName)
                             .font(.callout)
                             .fontWeight(.bold)
+                            .foregroundColor(.blue)
 
-                        Text(cents >= 0 ? "+\(cents)¢" : "\(cents)¢")
+                        Text(String(format: "%.1f Hz", target.frequency))
                             .font(.caption)
-                            .foregroundColor(centsColor)
+                            .foregroundColor(.secondary)
                     }
                 } else {
                     Text("--")
                         .font(.callout)
                         .foregroundColor(.secondary)
                 }
+
+                Spacer()
+            }
+
+            // Detected pitch row
+            HStack(spacing: 8) {
+                Text("recording.pitch_detected".localized)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .frame(width: 60, alignment: .leading)
+
+                if isActive, let detected = detectedPitch {
+                    HStack(spacing: 6) {
+                        // Accuracy indicator
+                        Circle()
+                            .fill(accuracyColor)
+                            .frame(width: 12, height: 12)
+
+                        Text(detected.noteName)
+                            .font(.callout)
+                            .fontWeight(.bold)
+                            .foregroundColor(.primary)
+
+                        Text(String(format: "%.1f Hz", detected.frequency))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+
+                        // Cents deviation
+                        if let cents = detected.cents {
+                            Text(cents >= 0 ? "+\(cents)¢" : "\(cents)¢")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(accuracyColor)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(accuracyColor.opacity(0.15))
+                                .cornerRadius(4)
+                        }
+                    }
+                } else {
+                    Text(isActive ? "..." : "--")
+                        .font(.callout)
+                        .foregroundColor(.secondary)
+                }
+
+                Spacer()
             }
         }
-        .padding(8)
+        .padding(12)
         .frame(maxWidth: .infinity)
         .background(Color(.systemGray6))
-        .cornerRadius(6)
-        .onAppear {
-            if isActive {
-                // Simulate pitch detection
-                Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
-                    cents = Int.random(in: -30...30)
-                }
-            }
-        }
+        .cornerRadius(8)
     }
 
-    private var centsColor: Color {
-        if abs(cents) < 10 {
-            return .green
-        } else if abs(cents) < 25 {
-            return .orange
-        } else {
-            return .red
+    private var accuracyColor: Color {
+        switch pitchAccuracy {
+        case .accurate: return .green
+        case .slightlyOff: return .orange
+        case .off: return .red
+        case .none: return .gray
         }
     }
 }
@@ -654,7 +682,9 @@ struct RecordingView_Previews: PreviewProvider {
                 viewModel: RecordingViewModel(
                     startRecordingUseCase: PreviewMockStartRecordingUseCase(),
                     stopRecordingUseCase: PreviewMockStopRecordingUseCase(),
-                    audioPlayer: PreviewMockAudioPlayer()
+                    audioPlayer: PreviewMockAudioPlayer(),
+                    pitchDetector: RealtimePitchDetector(),
+                    scalePlayer: PreviewMockScalePlayer()
                 )
             )
         }
@@ -663,6 +693,18 @@ struct RecordingView_Previews: PreviewProvider {
 }
 
 // Mocks for preview
+private class PreviewMockScalePlayer: ScalePlayerProtocol {
+    var isPlaying: Bool = false
+    var currentNoteIndex: Int = 0
+    var progress: Double = 0.0
+    var currentScaleElement: ScaleElement? = nil
+
+    func loadScale(_ notes: [MIDINote], tempo: Tempo) async throws {}
+    func loadScaleElements(_ elements: [ScaleElement], tempo: Tempo) async throws {}
+    func play(muted: Bool) async throws {}
+    func stop() async {}
+}
+
 private class PreviewMockStartRecordingUseCase: StartRecordingWithScaleUseCaseProtocol {
     func execute(settings: ScaleSettings) async throws -> RecordingSession {
         try await Task.sleep(nanoseconds: 1_000_000_000)
