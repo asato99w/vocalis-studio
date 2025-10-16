@@ -118,7 +118,7 @@ struct ComparisonView: View {
             Text("Comparison Results")
                 .font(.title2)
                 .fontWeight(.bold)
-                .foregroundColor(.primary)
+                .foregroundColor(.black)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             // Summary comparison
@@ -173,23 +173,23 @@ struct ComparisonView: View {
                     Text(result.method.rawValue)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .fontWeight(.semibold)
-                        .foregroundColor(.primary)
+                        .foregroundColor(.black)
                     Text(String(format: "%.2fs", result.processingTime))
                         .frame(width: 70, alignment: .trailing)
                         .font(.system(.body, design: .monospaced))
-                        .foregroundColor(.primary)
+                        .foregroundColor(.black)
                     Text(String(format: "%.0f%%", result.detectionRate * 100))
                         .frame(width: 70, alignment: .trailing)
                         .font(.system(.body, design: .monospaced))
-                        .foregroundColor(.primary)
+                        .foregroundColor(.black)
                     Text(String(format: "%.2f", result.averageConfidence))
                         .frame(width: 70, alignment: .trailing)
                         .font(.system(.body, design: .monospaced))
-                        .foregroundColor(.primary)
+                        .foregroundColor(.black)
                 }
                 .padding(.vertical, 10)
                 .padding(.horizontal, 12)
-                .background(index % 2 == 0 ? Color.white : Color.gray.opacity(0.1))
+                .background(index % 2 == 0 ? Color.white : Color(white: 0.95))
             }
         }
         .background(Color.white)
@@ -210,7 +210,7 @@ struct ComparisonView: View {
                 Text("Recommended Method")
                     .font(.headline)
                     .fontWeight(.bold)
-                    .foregroundColor(.primary)
+                    .foregroundColor(.black)
             }
 
             Text(method.rawValue)
@@ -220,11 +220,11 @@ struct ComparisonView: View {
 
             Text(method.description)
                 .font(.subheadline)
-                .foregroundColor(.primary)
+                .foregroundColor(Color(white: 0.3))
 
             Text(viewModel.getRecommendationReason(method))
                 .font(.subheadline)
-                .foregroundColor(.primary)
+                .foregroundColor(.black)
                 .padding(.top, 4)
         }
         .padding(16)
@@ -254,10 +254,10 @@ struct MethodResultCard: View {
                         Text(result.method.rawValue)
                             .font(.headline)
                             .fontWeight(.bold)
-                            .foregroundColor(.primary)
+                            .foregroundColor(.black)
                         Text(result.method.description)
                             .font(.subheadline)
-                            .foregroundColor(.primary)
+                            .foregroundColor(Color(white: 0.4))
                     }
 
                     Spacer()
@@ -285,7 +285,7 @@ struct MethodResultCard: View {
                     Text("Detailed Statistics")
                         .font(.subheadline)
                         .fontWeight(.bold)
-                        .foregroundColor(.primary)
+                        .foregroundColor(.black)
 
                     DetailRow(label: "Detected Points", value: "\(result.pitchData.count)")
                     DetailRow(label: "Processing Time", value: String(format: "%.3f seconds", result.processingTime))
@@ -316,11 +316,11 @@ struct StatBadge: View {
             Text(title)
                 .font(.caption)
                 .fontWeight(.medium)
-                .foregroundColor(.primary)
+                .foregroundColor(.black)
             Text(value)
                 .font(.subheadline)
                 .fontWeight(.bold)
-                .foregroundColor(color)
+                .foregroundColor(color == .blue ? Color.blue : (color == .green ? Color.green : Color.orange))
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 8)
@@ -337,12 +337,12 @@ struct DetailRow: View {
         HStack {
             Text(label)
                 .font(.subheadline)
-                .foregroundColor(.primary)
+                .foregroundColor(Color(white: 0.4))
             Spacer()
             Text(value)
                 .font(.subheadline)
                 .fontWeight(.semibold)
-                .foregroundColor(.primary)
+                .foregroundColor(.black)
         }
     }
 }
