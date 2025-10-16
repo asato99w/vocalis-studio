@@ -19,14 +19,14 @@ public class StartRecordingWithScaleUseCase: StartRecordingWithScaleUseCaseProto
     }
 
     public func execute(settings: ScaleSettings) async throws -> RecordingSession {
-        // 1. Generate scale notes
-        let scale = settings.generateScale()
+        // 1. Generate scale elements with key change chords
+        let scaleElements = settings.generateScaleWithKeyChange()
 
         // 2. Prepare recording - get the URL where audio will be saved
         let recordingURL = try await audioRecorder.prepareRecording()
 
-        // 3. Load scale into player
-        try await scalePlayer.loadScale(scale, tempo: settings.tempo)
+        // 3. Load scale elements into player (with chord support)
+        try await scalePlayer.loadScaleElements(scaleElements, tempo: settings.tempo)
 
         // 4. Start recording
         try await audioRecorder.startRecording()

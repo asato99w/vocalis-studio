@@ -557,7 +557,7 @@ class MockRecordingSettingsViewModel: ObservableObject {
         // Calculate MIDI note number: C2 = 36
         let midiNoteNumber = 36 + startPitchIndex
 
-        // Calculate end note (one octave up)
+        // Calculate end note (one octave up) - kept for compatibility but not used
         let endNoteNumber = midiNoteNumber + 12
 
         // Calculate tempo (convert BPM to seconds per note)
@@ -569,7 +569,8 @@ class MockRecordingSettingsViewModel: ObservableObject {
                 startNote: try MIDINote(UInt8(midiNoteNumber)),
                 endNote: try MIDINote(UInt8(endNoteNumber)),
                 notePattern: .fiveToneScale,
-                tempo: try Tempo(secondsPerNote: secondsPerNote)
+                tempo: try Tempo(secondsPerNote: secondsPerNote),
+                ascendingCount: ascendingCount  // Use UI setting
             )
             return settings
         } catch {

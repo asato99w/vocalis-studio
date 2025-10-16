@@ -1,22 +1,51 @@
 import Foundation
 
+/// Scale element for playback with key change chords
+public enum ScaleElement: Equatable {
+    case chordShort([MIDINote])   // "Dan" - short chord (0.3s) for previous key
+    case chordLong([MIDINote])    // "Daan" - long chord (1.0s) for current key
+    case scaleNote(MIDINote)      // Single scale note
+    case silence(TimeInterval)    // Silent gap
+
+    public var duration: TimeInterval {
+        switch self {
+        case .chordShort: return 0.3
+        case .chordLong: return 1.0
+        case .scaleNote(let note): return 0.5  // Will be overridden by tempo
+        case .silence(let duration): return duration
+        }
+    }
+
+    public var notes: [MIDINote] {
+        switch self {
+        case .chordShort(let notes): return notes
+        case .chordLong(let notes): return notes
+        case .scaleNote(let note): return [note]
+        case .silence: return []
+        }
+    }
+}
+
 /// Scale settings entity
 public struct ScaleSettings: Equatable, Codable {
     public let startNote: MIDINote
     public let endNote: MIDINote
     public let notePattern: NotePattern
     public let tempo: Tempo
+    public let ascendingCount: Int  // Number of chromatic steps to ascend
 
     public init(
         startNote: MIDINote,
         endNote: MIDINote,
         notePattern: NotePattern,
-        tempo: Tempo
+        tempo: Tempo,
+        ascendingCount: Int = 12  // Default: one octave
     ) {
         self.startNote = startNote
         self.endNote = endNote
         self.notePattern = notePattern
         self.tempo = tempo
+        self.ascendingCount = ascendingCount
     }
 
     /// Generate full scale with chromatic progression
@@ -44,12 +73,76 @@ public struct ScaleSettings: Equatable, Codable {
         return Duration(seconds: totalSeconds)
     }
 
-    /// MVP default settings: C4 to C5, five-tone scale, 1 second per note
+    /// Generate scale elements with key change chords ("dan-daan" style)
+    /// Ascends by chromatic steps (ascendingCount times), then descends back to start
+    /// First scale: [chord] daan → scale
+    /// Subsequent: [prev chord] dan → [next chord] daan → scale
+    public func generateScaleWithKeyChange() -> [ScaleElement] {
+        var elements: [ScaleElement] = []
+
+        // Generate ascending sequence
+        var ascendingRoots: [UInt8] = []
+        var currentRoot = startNote.value
+        for _ in 0..<ascendingCount {
+            ascendingRoots.append(currentRoot)
+            currentRoot += 1  // Chromatic step up
+        }
+
+        // Generate descending sequence (reverse, excluding duplicate at peak)
+        var descendingRoots = Array(ascendingRoots.reversed())
+        if descendingRoots.count > 1 {
+            descendingRoots.removeFirst()  // Remove duplicate peak
+        }
+
+        // Combine ascending + descending
+        let allRoots = ascendingRoots + descendingRoots
+
+        // Generate elements for each root
+        var previousRoot: UInt8? = nil
+        for root in allRoots {
+            // Key change chords
+            if let prev = previousRoot {
+                // "Dan" - previous key (short, 0.3s)
+                elements.append(.chordShort(majorTriad(prev)))
+            }
+
+            // "Daan" - current key (long, 1.0s)
+            elements.append(.chordLong(majorTriad(root)))
+
+            // Silence gap between chord and scale
+            elements.append(.silence(0.2))
+
+            // Scale notes
+            let pattern = notePattern.ascendingDescending()
+            for interval in pattern {
+                if let note = try? MIDINote(root + UInt8(interval)) {
+                    elements.append(.scaleNote(note))
+                }
+            }
+
+            previousRoot = root
+        }
+
+        return elements
+    }
+
+    /// Create major triad chord from root note
+    /// Formula: root + major 3rd (4 semitones) + perfect 5th (7 semitones)
+    private func majorTriad(_ root: UInt8) -> [MIDINote] {
+        return [
+            try! MIDINote(root),      // Root
+            try! MIDINote(root + 4),  // Major 3rd
+            try! MIDINote(root + 7)   // Perfect 5th
+        ]
+    }
+
+    /// MVP default settings: C4 start, 3 chromatic steps up, five-tone scale, 1 second per note
     public static let mvpDefault = ScaleSettings(
         startNote: .middleC,
-        endNote: .hiC,
+        endNote: .hiC,  // Not used with ascendingCount, kept for compatibility
         notePattern: .fiveToneScale,
-        tempo: .standard
+        tempo: .standard,
+        ascendingCount: 3
     )
 }
 

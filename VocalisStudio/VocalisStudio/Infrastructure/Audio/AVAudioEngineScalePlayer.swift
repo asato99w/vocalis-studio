@@ -3,10 +3,12 @@ import VocalisDomain
 import AVFoundation
 
 /// Scale player implementation using AVAudioEngine and AVAudioUnitSampler
+/// Now supports ScaleElement for chord playback
 public class AVAudioEngineScalePlayer: ScalePlayerProtocol {
     private let engine: AVAudioEngine
     private let sampler: AVAudioUnitSampler
-    private var scale: [MIDINote] = []
+    private var scale: [MIDINote] = []  // Legacy support
+    private var scaleElements: [ScaleElement] = []  // New chord-enabled playback
     private var tempo: Tempo?
     private var playbackTask: Task<Void, Error>?
     private var _currentNoteIndex: Int = 0
@@ -21,11 +23,12 @@ public class AVAudioEngineScalePlayer: ScalePlayerProtocol {
     }
 
     public var progress: Double {
-        guard !scale.isEmpty else { return 0.0 }
+        let totalCount = scaleElements.isEmpty ? scale.count : scaleElements.count
+        guard totalCount > 0 else { return 0.0 }
         // Progress is 0.0 at start, 1.0 at completion
-        // During playback: currentNoteIndex ranges from 0 to scale.count-1
-        // After completion: currentNoteIndex = scale.count
-        return min(1.0, Double(_currentNoteIndex) / Double(scale.count))
+        // During playback: currentNoteIndex ranges from 0 to totalCount-1
+        // After completion: currentNoteIndex = totalCount
+        return min(1.0, Double(_currentNoteIndex) / Double(totalCount))
     }
 
     public init() {
@@ -42,10 +45,25 @@ public class AVAudioEngineScalePlayer: ScalePlayerProtocol {
 
     public func loadScale(_ notes: [MIDINote], tempo: Tempo) async throws {
         self.scale = notes
+        self.scaleElements = []  // Clear new format
         self.tempo = tempo
         self._currentNoteIndex = 0
 
-        // Load audio unit preset for piano sound
+        try await loadSoundBank()
+    }
+
+    /// Load scale elements with chord support (new format)
+    public func loadScaleElements(_ elements: [ScaleElement], tempo: Tempo) async throws {
+        self.scaleElements = elements
+        self.scale = []  // Clear legacy format
+        self.tempo = tempo
+        self._currentNoteIndex = 0
+
+        try await loadSoundBank()
+    }
+
+    /// Load audio unit preset for piano sound
+    private func loadSoundBank() async throws {
         do {
             #if targetEnvironment(simulator)
             // iOS Simulator: use DLS sound bank (like macOS)
@@ -93,17 +111,76 @@ public class AVAudioEngineScalePlayer: ScalePlayerProtocol {
             throw ScalePlayerError.alreadyPlaying
         }
 
-        guard !scale.isEmpty else {
+        // Choose playback mode based on what's loaded
+        if !scaleElements.isEmpty {
+            try await playScaleElements()
+        } else if !scale.isEmpty {
+            try await playLegacyScale()
+        } else {
             // Empty scale completes immediately
             _currentNoteIndex = 0
             return
         }
+    }
 
+    /// Play scale elements with chord support (new format)
+    private func playScaleElements() async throws {
         _isPlaying = true
 
         do {
             // Ensure audio session is active before starting engine
-            // This is typically configured by AVAudioRecorderWrapper
+            let audioSession = AVAudioSession.sharedInstance()
+            if !audioSession.isOtherAudioPlaying {
+                try audioSession.setActive(true)
+            }
+
+            try engine.start()
+
+            playbackTask = Task {
+                for (index, element) in scaleElements.enumerated() {
+                    try Task.checkCancellation()
+                    _currentNoteIndex = index
+
+                    switch element {
+                    case .chordShort(let notes):
+                        // Play chord for 0.3s
+                        try await playChord(notes, duration: 0.3)
+
+                    case .chordLong(let notes):
+                        // Play chord for 1.0s
+                        try await playChord(notes, duration: 1.0)
+
+                    case .scaleNote(let note):
+                        // Play single note with tempo duration
+                        try await playNote(note, duration: tempo!.secondsPerNote)
+
+                    case .silence(let duration):
+                        // Silent gap
+                        try await Task.sleep(nanoseconds: UInt64(duration * 1_000_000_000))
+                    }
+                }
+
+                // Playback completed
+                _currentNoteIndex = scaleElements.count
+                _isPlaying = false
+                engine.stop()
+            }
+
+            try await playbackTask?.value
+        } catch is CancellationError {
+            _isPlaying = false
+        } catch {
+            _isPlaying = false
+            throw ScalePlayerError.playbackFailed(error.localizedDescription)
+        }
+    }
+
+    /// Play legacy scale format (single notes only)
+    private func playLegacyScale() async throws {
+        _isPlaying = true
+
+        do {
+            // Ensure audio session is active before starting engine
             let audioSession = AVAudioSession.sharedInstance()
             if !audioSession.isOtherAudioPlaying {
                 try audioSession.setActive(true)
@@ -114,7 +191,6 @@ public class AVAudioEngineScalePlayer: ScalePlayerProtocol {
             playbackTask = Task {
                 for (index, note) in scale.enumerated() {
                     try Task.checkCancellation()
-
                     _currentNoteIndex = index
 
                     // Play note (legato: stop previous note just before next one plays)
@@ -137,12 +213,45 @@ public class AVAudioEngineScalePlayer: ScalePlayerProtocol {
 
             try await playbackTask?.value
         } catch is CancellationError {
-            // Task was cancelled (stopped), this is expected
             _isPlaying = false
         } catch {
             _isPlaying = false
             throw ScalePlayerError.playbackFailed(error.localizedDescription)
         }
+    }
+
+    /// Play a single note with specified duration
+    private func playNote(_ note: MIDINote, duration: TimeInterval) async throws {
+        // Start note
+        sampler.startNote(note.value, withVelocity: 64, onChannel: 0)
+
+        // Play for most of the duration (90%)
+        try await Task.sleep(nanoseconds: UInt64(duration * 0.9 * 1_000_000_000))
+
+        // Stop note
+        sampler.stopNote(note.value, onChannel: 0)
+
+        // Small gap (10%)
+        try await Task.sleep(nanoseconds: UInt64(duration * 0.1 * 1_000_000_000))
+    }
+
+    /// Play multiple notes simultaneously (chord)
+    private func playChord(_ notes: [MIDINote], duration: TimeInterval) async throws {
+        // Start all notes simultaneously
+        for note in notes {
+            sampler.startNote(note.value, withVelocity: 64, onChannel: 0)
+        }
+
+        // Play for most of the duration (90%)
+        try await Task.sleep(nanoseconds: UInt64(duration * 0.9 * 1_000_000_000))
+
+        // Stop all notes simultaneously
+        for note in notes {
+            sampler.stopNote(note.value, onChannel: 0)
+        }
+
+        // Small gap (10%)
+        try await Task.sleep(nanoseconds: UInt64(duration * 0.1 * 1_000_000_000))
     }
 
     public func stop() async {

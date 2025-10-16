@@ -3,11 +3,17 @@ import Foundation
 /// Protocol for scale playback functionality
 /// Infrastructure layer must implement this protocol
 public protocol ScalePlayerProtocol {
-    /// Load a scale with specified notes and tempo
+    /// Load a scale with specified notes and tempo (legacy format)
     /// - Parameters:
     ///   - notes: Array of MIDI notes to play
     ///   - tempo: Tempo for playback (seconds per note)
     func loadScale(_ notes: [MIDINote], tempo: Tempo) async throws
+
+    /// Load scale elements with chord support (new format)
+    /// - Parameters:
+    ///   - elements: Array of scale elements (chords, notes, silences)
+    ///   - tempo: Tempo for playback (seconds per note)
+    func loadScaleElements(_ elements: [ScaleElement], tempo: Tempo) async throws
 
     /// Start playing the loaded scale
     func play() async throws
