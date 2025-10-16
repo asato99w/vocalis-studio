@@ -7,6 +7,7 @@ public struct RecordingView: View {
     @StateObject private var settingsViewModel = MockRecordingSettingsViewModel()
     @StateObject private var localization = LocalizationManager.shared
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
+    @State private var isSettingsPanelVisible: Bool = true
 
     public init(viewModel: RecordingViewModel) {
         _viewModel = StateObject(wrappedValue: viewModel)
@@ -46,20 +47,56 @@ public struct RecordingView: View {
                 dismissButton: .default(Text("ok".localized))
             )
         }
+        .onChange(of: viewModel.recordingState) { newState in
+            // Auto-hide settings panel when recording starts
+            if newState == .recording {
+                withAnimation {
+                    isSettingsPanelVisible = false
+                }
+            }
+        }
     }
 
     // MARK: - Landscape Layout
 
     private var landscapeLayout: some View {
         HStack(spacing: 0) {
-            // Left side: Settings panel
-            RecordingSettingsPanel(viewModel: settingsViewModel)
-                .frame(width: 240)
+            // Left side: Settings panel (collapsible)
+            if isSettingsPanelVisible {
+                RecordingSettingsPanel(viewModel: settingsViewModel)
+                    .frame(width: 240)
+                    .transition(.move(edge: .leading))
 
-            Divider()
+                Divider()
+            }
 
             // Right side: Real-time display and controls
             VStack(spacing: 8) {
+                // Toggle button for settings panel
+                HStack {
+                    Button(action: {
+                        withAnimation {
+                            isSettingsPanelVisible.toggle()
+                        }
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: isSettingsPanelVisible ? "sidebar.left" : "gearshape.fill")
+                            Text(isSettingsPanelVisible ? "recording.hide_settings".localized : "recording.show_settings".localized)
+                        }
+                        .font(.caption)
+                        .foregroundColor(.blue)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(6)
+                    }
+                    .disabled(viewModel.recordingState == .recording)
+
+                    Spacer()
+                }
+                .padding(.horizontal, 12)
+                .padding(.top, 8)
+
                 RealtimeDisplayArea(
                     recordingState: viewModel.recordingState
                 )
@@ -106,12 +143,39 @@ public struct RecordingView: View {
     private var portraitLayout: some View {
         ScrollView {
             VStack(spacing: 16) {
-                RecordingSettingsCompact(viewModel: settingsViewModel)
+                // Toggle button for settings panel
+                HStack {
+                    Button(action: {
+                        withAnimation {
+                            isSettingsPanelVisible.toggle()
+                        }
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: isSettingsPanelVisible ? "chevron.up" : "gearshape.fill")
+                            Text(isSettingsPanelVisible ? "recording.hide_settings".localized : "recording.show_settings".localized)
+                        }
+                        .font(.caption)
+                        .foregroundColor(.blue)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(8)
+                    }
+                    .disabled(viewModel.recordingState == .recording)
+
+                    Spacer()
+                }
+
+                // Settings panel (collapsible)
+                if isSettingsPanelVisible {
+                    RecordingSettingsCompact(viewModel: settingsViewModel)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                }
 
                 RealtimeDisplayArea(
                     recordingState: viewModel.recordingState
                 )
-                .frame(height: 200)
+                .frame(height: isSettingsPanelVisible ? 200 : 350)
 
                 RecordingControls(
                     recordingState: viewModel.recordingState,

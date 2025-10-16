@@ -27,6 +27,8 @@
 "recording.tempo_unit" = "BPM";
 "recording.ascending_count_label" = "Ascending Count";
 "recording.ascending_count_unit" = "times";
+"recording.hide_settings" = "Hide Settings";
+"recording.show_settings" = "Show Settings";
 "recording.realtime_spectrum_title" = "Real-time Spectrum";
 "recording.pitch_indicator_title" = "Pitch Indicator";
 "recording.pitch_target" = "Target:";

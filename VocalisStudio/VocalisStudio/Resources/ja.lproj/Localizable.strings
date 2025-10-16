@@ -27,6 +27,8 @@
 "recording.tempo_unit" = "BPM";
 "recording.ascending_count_label" = "上昇回数";
 "recording.ascending_count_unit" = "回";
+"recording.hide_settings" = "設定を隠す";
+"recording.show_settings" = "設定を表示";
 "recording.realtime_spectrum_title" = "リアルタイムスペクトル";
 "recording.pitch_indicator_title" = "ピッチインジケーター";
 "recording.pitch_target" = "目標:";
