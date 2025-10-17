@@ -1,6 +1,7 @@
 import Foundation
 import VocalisDomain
 import AVFoundation
+import OSLog
 
 /// Wrapper for AVAudioRecorder that implements AudioRecorderProtocol
 public class AVAudioRecorderWrapper: NSObject, AudioRecorderProtocol {
@@ -20,12 +21,15 @@ public class AVAudioRecorderWrapper: NSObject, AudioRecorderProtocol {
     // MARK: - AudioRecorderProtocol
 
     public func prepareRecording() async throws -> URL {
+        Logger.recording.info("Preparing recording")
+
         // Configure audio session for recording
         try await configureAudioSession()
 
         // Generate unique recording file URL
         let url = generateRecordingURL()
         recordingURL = url
+        Logger.recording.debug("Recording URL: \(url.lastPathComponent)")
 
         // Configure audio settings
         let settings: [String: Any] = [
@@ -40,18 +44,23 @@ public class AVAudioRecorderWrapper: NSObject, AudioRecorderProtocol {
             audioRecorder = try AVAudioRecorder(url: url, settings: settings)
             audioRecorder?.delegate = self
             audioRecorder?.prepareToRecord()
+            Logger.recording.info("Recording prepared successfully")
+            FileLogger.shared.log(level: "INFO", category: "recording", message: "Recording prepared successfully: \(url.lastPathComponent)")
             return url
         } catch {
+            Logger.recording.logError(error)
             throw AudioRecorderError.recordingFailed("Failed to prepare recording: \(error.localizedDescription)")
         }
     }
 
     public func startRecording() async throws {
         guard let recorder = audioRecorder else {
+            Logger.recording.error("Start recording failed: not prepared")
             throw AudioRecorderError.notPrepared
         }
 
         guard !recorder.isRecording else {
+            Logger.recording.warning("Start recording ignored: already recording")
             throw AudioRecorderError.recordingFailed("Already recording")
         }
 
@@ -59,29 +68,37 @@ public class AVAudioRecorderWrapper: NSObject, AudioRecorderProtocol {
         let success = recorder.record()
         if success {
             startTime = Date()
+            Logger.recording.info("Recording started")
+            FileLogger.shared.log(level: "INFO", category: "recording", message: "Recording started")
         } else {
+            Logger.recording.error("Failed to start AVAudioRecorder")
             throw AudioRecorderError.recordingFailed("Failed to start recording")
         }
     }
 
     public func stopRecording() async throws -> TimeInterval {
         guard let recorder = audioRecorder else {
+            Logger.recording.error("Stop recording failed: not initialized")
             throw AudioRecorderError.notRecording
         }
 
         guard recorder.isRecording else {
+            Logger.recording.warning("Stop recording ignored: not recording")
             throw AudioRecorderError.notRecording
         }
 
         // Stop recording
         recorder.stop()
+        Logger.recording.info("Recording stopped")
 
         // Calculate duration
         guard let startTime = startTime else {
+            Logger.recording.warning("Recording duration unknown: startTime was nil")
             return 0
         }
 
         let duration = Date().timeIntervalSince(startTime)
+        Logger.recording.info("Recording duration: \(String(format: "%.2f", duration))s")
 
         // Reset state
         self.startTime = nil
@@ -92,6 +109,7 @@ public class AVAudioRecorderWrapper: NSObject, AudioRecorderProtocol {
     // MARK: - Private Methods
 
     private func configureAudioSession() async throws {
+        Logger.audio.info("Configuring audio session for recording")
         let audioSession = AVAudioSession.sharedInstance()
 
         do {
@@ -109,9 +127,10 @@ public class AVAudioRecorderWrapper: NSObject, AudioRecorderProtocol {
 
             // Activate the audio session
             try audioSession.setActive(true)
-
-            print("Audio session configured: category=\(audioSession.category), mode=\(audioSession.mode)")
+            Logger.audio.info("Audio session configured: category=playAndRecord, sampleRate=44100Hz")
+            FileLogger.shared.log(level: "INFO", category: "audio", message: "Audio session configured: category=playAndRecord, sampleRate=44100Hz")
         } catch {
+            Logger.audio.logError(error)
             throw AudioRecorderError.recordingFailed("Failed to configure audio session: \(error.localizedDescription)")
         }
     }
@@ -127,8 +146,6 @@ public class AVAudioRecorderWrapper: NSObject, AudioRecorderProtocol {
         let fileName = "recording_\(timestamp).m4a"
 
         let url = documentsDir.appendingPathComponent(fileName)
-        print("Recording will be saved to: \(url.path)")
-
         return url
     }
 }
@@ -138,14 +155,16 @@ public class AVAudioRecorderWrapper: NSObject, AudioRecorderProtocol {
 extension AVAudioRecorderWrapper: AVAudioRecorderDelegate {
 
     public func audioRecorderDidFinishRecording(_ recorder: AVAudioRecorder, successfully flag: Bool) {
-        if !flag {
-            print("Recording finished unsuccessfully")
+        if flag {
+            Logger.recording.info("Recording finished successfully")
+        } else {
+            Logger.recording.error("Recording finished with failure")
         }
     }
 
     public func audioRecorderEncodeErrorDidOccur(_ recorder: AVAudioRecorder, error: Error?) {
         if let error = error {
-            print("Recording encode error: \(error.localizedDescription)")
+            Logger.recording.error("Encoding error: \(error.localizedDescription)")
         }
     }
 }

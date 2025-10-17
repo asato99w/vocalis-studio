@@ -1,6 +1,7 @@
 import Foundation
 import VocalisDomain
 import Combine
+import OSLog
 
 /// Recording state for the main recording screen
 public enum RecordingState: Equatable {
@@ -82,6 +83,9 @@ public class RecordingViewModel: ObservableObject {
                 }
             }
             .store(in: &cancellables)
+
+        Logger.viewModel.info("RecordingViewModel initialized")
+        FileLogger.shared.log(level: "INFO", category: "viewmodel", message: "RecordingViewModel initialized")
     }
 
     // MARK: - Public Methods
@@ -89,7 +93,14 @@ public class RecordingViewModel: ObservableObject {
     /// Start the recording process with countdown
     public func startRecording(settings: ScaleSettings? = nil) async {
         // Don't start if already recording or in countdown
-        guard recordingState == .idle else { return }
+        guard recordingState == .idle else {
+            Logger.viewModel.warning("Start recording ignored: already in state \(String(describing: self.recordingState))")
+            return
+        }
+
+        let settingsInfo = settings != nil ? "5-tone scale" : "no scale"
+        Logger.viewModel.info("Starting recording with settings: \(settingsInfo)")
+        FileLogger.shared.log(level: "INFO", category: "viewmodel", message: "Starting recording with settings: \(settingsInfo)")
 
         // Clear any previous error
         errorMessage = nil
@@ -128,6 +139,9 @@ public class RecordingViewModel: ObservableObject {
     public func stopRecording() async {
         guard recordingState == .recording else { return }
 
+        Logger.viewModel.info("Stopping recording")
+        FileLogger.shared.log(level: "INFO", category: "viewmodel", message: "Stopping recording")
+
         // Stop pitch detection
         pitchDetector.stopRealtimeDetection()
         progressMonitorTask?.cancel()
@@ -140,6 +154,10 @@ public class RecordingViewModel: ObservableObject {
 
             // Stop recording via use case
             _ = try await stopRecordingUseCase.execute()
+
+            let filename = recordingURL?.lastPathComponent ?? "unknown"
+            Logger.viewModel.info("Recording stopped successfully: \(filename)")
+            FileLogger.shared.log(level: "INFO", category: "viewmodel", message: "Recording stopped successfully: \(filename)")
 
             // Update state
             recordingState = .idle
@@ -155,6 +173,7 @@ public class RecordingViewModel: ObservableObject {
 
         } catch {
             // Handle error
+            Logger.viewModel.logError(error)
             errorMessage = error.localizedDescription
             recordingState = .idle
             currentSession = nil
@@ -168,11 +187,14 @@ public class RecordingViewModel: ObservableObject {
     /// Play the last recording
     public func playLastRecording() async {
         guard let url = lastRecordingURL else {
+            Logger.viewModel.warning("Play recording failed: no recording available")
             errorMessage = "No recording available"
             return
         }
 
         guard !isPlayingRecording else { return }
+
+        Logger.viewModel.info("Starting playback: \(url.lastPathComponent)")
 
         do {
             isPlayingRecording = true
@@ -251,7 +273,7 @@ public class RecordingViewModel: ObservableObject {
 
             if let scaleSettings = settings {
                 // 5トーン: スケール付き録音
-                print("🎵 [RecordingViewModel] 5トーンモード: スケール付き録音を開始")
+                Logger.viewModel.debug("Executing recording with scale settings")
                 session = try await startRecordingWithScaleUseCase.execute(settings: scaleSettings)
 
                 // Set recording context for stop use case
@@ -263,7 +285,7 @@ public class RecordingViewModel: ObservableObject {
                 startTargetPitchMonitoring(settings: scaleSettings)
             } else {
                 // オフ: スケールなし録音
-                print("🔇 [RecordingViewModel] オフモード: スケールなし録音を開始")
+                Logger.viewModel.debug("Executing recording without scale")
                 session = try await startRecordingUseCase.execute()
 
                 // Set recording context for stop use case
@@ -274,6 +296,8 @@ public class RecordingViewModel: ObservableObject {
                 // No target pitch monitoring when recording without scale
             }
 
+            Logger.viewModel.info("Recording session started: \(session.recordingURL.lastPathComponent)")
+
             // Update state
             currentSession = session
             recordingState = .recording
@@ -281,12 +305,14 @@ public class RecordingViewModel: ObservableObject {
             // Start pitch detection
             do {
                 try pitchDetector.startRealtimeDetection()
+                Logger.pitchDetection.debug("Real-time pitch detection started")
             } catch {
-                // Silently handle pitch detection errors
+                Logger.pitchDetection.error("Failed to start pitch detection: \(error.localizedDescription)")
             }
 
         } catch {
             // Handle error
+            Logger.viewModel.logError(error)
             errorMessage = error.localizedDescription
             recordingState = .idle
         }

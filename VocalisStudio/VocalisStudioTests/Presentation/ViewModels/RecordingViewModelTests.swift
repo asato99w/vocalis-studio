@@ -7,7 +7,8 @@ import VocalisDomain
 final class RecordingViewModelTests: XCTestCase {
 
     var sut: RecordingViewModel!
-    var mockStartRecordingUseCase: MockStartRecordingWithScaleUseCase!
+    var mockStartRecordingUseCase: MockStartRecordingUseCase!
+    var mockStartRecordingWithScaleUseCase: MockStartRecordingWithScaleUseCase!
     var mockStopRecordingUseCase: MockStopRecordingUseCase!
     var mockAudioPlayer: MockAudioPlayer!
     var mockScalePlayer: MockScalePlayer!
@@ -16,13 +17,15 @@ final class RecordingViewModelTests: XCTestCase {
 
     override func setUp() async throws {
         try await super.setUp()
-        mockStartRecordingUseCase = MockStartRecordingWithScaleUseCase()
+        mockStartRecordingUseCase = MockStartRecordingUseCase()
+        mockStartRecordingWithScaleUseCase = MockStartRecordingWithScaleUseCase()
         mockStopRecordingUseCase = MockStopRecordingUseCase()
         mockAudioPlayer = MockAudioPlayer()
         mockScalePlayer = MockScalePlayer()
         pitchDetector = RealtimePitchDetector()
         sut = RecordingViewModel(
             startRecordingUseCase: mockStartRecordingUseCase,
+            startRecordingWithScaleUseCase: mockStartRecordingWithScaleUseCase,
             stopRecordingUseCase: mockStopRecordingUseCase,
             audioPlayer: mockAudioPlayer,
             pitchDetector: pitchDetector,
@@ -38,6 +41,7 @@ final class RecordingViewModelTests: XCTestCase {
         mockScalePlayer = nil
         mockAudioPlayer = nil
         mockStopRecordingUseCase = nil
+        mockStartRecordingWithScaleUseCase = nil
         mockStartRecordingUseCase = nil
         try await super.tearDown()
     }
@@ -66,7 +70,7 @@ final class RecordingViewModelTests: XCTestCase {
         let settings = ScaleSettings.mvpDefault
         mockStartRecordingUseCase.executeResult = RecordingSession(
             recordingURL: URL(fileURLWithPath: "/tmp/test.m4a"),
-            settings: settings
+            settings: nil
         )
 
         // When
@@ -100,7 +104,7 @@ final class RecordingViewModelTests: XCTestCase {
         // Given
         mockStartRecordingUseCase.executeResult = RecordingSession(
             recordingURL: URL(fileURLWithPath: "/tmp/test.m4a"),
-            settings: .mvpDefault
+            settings: nil
         )
         await sut.startRecording()
         try? await Task.sleep(nanoseconds: 3_500_000_000)
@@ -147,7 +151,7 @@ final class RecordingViewModelTests: XCTestCase {
         // Given
         mockStartRecordingUseCase.executeResult = RecordingSession(
             recordingURL: URL(fileURLWithPath: "/tmp/test.m4a"),
-            settings: .mvpDefault
+            settings: nil
         )
         await sut.startRecording()
         try? await Task.sleep(nanoseconds: 3_500_000_000)

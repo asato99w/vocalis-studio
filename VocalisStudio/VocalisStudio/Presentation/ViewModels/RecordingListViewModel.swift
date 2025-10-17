@@ -28,10 +28,8 @@ public class RecordingListViewModel: ObservableObject {
 
         do {
             recordings = try await recordingRepository.findAll()
-            print("Loaded \(recordings.count) recordings")
         } catch {
             errorMessage = error.localizedDescription
-            print("Failed to load recordings: \(error)")
         }
 
         isLoading = false
@@ -84,11 +82,8 @@ public class RecordingListViewModel: ObservableObject {
 
             // Reload recordings
             await loadRecordings()
-
-            print("Deleted recording: \(recording.fileURL.lastPathComponent)")
         } catch {
             errorMessage = error.localizedDescription
-            print("Failed to delete recording: \(error)")
         }
     }
 }

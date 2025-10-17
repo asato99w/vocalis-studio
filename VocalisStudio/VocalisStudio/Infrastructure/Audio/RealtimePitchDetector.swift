@@ -271,7 +271,6 @@ public class RealtimePitchDetector: ObservableObject {
                 await MainActor.run { completion(pitch) }
 
             } catch {
-                print("❌ Failed to analyze file: \(error)")
                 await MainActor.run { completion(nil) }
             }
         }

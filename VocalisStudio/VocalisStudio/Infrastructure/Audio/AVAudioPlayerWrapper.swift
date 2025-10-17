@@ -39,10 +39,6 @@ public class AVAudioPlayerWrapper: NSObject, AudioPlayerProtocol {
                 throw AudioPlayerError.playbackFailed("Failed to start playback")
             }
 
-            print("Playing audio from: \(url.lastPathComponent)")
-            print("AVAudioPlayer isPlaying after play(): \(audioPlayer?.isPlaying ?? false)")
-            print("AVAudioPlayer duration: \(audioPlayer?.duration ?? 0) seconds")
-
             // Wait for playback to complete
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
                 self.playbackContinuation = continuation
@@ -73,8 +69,6 @@ public class AVAudioPlayerWrapper: NSObject, AudioPlayerProtocol {
 extension AVAudioPlayerWrapper: AVAudioPlayerDelegate {
 
     public func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-        print("Audio playback finished: \(flag ? "successfully" : "with error")")
-
         if flag {
             playbackContinuation?.resume()
         } else {
@@ -85,7 +79,6 @@ extension AVAudioPlayerWrapper: AVAudioPlayerDelegate {
 
     public func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
         if let error = error {
-            print("Audio decode error: \(error.localizedDescription)")
             playbackContinuation?.resume(throwing: AudioPlayerError.playbackFailed(error.localizedDescription))
             playbackContinuation = nil
         }

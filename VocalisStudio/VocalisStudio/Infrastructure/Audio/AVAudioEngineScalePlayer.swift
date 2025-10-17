@@ -88,17 +88,12 @@ public class AVAudioEngineScalePlayer: ScalePlayerProtocol {
                 bankMSB: UInt8(kAUSampler_DefaultMelodicBankMSB),
                 bankLSB: UInt8(kAUSampler_DefaultBankLSB)
             )
-            print("Loaded DLS sound bank for simulator")
             #elseif os(iOS)
             // Real iOS device: use AUAudioUnit factory presets
             if let pianoPreset = sampler.auAudioUnit.factoryPresets?.first(where: { $0.name.contains("Piano") }) {
                 sampler.auAudioUnit.currentPreset = pianoPreset
-                print("Loaded preset: \(pianoPreset.name)")
             } else if let firstPreset = sampler.auAudioUnit.factoryPresets?.first {
                 sampler.auAudioUnit.currentPreset = firstPreset
-                print("Loaded preset: \(firstPreset.name)")
-            } else {
-                print("Warning: No presets available on device")
             }
             #else
             // macOS: load DLS sound bank
@@ -108,10 +103,8 @@ public class AVAudioEngineScalePlayer: ScalePlayerProtocol {
                 bankMSB: UInt8(kAUSampler_DefaultMelodicBankMSB),
                 bankLSB: UInt8(kAUSampler_DefaultBankLSB)
             )
-            print("Loaded DLS sound bank for macOS")
             #endif
         } catch {
-            print("Failed to load sound: \(error.localizedDescription)")
             // Continue anyway - sampler will use default sound
         }
     }

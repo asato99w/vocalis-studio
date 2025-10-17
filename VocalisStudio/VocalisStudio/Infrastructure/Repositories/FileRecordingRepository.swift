@@ -20,8 +20,6 @@ public class FileRecordingRepository: RecordingRepositoryProtocol {
 
         // Save metadata
         try saveMetadata(recordings)
-
-        print("Saved recording: \(recording.fileURL.lastPathComponent)")
     }
 
     public func findAll() async throws -> [Recording] {
@@ -34,7 +32,6 @@ public class FileRecordingRepository: RecordingRepositoryProtocol {
 
         // If some recordings were invalid, clean up metadata
         if validRecordings.count != recordings.count {
-            print("Cleaning up \(recordings.count - validRecordings.count) invalid recordings from metadata")
             try saveMetadata(validRecordings)
             recordings = validRecordings
         }
@@ -62,9 +59,6 @@ public class FileRecordingRepository: RecordingRepositoryProtocol {
         // Delete file if it exists
         if FileManager.default.fileExists(atPath: recording.fileURL.path) {
             try FileManager.default.removeItem(at: recording.fileURL)
-            print("Deleted file: \(recording.fileURL.lastPathComponent)")
-        } else {
-            print("File already deleted: \(recording.fileURL.lastPathComponent)")
         }
 
         // Remove from metadata
@@ -72,8 +66,6 @@ public class FileRecordingRepository: RecordingRepositoryProtocol {
 
         // Save updated metadata
         try saveMetadata(recordings)
-
-        print("Removed from metadata: \(recording.fileURL.lastPathComponent)")
     }
 
     // MARK: - Private Methods
@@ -87,7 +79,6 @@ public class FileRecordingRepository: RecordingRepositoryProtocol {
             let decoder = JSONDecoder()
             return try decoder.decode([Recording].self, from: data)
         } catch {
-            print("Failed to decode recordings metadata: \(error)")
             return []
         }
     }
