@@ -139,10 +139,7 @@ public class AVAudioEngineScalePlayer: ScalePlayerProtocol {
 
         do {
             // Ensure audio session is active before starting engine
-            let audioSession = AVAudioSession.sharedInstance()
-            if !audioSession.isOtherAudioPlaying {
-                try audioSession.setActive(true)
-            }
+            try AudioSessionManager.shared.activateIfNeeded()
 
             try engine.start()
 
@@ -191,10 +188,7 @@ public class AVAudioEngineScalePlayer: ScalePlayerProtocol {
 
         do {
             // Ensure audio session is active before starting engine
-            let audioSession = AVAudioSession.sharedInstance()
-            if !audioSession.isOtherAudioPlaying {
-                try audioSession.setActive(true)
-            }
+            try AudioSessionManager.shared.activateIfNeeded()
 
             try engine.start()
 

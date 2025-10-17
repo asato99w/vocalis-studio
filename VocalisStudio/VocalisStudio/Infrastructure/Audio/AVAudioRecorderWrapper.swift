@@ -23,8 +23,14 @@ public class AVAudioRecorderWrapper: NSObject, AudioRecorderProtocol {
     public func prepareRecording() async throws -> URL {
         Logger.recording.info("Preparing recording")
 
-        // Configure audio session for recording
-        try await configureAudioSession()
+        // Configure audio session for recording using centralized manager
+        do {
+            try AudioSessionManager.shared.configureForRecording()
+            try AudioSessionManager.shared.activate()
+        } catch {
+            Logger.recording.logError(error)
+            throw AudioRecorderError.recordingFailed("Failed to configure audio session: \(error.localizedDescription)")
+        }
 
         // Generate unique recording file URL
         let url = generateRecordingURL()
@@ -108,42 +114,19 @@ public class AVAudioRecorderWrapper: NSObject, AudioRecorderProtocol {
 
     // MARK: - Private Methods
 
-    private func configureAudioSession() async throws {
-        Logger.audio.info("Configuring audio session for recording")
-        let audioSession = AVAudioSession.sharedInstance()
-
-        do {
-            // Set category to allow recording and playback simultaneously
-            // .defaultToSpeaker ensures audio plays through speaker even when recording
-            // .allowBluetooth allows bluetooth audio devices
-            try audioSession.setCategory(
-                .playAndRecord,
-                mode: .default,
-                options: [.defaultToSpeaker, .allowBluetooth]
-            )
-
-            // Set preferred sample rate to match our recording settings
-            try audioSession.setPreferredSampleRate(44100.0)
-
-            // Activate the audio session
-            try audioSession.setActive(true)
-            Logger.audio.info("Audio session configured: category=playAndRecord, sampleRate=44100Hz")
-            FileLogger.shared.log(level: "INFO", category: "audio", message: "Audio session configured: category=playAndRecord, sampleRate=44100Hz")
-        } catch {
-            Logger.audio.logError(error)
-            throw AudioRecorderError.recordingFailed("Failed to configure audio session: \(error.localizedDescription)")
-        }
-    }
-
     private func generateRecordingURL() -> URL {
         // Use Documents directory for persistent storage
         let documentsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
 
-        // Generate filename with timestamp: recording_yyyyMMdd_HHmmss.m4a
+        // Generate filename with timestamp + milliseconds for uniqueness
+        // Format: recording_yyyyMMdd_HHmmss_SSS.m4a
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyyMMdd_HHmmss"
         let timestamp = dateFormatter.string(from: Date())
-        let fileName = "recording_\(timestamp).m4a"
+
+        // Add milliseconds for uniqueness when called in rapid succession
+        let milliseconds = Int(Date().timeIntervalSince1970 * 1000) % 1000
+        let fileName = "recording_\(timestamp)_\(String(format: "%03d", milliseconds)).m4a"
 
         let url = documentsDir.appendingPathComponent(fileName)
         return url

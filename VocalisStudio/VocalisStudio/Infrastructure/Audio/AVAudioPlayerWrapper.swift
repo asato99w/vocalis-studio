@@ -27,11 +27,10 @@ public class AVAudioPlayerWrapper: NSObject, AudioPlayerProtocol {
             audioPlayer = try AVAudioPlayer(contentsOf: url)
             audioPlayer?.delegate = self
 
-            // Configure audio session for playback
+            // Configure audio session for playback with recording support
             // Use playAndRecord to be compatible with pitch detection
-            let audioSession = AVAudioSession.sharedInstance()
-            try audioSession.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP])
-            try audioSession.setActive(true)
+            try AudioSessionManager.shared.configureForRecordingAndPlayback()
+            try AudioSessionManager.shared.activate()
 
             // Play
             let success = audioPlayer?.play() ?? false
@@ -59,8 +58,8 @@ public class AVAudioPlayerWrapper: NSObject, AudioPlayerProtocol {
         playbackContinuation?.resume()
         playbackContinuation = nil
 
-        // Deactivate audio session
-        try? AVAudioSession.sharedInstance().setActive(false)
+        // Deactivate audio session using centralized manager
+        try? AudioSessionManager.shared.deactivate()
     }
 }
 

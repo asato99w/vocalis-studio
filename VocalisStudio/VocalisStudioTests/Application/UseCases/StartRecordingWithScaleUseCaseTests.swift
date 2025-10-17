@@ -54,7 +54,21 @@ final class StartRecordingWithScaleUseCaseTests: XCTestCase {
         _ = try await sut.execute(settings: settings)
 
         // Then
-        XCTAssertEqual(mockScalePlayer.loadedNotes, settings.generateScale())
+        // Extract expected notes from scale elements (including chords)
+        let scaleElements = settings.generateScaleWithKeyChange()
+        var expectedNotes: [MIDINote] = []
+        for element in scaleElements {
+            switch element {
+            case .scaleNote(let note):
+                expectedNotes.append(note)
+            case .chordShort(let notes), .chordLong(let notes):
+                expectedNotes.append(contentsOf: notes)
+            case .silence:
+                break
+            }
+        }
+
+        XCTAssertEqual(mockScalePlayer.loadedNotes, expectedNotes)
         XCTAssertEqual(mockScalePlayer.loadedTempo, settings.tempo)
     }
 

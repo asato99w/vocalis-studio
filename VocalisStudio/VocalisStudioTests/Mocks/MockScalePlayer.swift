@@ -52,6 +52,23 @@ final class MockScalePlayer: ScalePlayerProtocol {
         loadScaleCallTime = Date()
         loadedTempo = tempo
 
+        // Extract MIDI notes from scale elements for test verification
+        // This allows tests to verify the loaded content using loadedNotes
+        var notes: [MIDINote] = []
+        for element in elements {
+            switch element {
+            case .scaleNote(let note):
+                notes.append(note)
+            case .chordShort(let chordNotes), .chordLong(let chordNotes):
+                // For chords, add all notes
+                notes.append(contentsOf: chordNotes)
+            case .silence:
+                // Silence doesn't contribute notes
+                break
+            }
+        }
+        loadedNotes = notes
+
         if loadScaleShouldFail {
             throw ScalePlayerError.notLoaded
         }
