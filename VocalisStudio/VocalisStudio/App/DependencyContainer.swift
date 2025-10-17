@@ -35,7 +35,11 @@ public class DependencyContainer {
 
     // MARK: - Application Layer
 
-    private lazy var startRecordingUseCase: StartRecordingWithScaleUseCaseProtocol = {
+    private lazy var startRecordingUseCase: StartRecordingUseCaseProtocol = {
+        StartRecordingUseCase(audioRecorder: audioRecorder)
+    }()
+
+    private lazy var startRecordingWithScaleUseCase: StartRecordingWithScaleUseCaseProtocol = {
         StartRecordingWithScaleUseCase(
             scalePlayer: scalePlayer,
             audioRecorder: audioRecorder
@@ -55,6 +59,7 @@ public class DependencyContainer {
     public lazy var recordingViewModel: RecordingViewModel = {
         RecordingViewModel(
             startRecordingUseCase: startRecordingUseCase,
+            startRecordingWithScaleUseCase: startRecordingWithScaleUseCase,
             stopRecordingUseCase: stopRecordingUseCase,
             audioPlayer: audioPlayer,
             pitchDetector: pitchDetector,

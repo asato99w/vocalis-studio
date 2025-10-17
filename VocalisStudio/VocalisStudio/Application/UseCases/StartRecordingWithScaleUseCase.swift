@@ -43,7 +43,7 @@ public class StartRecordingWithScaleUseCase: StartRecordingWithScaleUseCaseProto
 
         // Check if playback failed to start
         if playbackTask.isCancelled {
-            try await audioRecorder.stopRecording()
+            _ = try await audioRecorder.stopRecording()
             throw ScalePlayerError.playbackFailed("Playback task was cancelled")
         }
 

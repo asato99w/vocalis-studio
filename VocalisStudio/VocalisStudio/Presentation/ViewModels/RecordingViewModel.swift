@@ -28,10 +28,12 @@ public class RecordingViewModel: ObservableObject {
     @Published public private(set) var targetPitch: DetectedPitch?
     @Published public private(set) var detectedPitch: DetectedPitch?
     @Published public private(set) var pitchAccuracy: PitchAccuracy = .none
+    @Published public private(set) var spectrum: [Float]?
 
     // MARK: - Dependencies
 
-    private let startRecordingUseCase: StartRecordingWithScaleUseCaseProtocol
+    private let startRecordingUseCase: StartRecordingUseCaseProtocol
+    private let startRecordingWithScaleUseCase: StartRecordingWithScaleUseCaseProtocol
     private let stopRecordingUseCase: StopRecordingUseCaseProtocol
     private let audioPlayer: AudioPlayerProtocol
     private let pitchDetector: RealtimePitchDetector
@@ -47,13 +49,15 @@ public class RecordingViewModel: ObservableObject {
     // MARK: - Initialization
 
     public init(
-        startRecordingUseCase: StartRecordingWithScaleUseCaseProtocol,
+        startRecordingUseCase: StartRecordingUseCaseProtocol,
+        startRecordingWithScaleUseCase: StartRecordingWithScaleUseCaseProtocol,
         stopRecordingUseCase: StopRecordingUseCaseProtocol,
         audioPlayer: AudioPlayerProtocol,
         pitchDetector: RealtimePitchDetector,
         scalePlayer: ScalePlayerProtocol
     ) {
         self.startRecordingUseCase = startRecordingUseCase
+        self.startRecordingWithScaleUseCase = startRecordingWithScaleUseCase
         self.stopRecordingUseCase = stopRecordingUseCase
         self.audioPlayer = audioPlayer
         self.pitchDetector = pitchDetector
@@ -65,6 +69,16 @@ public class RecordingViewModel: ObservableObject {
                 guard let self = self else { return }
                 Task { @MainActor in
                     self.updateDetectedPitch(detectedPitch)
+                }
+            }
+            .store(in: &cancellables)
+
+        // Subscribe to spectrum updates
+        pitchDetector.$spectrum
+            .sink { [weak self] spectrum in
+                guard let self = self else { return }
+                Task { @MainActor in
+                    self.spectrum = spectrum
                 }
             }
             .store(in: &cancellables)
@@ -123,10 +137,9 @@ public class RecordingViewModel: ObservableObject {
             // Save the recording URL and settings before clearing currentSession
             let recordingURL = currentSession?.recordingURL
             let recordingSettings = currentSession?.settings
-            print("📼 Stopping recording. URL: \(recordingURL?.path ?? "nil")")
 
             // Stop recording via use case
-            let result = try await stopRecordingUseCase.execute()
+            _ = try await stopRecordingUseCase.execute()
 
             // Update state
             recordingState = .idle
@@ -139,9 +152,6 @@ public class RecordingViewModel: ObservableObject {
             // Save the recording URL and settings for playback
             lastRecordingURL = recordingURL
             lastRecordingSettings = recordingSettings
-            print("✅ Recording stopped. Duration: \(result.duration) seconds")
-            print("✅ Saved to: \(recordingURL?.path ?? "unknown")")
-            print("✅ File exists: \(recordingURL.map { FileManager.default.fileExists(atPath: $0.path) } ?? false)")
 
         } catch {
             // Handle error
@@ -159,21 +169,16 @@ public class RecordingViewModel: ObservableObject {
     public func playLastRecording() async {
         guard let url = lastRecordingURL else {
             errorMessage = "No recording available"
-            print("❌ No recording URL available")
             return
         }
 
         guard !isPlayingRecording else { return }
-
-        print("▶️ Attempting to play recording from: \(url.path)")
-        print("▶️ File exists: \(FileManager.default.fileExists(atPath: url.path))")
 
         do {
             isPlayingRecording = true
 
             // If we have scale settings, play muted scale for target pitch tracking
             if let settings = lastRecordingSettings {
-                print("🎵 Loading scale for playback (muted)")
                 let scaleElements = settings.generateScaleWithKeyChange()
                 try await scalePlayer.loadScaleElements(scaleElements, tempo: settings.tempo)
 
@@ -181,9 +186,8 @@ public class RecordingViewModel: ObservableObject {
                 Task {
                     do {
                         try await scalePlayer.play(muted: true)
-                        print("🎵 Muted scale playback completed")
                     } catch {
-                        print("⚠️ Muted scale playback failed: \(error)")
+                        // Silently handle muted scale playback errors
                     }
                 }
 
@@ -196,7 +200,6 @@ public class RecordingViewModel: ObservableObject {
 
             // Play the actual recording (blocks until playback completes)
             try await audioPlayer.play(url: url)
-            print("✅ Playback completed")
 
             // Stop target pitch monitoring
             progressMonitorTask?.cancel()
@@ -213,7 +216,6 @@ public class RecordingViewModel: ObservableObject {
             await scalePlayer.stop()
 
             isPlayingRecording = false
-            print("⏸ Playback completed")
         } catch {
             errorMessage = error.localizedDescription
             isPlayingRecording = false
@@ -224,7 +226,6 @@ public class RecordingViewModel: ObservableObject {
             targetPitch = nil
             detectedPitch = nil
             pitchAccuracy = .none
-            print("❌ Playback failed: \(error.localizedDescription)")
         }
     }
 
@@ -246,15 +247,31 @@ public class RecordingViewModel: ObservableObject {
 
     private func executeRecording(settings: ScaleSettings? = nil) async {
         do {
-            // Use provided settings or MVP default
-            let scaleSettings = settings ?? ScaleSettings.mvpDefault
+            let session: RecordingSession
 
-            // Execute use case
-            let session = try await startRecordingUseCase.execute(settings: scaleSettings)
+            if let scaleSettings = settings {
+                // 5トーン: スケール付き録音
+                print("🎵 [RecordingViewModel] 5トーンモード: スケール付き録音を開始")
+                session = try await startRecordingWithScaleUseCase.execute(settings: scaleSettings)
 
-            // Set recording context for stop use case
-            if let stopUseCase = stopRecordingUseCase as? StopRecordingUseCase {
-                stopUseCase.setRecordingContext(url: session.recordingURL, settings: scaleSettings)
+                // Set recording context for stop use case
+                if let stopUseCase = stopRecordingUseCase as? StopRecordingUseCase {
+                    stopUseCase.setRecordingContext(url: session.recordingURL, settings: scaleSettings)
+                }
+
+                // Start monitoring scale progress for target pitch
+                startTargetPitchMonitoring(settings: scaleSettings)
+            } else {
+                // オフ: スケールなし録音
+                print("🔇 [RecordingViewModel] オフモード: スケールなし録音を開始")
+                session = try await startRecordingUseCase.execute()
+
+                // Set recording context for stop use case
+                if let stopUseCase = stopRecordingUseCase as? StopRecordingUseCase {
+                    stopUseCase.setRecordingContext(url: session.recordingURL, settings: nil)
+                }
+
+                // No target pitch monitoring when recording without scale
             }
 
             // Update state
@@ -265,11 +282,8 @@ public class RecordingViewModel: ObservableObject {
             do {
                 try pitchDetector.startRealtimeDetection()
             } catch {
-                print("⚠️ Failed to start pitch detection: \(error)")
+                // Silently handle pitch detection errors
             }
-
-            // Start monitoring scale progress for target pitch
-            startTargetPitchMonitoring(settings: scaleSettings)
 
         } catch {
             // Handle error
@@ -283,7 +297,6 @@ public class RecordingViewModel: ObservableObject {
     /// Start monitoring scale player progress to update target pitch
     private func startTargetPitchMonitoring(settings: ScaleSettings) {
         progressMonitorTask = Task {
-            print("🎯 Started target pitch monitoring")
             while !Task.isCancelled {
                 // Get current scale element from ScalePlayer
                 if let currentElement = scalePlayer.currentScaleElement {
@@ -291,13 +304,11 @@ public class RecordingViewModel: ObservableObject {
                 } else {
                     // No current element (silence or completed)
                     targetPitch = nil
-                    print("🎯 No current scale element (isPlaying: \(scalePlayer.isPlaying), index: \(scalePlayer.currentNoteIndex))")
                 }
 
                 // Check every 100ms
                 try? await Task.sleep(nanoseconds: 100_000_000)
             }
-            print("🎯 Stopped target pitch monitoring")
         }
     }
 
@@ -310,7 +321,6 @@ public class RecordingViewModel: ObservableObject {
                 confidence: 1.0
             )
             targetPitch = pitch
-            print("🎯 Target: \(pitch.noteName) (\(String(format: "%.1f", pitch.frequency)) Hz)")
         case .chordLong(let notes), .chordShort(let notes):
             // Use root note of chord as target
             if let rootNote = notes.first {
@@ -319,13 +329,11 @@ public class RecordingViewModel: ObservableObject {
                     confidence: 1.0
                 )
                 targetPitch = pitch
-                print("🎯 Target (chord): \(pitch.noteName) (\(String(format: "%.1f", pitch.frequency)) Hz)")
             } else {
                 targetPitch = nil
             }
         case .silence:
             targetPitch = nil
-            print("🎯 Target: silence")
         }
     }
 
@@ -334,7 +342,6 @@ public class RecordingViewModel: ObservableObject {
         guard let pitch = pitch else {
             detectedPitch = nil
             pitchAccuracy = .none
-            print("🎤 Pitch cleared")
             return
         }
 
@@ -342,7 +349,6 @@ public class RecordingViewModel: ObservableObject {
         guard pitch.frequency > 0 && pitch.frequency < 10000 else {
             detectedPitch = nil
             pitchAccuracy = .none
-            print("🎤 Invalid frequency: \(pitch.frequency) Hz")
             return
         }
 
@@ -354,7 +360,6 @@ public class RecordingViewModel: ObservableObject {
             guard targetFreq > 0 else {
                 detectedPitch = pitch
                 pitchAccuracy = .none
-                print("🎤 Invalid target frequency")
                 return
             }
 
@@ -368,19 +373,15 @@ public class RecordingViewModel: ObservableObject {
             )
 
             pitchAccuracy = PitchAccuracy.from(cents: cents)
-            print("🎤 Updated UI: \(pitch.noteName) (\(String(format: "%.1f", pitch.frequency)) Hz), cents: \(cents), accuracy: \(pitchAccuracy)")
         } else {
             detectedPitch = pitch
             pitchAccuracy = PitchAccuracy.from(cents: pitch.cents)
-            print("🎤 Updated UI (no target): \(pitch.noteName) (\(String(format: "%.1f", pitch.frequency)) Hz)")
         }
     }
 
     /// Start detecting pitch from recording file during playback
     private func startPlaybackPitchDetection(url: URL) {
         pitchDetectionTask = Task {
-            print("🎵 Started playback pitch detection for: \(url.path)")
-
             // Wait for playback to start (max 3 seconds)
             var waitCount = 0
             while !audioPlayer.isPlaying && waitCount < 30 {
@@ -389,16 +390,10 @@ public class RecordingViewModel: ObservableObject {
             }
 
             if !audioPlayer.isPlaying {
-                print("⚠️ Playback never started after 3 seconds")
                 return
             }
 
-            print("🎵 Playback started, beginning pitch detection")
-            var loopCount = 0
-
             while !Task.isCancelled && audioPlayer.isPlaying {
-                loopCount += 1
-
                 // Get current playback time
                 let currentTime = audioPlayer.currentTime
 
@@ -419,7 +414,6 @@ public class RecordingViewModel: ObservableObject {
                 // Check every 100ms
                 try? await Task.sleep(nanoseconds: 100_000_000)
             }
-            print("🎵 Stopped playback pitch detection (looped \(loopCount) times)")
         }
     }
 }

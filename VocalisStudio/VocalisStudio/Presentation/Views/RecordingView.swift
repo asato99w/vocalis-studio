@@ -102,7 +102,8 @@ public struct RecordingView: View {
                     isPlayingRecording: viewModel.isPlayingRecording,
                     targetPitch: viewModel.targetPitch,
                     detectedPitch: viewModel.detectedPitch,
-                    pitchAccuracy: viewModel.pitchAccuracy
+                    pitchAccuracy: viewModel.pitchAccuracy,
+                    spectrum: viewModel.spectrum
                 )
                 .frame(maxHeight: .infinity)
 
@@ -113,6 +114,7 @@ public struct RecordingView: View {
                     onStart: {
                         Task {
                             let settings = settingsViewModel.generateScaleSettings()
+                            print("📱 [RecordingView] 録音開始: scaleType=\(settingsViewModel.scaleType), settings=\(settings != nil ? "あり" : "なし")")
                             await viewModel.startRecording(settings: settings)
                         }
                     },
@@ -181,7 +183,8 @@ public struct RecordingView: View {
                     isPlayingRecording: viewModel.isPlayingRecording,
                     targetPitch: viewModel.targetPitch,
                     detectedPitch: viewModel.detectedPitch,
-                    pitchAccuracy: viewModel.pitchAccuracy
+                    pitchAccuracy: viewModel.pitchAccuracy,
+                    spectrum: viewModel.spectrum
                 )
                 .frame(height: isSettingsPanelVisible ? 200 : 350)
 
@@ -192,6 +195,7 @@ public struct RecordingView: View {
                     onStart: {
                         Task {
                             let settings = settingsViewModel.generateScaleSettings()
+                            print("📱 [RecordingView] 録音開始: scaleType=\(settingsViewModel.scaleType), settings=\(settings != nil ? "あり" : "なし")")
                             await viewModel.startRecording(settings: settings)
                         }
                     },
@@ -367,17 +371,21 @@ struct RealtimeDisplayArea: View {
     let targetPitch: DetectedPitch?
     let detectedPitch: DetectedPitch?
     let pitchAccuracy: PitchAccuracy
+    let spectrum: [Float]?
 
     var body: some View {
         VStack(spacing: 12) {
-            // Spectrogram (temporarily keep mock)
+            // Frequency spectrum bar chart
             VStack(alignment: .leading, spacing: 6) {
                 Text("recording.realtime_spectrum_title".localized)
                     .font(.subheadline)
                     .fontWeight(.semibold)
 
-                MockSpectrogramView(isActive: recordingState == .recording)
-                    .frame(maxHeight: .infinity)
+                FrequencySpectrumView(
+                    spectrum: spectrum,
+                    isActive: recordingState == .recording || isPlayingRecording
+                )
+                .frame(maxHeight: .infinity)
             }
 
             Divider()
@@ -439,6 +447,108 @@ struct MockSpectrogramView: View {
         }
         .background(Color.black)
         .cornerRadius(8)
+    }
+}
+
+/// Frequency spectrum bar chart view
+struct FrequencySpectrumView: View {
+    let spectrum: [Float]?
+    let isActive: Bool
+
+    private let minFreq: Double = 100.0  // Hz
+    private let maxFreq: Double = 800.0  // Hz
+
+    var body: some View {
+        GeometryReader { geometry in
+            Canvas { context, size in
+                guard let spectrum = spectrum, !spectrum.isEmpty else {
+                    // Draw placeholder when no spectrum data
+                    drawPlaceholder(context: context, size: size)
+                    return
+                }
+
+                let barCount = spectrum.count
+                let barWidth = size.width / CGFloat(barCount)
+                let maxMagnitude = spectrum.max() ?? 1.0
+
+                for (index, magnitude) in spectrum.enumerated() {
+                    let normalizedHeight = maxMagnitude > 0 ? CGFloat(magnitude / maxMagnitude) : 0
+                    let barHeight = normalizedHeight * size.height
+
+                    let rect = CGRect(
+                        x: CGFloat(index) * barWidth,
+                        y: size.height - barHeight,
+                        width: max(barWidth - 1, 1),
+                        height: barHeight
+                    )
+
+                    // Color gradient based on magnitude: blue -> green -> red
+                    let color = magnitudeColor(normalizedMagnitude: normalizedHeight)
+                    context.fill(Path(rect), with: .color(color))
+                }
+
+                // Draw frequency labels
+                drawFrequencyLabels(context: context, size: size)
+            }
+        }
+        .background(Color.black)
+        .cornerRadius(8)
+    }
+
+    private func drawPlaceholder(context: GraphicsContext, size: CGSize) {
+        // Draw subtle grid for inactive state
+        let gridColor = Color.gray.opacity(0.2)
+        for i in 0..<10 {
+            let y = CGFloat(i) * size.height / 10
+            var path = Path()
+            path.move(to: CGPoint(x: 0, y: y))
+            path.addLine(to: CGPoint(x: size.width, y: y))
+            context.stroke(path, with: .color(gridColor), lineWidth: 0.5)
+        }
+    }
+
+    private func drawFrequencyLabels(context: GraphicsContext, size: CGSize) {
+        let labelColor = Color.white.opacity(0.6)
+        let frequencies = [100, 200, 300, 400, 500, 600, 700, 800]
+
+        for freq in frequencies {
+            let ratio = (Double(freq) - minFreq) / (maxFreq - minFreq)
+            let x = CGFloat(ratio) * size.width
+
+            // Draw tick mark
+            var path = Path()
+            path.move(to: CGPoint(x: x, y: size.height - 5))
+            path.addLine(to: CGPoint(x: x, y: size.height))
+            context.stroke(path, with: .color(labelColor), lineWidth: 1)
+        }
+    }
+
+    private func magnitudeColor(normalizedMagnitude: CGFloat) -> Color {
+        if normalizedMagnitude < 0.33 {
+            // Low: Blue
+            let ratio = normalizedMagnitude / 0.33
+            return Color(
+                red: 0,
+                green: ratio * 0.5,
+                blue: 1.0
+            )
+        } else if normalizedMagnitude < 0.66 {
+            // Medium: Blue -> Green
+            let ratio = (normalizedMagnitude - 0.33) / 0.33
+            return Color(
+                red: 0,
+                green: 0.5 + ratio * 0.5,
+                blue: 1.0 - ratio
+            )
+        } else {
+            // High: Green -> Red
+            let ratio = (normalizedMagnitude - 0.66) / 0.34
+            return Color(
+                red: ratio,
+                green: 1.0 - ratio * 0.5,
+                blue: 0
+            )
+        }
     }
 }
 
@@ -686,6 +796,7 @@ struct RecordingView_Previews: PreviewProvider {
             RecordingView(
                 viewModel: RecordingViewModel(
                     startRecordingUseCase: PreviewMockStartRecordingUseCase(),
+                    startRecordingWithScaleUseCase: PreviewMockStartRecordingWithScaleUseCase(),
                     stopRecordingUseCase: PreviewMockStopRecordingUseCase(),
                     audioPlayer: PreviewMockAudioPlayer(),
                     pitchDetector: RealtimePitchDetector(),
@@ -710,7 +821,18 @@ private class PreviewMockScalePlayer: ScalePlayerProtocol {
     func stop() async {}
 }
 
-private class PreviewMockStartRecordingUseCase: StartRecordingWithScaleUseCaseProtocol {
+private class PreviewMockStartRecordingUseCase: StartRecordingUseCaseProtocol {
+    func execute() async throws -> RecordingSession {
+        try await Task.sleep(nanoseconds: 1_000_000_000)
+        return RecordingSession(
+            recordingURL: URL(fileURLWithPath: "/tmp/preview.m4a"),
+            settings: nil,
+            startedAt: Date()
+        )
+    }
+}
+
+private class PreviewMockStartRecordingWithScaleUseCase: StartRecordingWithScaleUseCaseProtocol {
     func execute(settings: ScaleSettings) async throws -> RecordingSession {
         try await Task.sleep(nanoseconds: 1_000_000_000)
         return RecordingSession(

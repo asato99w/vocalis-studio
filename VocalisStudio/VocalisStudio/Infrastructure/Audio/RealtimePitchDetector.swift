@@ -9,6 +9,7 @@ import Accelerate
 public class RealtimePitchDetector: ObservableObject {
     @Published public private(set) var detectedPitch: DetectedPitch?
     @Published public private(set) var isDetecting: Bool = false
+    @Published public private(set) var spectrum: [Float]?
 
     private let audioEngine = AVAudioEngine()
     private var audioBuffer: [Float] = []
@@ -52,8 +53,6 @@ public class RealtimePitchDetector: ObservableObject {
         // Start engine
         try audioEngine.start()
         isDetecting = true
-
-        print("✅ Started real-time pitch detection")
     }
 
     /// Stop real-time pitch detection
@@ -64,8 +63,7 @@ public class RealtimePitchDetector: ObservableObject {
         audioEngine.stop()
         isDetecting = false
         detectedPitch = nil
-
-        print("⏸ Stopped real-time pitch detection")
+        spectrum = nil
     }
 
     /// Process audio buffer and detect pitch
@@ -99,11 +97,13 @@ public class RealtimePitchDetector: ObservableObject {
         // Silence threshold
         guard rms > 0.02 else {
             detectedPitch = nil
+            spectrum = nil
             return
         }
 
         guard let setup = fftSetup else {
             detectedPitch = nil
+            spectrum = nil
             return
         }
 
@@ -145,8 +145,12 @@ public class RealtimePitchDetector: ObservableObject {
 
         guard minBin < maxBin && maxBin < magnitudes.count else {
             detectedPitch = nil
+            spectrum = nil
             return
         }
+
+        // Publish spectrum data for visualization (100-800 Hz range)
+        spectrum = Array(magnitudes[minBin..<maxBin])
 
         // Create HPS by multiplying harmonics (start from fundamental, then multiply by harmonics)
         let numHarmonics = 5 // Use harmonics 1, 2, 3, 4, 5
@@ -262,13 +266,6 @@ public class RealtimePitchDetector: ObservableObject {
                     count: Int(buffer.frameLength)
                 ))
 
-                // Debug: Check sample values
-                let maxSample = samples.max() ?? 0
-                let minSample = samples.min() ?? 0
-                let avgSample = samples.reduce(0, +) / Float(samples.count)
-                print("📊 File samples - count: \(samples.count), max: \(maxSample), min: \(minSample), avg: \(avgSample)")
-                print("📊 Sample rate: \(sampleRate), format: \(format)")
-
                 // Detect pitch from samples
                 let pitch = await detectPitchFromSamplesSync(samples, sampleRate: sampleRate)
                 await MainActor.run { completion(pitch) }
@@ -284,16 +281,15 @@ public class RealtimePitchDetector: ObservableObject {
     private func detectPitchFromSamplesSync(_ samples: [Float], sampleRate: Double) async -> DetectedPitch? {
         // Calculate RMS amplitude
         let rms = sqrt(samples.map { $0 * $0 }.reduce(0, +) / Float(samples.count))
-        print("🔍 RMS: \(rms) (threshold: 0.001)")
 
         // Lower threshold for recorded playback (recorded files tend to have lower amplitude)
         if rms <= 0.001 {
-            print("🔇 RMS too low, skipping")
+            await MainActor.run { self.spectrum = nil }
             return nil
         }
 
         guard let setup = fftSetup else {
-            print("❌ FFT setup is nil")
+            await MainActor.run { self.spectrum = nil }
             return nil
         }
 
@@ -333,7 +329,15 @@ public class RealtimePitchDetector: ObservableObject {
         let minBin = Int(minFreq * Double(bufferSize) / sampleRate)
         let maxBin = Int(maxFreq * Double(bufferSize) / sampleRate)
 
-        guard minBin < maxBin && maxBin < magnitudes.count else { return nil }
+        guard minBin < maxBin && maxBin < magnitudes.count else {
+            await MainActor.run { self.spectrum = nil }
+            return nil
+        }
+
+        // Publish spectrum data for visualization (100-500 Hz range for playback)
+        await MainActor.run {
+            self.spectrum = Array(magnitudes[minBin..<maxBin])
+        }
 
         // Create HPS by multiplying harmonics (start from fundamental, then multiply by harmonics)
         let numHarmonics = 5 // Use harmonics 1, 2, 3, 4, 5
@@ -365,10 +369,7 @@ public class RealtimePitchDetector: ObservableObject {
             }
         }
 
-        print("🔍 Peak magnitude: \(maxMagnitude) at bin \(peakBin) (threshold: 0.001)")
-
         if maxMagnitude <= 0.001 {  // Lowered from 0.01
-            print("🔇 Peak magnitude too low, skipping")
             return nil
         }
 
@@ -392,7 +393,6 @@ public class RealtimePitchDetector: ObservableObject {
 
         // Validate frequency is in expected range
         guard frequency >= minFreq && frequency <= maxFreq else {
-            print("🔇 Frequency out of range: \(frequency) Hz")
             return nil
         }
 
@@ -400,16 +400,12 @@ public class RealtimePitchDetector: ObservableObject {
         let avgMagnitude = magnitudes[minBin..<maxBin].reduce(0, +) / Float(maxBin - minBin)
         let confidence = min(Double(maxMagnitude / (avgMagnitude + 0.001)), 1.0)
 
-        print("🔍 Frequency: \(String(format: "%.1f", frequency)) Hz, Confidence: \(String(format: "%.2f", confidence)) (threshold: 0.3)")
-
         // Lower confidence threshold for playback analysis
         if confidence <= 0.3 {  // Lowered from 0.4
-            print("🔇 Confidence too low, skipping")
             return nil
         }
 
         let pitch = DetectedPitch.fromFrequency(frequency, confidence: confidence)
-        print("✅ Detected pitch: \(pitch.noteName) (\(String(format: "%.1f", pitch.frequency)) Hz)")
         return pitch
     }
 }

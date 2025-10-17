@@ -24,19 +24,21 @@ public class StopRecordingUseCase: StopRecordingUseCaseProtocol {
     }
 
     /// Set the current recording context (called by StartRecordingUseCase)
-    public func setRecordingContext(url: URL, settings: ScaleSettings) {
+    public func setRecordingContext(url: URL, settings: ScaleSettings?) {
         self.currentRecordingURL = url
         self.currentSettings = settings
     }
 
     public func execute() async throws -> StopRecordingResult {
-        // Stop the scale player first
-        await scalePlayer.stop()
+        // Stop the scale player first (only if it was playing)
+        if currentSettings != nil {
+            await scalePlayer.stop()
+        }
 
         // Stop the audio recorder
         let duration = try await audioRecorder.stopRecording()
 
-        // Save recording to repository if we have context
+        // Save recording to repository if we have context with scale settings
         if let url = currentRecordingURL, let settings = currentSettings {
             let recording = Recording(
                 fileURL: url,
@@ -45,7 +47,6 @@ public class StopRecordingUseCase: StopRecordingUseCaseProtocol {
                 scaleSettings: settings
             )
             try await recordingRepository.save(recording)
-            print("Recording saved to repository: \(url.lastPathComponent)")
         }
 
         // Clear context
