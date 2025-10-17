@@ -1,0 +1,33 @@
+{
+  "configurations" : [
+    {
+      "id" : "7B8C9A1E-2D3F-4A5B-8C9D-1E2F3A4B5C6D",
+      "name" : "Fast Tests",
+      "options" : {
+        "testRepetitionMode" : "none"
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "codeCoverage" : false,
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:VocalisStudio.xcodeproj",
+      "identifier" : "VocalisStudio",
+      "name" : "VocalisStudio"
+    }
+  },
+  "testTargets" : [
+    {
+      "skippedTests" : [
+        "RealtimePitchDetectorTests",
+        "AudioSessionManagerTests"
+      ],
+      "target" : {
+        "containerPath" : "container:VocalisStudio.xcodeproj",
+        "identifier" : "VocalisStudioTests",
+        "name" : "VocalisStudioTests"
+      }
+    }
+  ],
+  "version" : 1
+}

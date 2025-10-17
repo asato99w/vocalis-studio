@@ -29,9 +29,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		D6BF839C2E890B370076B2FC /* VocalisStudio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; name = VocalisStudio.app; path = "/Users/asatokazu/Documents/dev/mine/music/vocalis-studio/VocalisStudio/build/Debug-iphoneos/VocalisStudio.app"; sourceTree = "<absolute>"; };
-		D6BF83A92E890B380076B2FC /* VocalisStudioTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; name = VocalisStudioTests.xctest; path = "/Users/asatokazu/Documents/dev/mine/music/vocalis-studio/VocalisStudio/build/Debug-iphoneos/VocalisStudio.app/PlugIns/VocalisStudioTests.xctest"; sourceTree = "<absolute>"; };
-		D6BF83B32E890B380076B2FC /* VocalisStudioUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; name = VocalisStudioUITests.xctest; path = "/Users/asatokazu/Documents/dev/mine/music/vocalis-studio/VocalisStudio/build/Debug-iphoneos/VocalisStudioUITests-Runner.app/PlugIns/VocalisStudioUITests.xctest"; sourceTree = "<absolute>"; };
+		E3CE314E2EA23C1900481878 /* VocalisStudio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VocalisStudio.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E3CE314F2EA23C1900481878 /* VocalisStudioTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VocalisStudioTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		E3CE31502EA23C1900481878 /* VocalisStudioUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VocalisStudioUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -85,6 +85,9 @@
 				D6BF839E2E890B370076B2FC /* VocalisStudio */,
 				D6BF83AC2E890B380076B2FC /* VocalisStudioTests */,
 				D6BF83B62E890B380076B2FC /* VocalisStudioUITests */,
+				E3CE314E2EA23C1900481878 /* VocalisStudio.app */,
+				E3CE314F2EA23C1900481878 /* VocalisStudioTests.xctest */,
+				E3CE31502EA23C1900481878 /* VocalisStudioUITests.xctest */,
 			);
 			sourceTree = "<group>";
 		};
@@ -112,7 +115,7 @@
 				E3CE2FB82EA0BD4400481878 /* AudioKit */,
 			);
 			productName = VocalisStudio;
-			productReference = D6BF839C2E890B370076B2FC /* VocalisStudio.app */;
+			productReference = E3CE314E2EA23C1900481878 /* VocalisStudio.app */;
 			productType = "com.apple.product-type.application";
 		};
 		D6BF83A82E890B380076B2FC /* VocalisStudioTests */ = {
@@ -135,7 +138,7 @@
 			packageProductDependencies = (
 			);
 			productName = VocalisStudioTests;
-			productReference = D6BF83A92E890B380076B2FC /* VocalisStudioTests.xctest */;
+			productReference = E3CE314F2EA23C1900481878 /* VocalisStudioTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
 		D6BF83B22E890B380076B2FC /* VocalisStudioUITests */ = {
@@ -158,7 +161,7 @@
 			packageProductDependencies = (
 			);
 			productName = VocalisStudioUITests;
-			productReference = D6BF83B32E890B380076B2FC /* VocalisStudioUITests.xctest */;
+			productReference = E3CE31502EA23C1900481878 /* VocalisStudioUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
