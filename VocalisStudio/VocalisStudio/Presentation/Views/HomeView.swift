@@ -46,7 +46,9 @@ public struct HomeView: View {
                             viewModel: RecordingListViewModel(
                                 recordingRepository: DependencyContainer.shared.recordingRepository,
                                 audioPlayer: DependencyContainer.shared.audioPlayer
-                            )
+                            ),
+                            audioPlayer: DependencyContainer.shared.audioPlayer,
+                            analyzeRecordingUseCase: DependencyContainer.shared.analyzeRecordingUseCase
                         )) {
                             MenuButton(title: "home.list_button".localized, icon: "list.bullet")
                         }

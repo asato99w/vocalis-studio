@@ -48,6 +48,8 @@
 
 // MARK: - AnalysisView
 "analysis.title" = "Recording Analysis";
+"analysis.analyzing" = "Analyzing...";
+"analysis.error" = "Analysis Error";
 "analysis.info_title" = "Recording Info";
 "analysis.info_datetime" = "Date/Time";
 "analysis.info_duration" = "Duration";

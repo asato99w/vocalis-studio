@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Language Preference
+
+**IMPORTANT: Always respond in Japanese (日本語) for all communications with the user.**
+
 ## Project Overview
 
 Vocalis Studio is an iOS voice training app written in Swift that helps users improve their singing skills. The app provides scale playback with simultaneous recording capabilities. The project follows Clean Architecture + Domain-Driven Design (DDD) + Test-Driven Development (TDD) principles.

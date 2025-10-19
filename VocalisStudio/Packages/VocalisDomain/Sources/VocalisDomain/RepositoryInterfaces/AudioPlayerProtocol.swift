@@ -4,8 +4,12 @@ import Foundation
 public protocol AudioPlayerProtocol {
     func play(url: URL) async throws
     func stop() async
+    func pause()
+    func resume()
+    func seek(to time: TimeInterval)
     var isPlaying: Bool { get }
     var currentTime: TimeInterval { get }
+    var duration: TimeInterval { get }
 }
 
 public enum AudioPlayerError: LocalizedError, Equatable {

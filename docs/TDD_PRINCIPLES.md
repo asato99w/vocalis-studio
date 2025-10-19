@@ -2,7 +2,60 @@
 
 ## ドキュメント情報
 - **作成日**: 2025年10月5日
+- **最終更新**: 2025年10月18日
 - **目的**: TDDの本質的な意義を理解し、正しく実践するための指針
+
+## プロジェクト固有のTDD方針
+
+### レイヤー別のテスト戦略
+
+本プロジェクトでは、**レイヤーごとに異なるテスト戦略**を採用します。
+
+#### 1. ドメイン層（VocalisDomain）: **完全TDD**
+- **方針**: Red-Green-Refactorサイクルを厳格に適用
+- **理由**:
+  - ビジネスロジックの中核で最も重要
+  - 外部依存がなく高速にテスト可能（0.001-0.002秒）
+  - 設計の誤りが後続の全レイヤーに影響
+- **実行**: `swift test` （Swift Package Manager使用）
+
+#### 2. その他の層（Application, Infrastructure, Presentation）: **実装後テスト**
+- **方針**: 実装完了後にテストを作成
+- **理由**:
+  - シミュレータ起動のオーバーヘッドが大きい（2-3分）
+  - 外部依存（AVFoundation, SwiftUI）のセットアップが複雑
+  - 開発速度を優先
+- **実行**: Xcode Test Navigator または `xcodebuild test`
+
+### テストプラン構成
+
+```
+Fast.xctestplan（開発時に常時実行）
+├─ Application層テスト（Use Cases）
+├─ Presentation層テスト（ViewModels）
+└─ Infrastructure層テスト（軽量なもののみ）
+
+Slow.xctestplan（統合前に確認）
+├─ RealtimePitchDetectorTests（音声処理）
+└─ AudioSessionManagerTests（オーディオセッション）
+```
+
+### 開発フロー
+
+```
+1. ドメイン層の実装
+   → TDDで開発（Red-Green-Refactor）
+   → swift test で即座に確認
+
+2. その他の層の実装
+   → 実装を完了
+   → テストを作成
+   → Fast.xctestplanで確認
+
+3. 統合前
+   → Slow.xctestplanで重いテストを実行
+   → 全体の品質を最終確認
+```
 
 ## 反省: 何を間違えたか
 

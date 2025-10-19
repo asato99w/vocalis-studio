@@ -4,27 +4,83 @@ import VocalisDomain
 /// Analysis screen - displays spectrogram and pitch analysis for a recording
 public struct AnalysisView: View {
     let recording: Recording
-    @StateObject private var viewModel: MockAnalysisViewModel
+    @StateObject private var viewModel: AnalysisViewModel
     @StateObject private var localization = LocalizationManager.shared
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
 
-    public init(recording: Recording) {
+    public init(
+        recording: Recording,
+        audioPlayer: AudioPlayerProtocol,
+        analyzeRecordingUseCase: AnalyzeRecordingUseCase
+    ) {
         self.recording = recording
-        _viewModel = StateObject(wrappedValue: MockAnalysisViewModel())
+        _viewModel = StateObject(wrappedValue: AnalysisViewModel(
+            recording: recording,
+            audioPlayer: audioPlayer,
+            analyzeRecordingUseCase: analyzeRecordingUseCase
+        ))
     }
 
     public var body: some View {
-        GeometryReader { geometry in
-            if geometry.size.width > geometry.size.height {
-                // Landscape layout
-                landscapeLayout
-            } else {
-                // Portrait layout
-                portraitLayout
+        ZStack {
+            GeometryReader { geometry in
+                if geometry.size.width > geometry.size.height {
+                    // Landscape layout
+                    landscapeLayout
+                } else {
+                    // Portrait layout
+                    portraitLayout
+                }
+            }
+
+            // Loading overlay
+            if case .loading = viewModel.state {
+                Color.black.opacity(0.4)
+                    .ignoresSafeArea()
+
+                VStack(spacing: 16) {
+                    ProgressView()
+                        .scaleEffect(1.5)
+                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+
+                    Text("analysis.analyzing".localized)
+                        .font(.headline)
+                        .foregroundColor(.white)
+                }
+                .padding(32)
+                .background(Color(.systemGray6))
+                .cornerRadius(16)
+            }
+
+            // Error overlay
+            if case .error(let message) = viewModel.state {
+                Color.black.opacity(0.4)
+                    .ignoresSafeArea()
+
+                VStack(spacing: 16) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.system(size: 48))
+                        .foregroundColor(.red)
+
+                    Text("analysis.error".localized)
+                        .font(.headline)
+
+                    Text(message)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(32)
+                .background(Color(.systemBackground))
+                .cornerRadius(16)
+                .shadow(radius: 10)
             }
         }
         .navigationTitle("analysis.title".localized)
         .navigationBarTitleDisplayMode(.inline)
+        .task {
+            await viewModel.startAnalysis()
+        }
     }
 
     // MARK: - Landscape Layout
@@ -53,14 +109,21 @@ public struct AnalysisView: View {
             // Right side: Visualization area
             VStack(spacing: 12) {
                 // Spectrogram (top half)
-                SpectrogramView(currentTime: viewModel.currentTime)
-                    .frame(maxHeight: .infinity)
+                SpectrogramView(
+                    currentTime: viewModel.currentTime,
+                    spectrogramData: viewModel.analysisResult?.spectrogramData
+                )
+                .frame(maxHeight: .infinity)
 
                 Divider()
 
                 // Pitch analysis graph (bottom half)
-                PitchAnalysisView(currentTime: viewModel.currentTime)
-                    .frame(maxHeight: .infinity)
+                PitchAnalysisView(
+                    currentTime: viewModel.currentTime,
+                    pitchData: viewModel.analysisResult?.pitchData,
+                    scaleSettings: viewModel.analysisResult?.scaleSettings
+                )
+                .frame(maxHeight: .infinity)
             }
             .padding(12)
         }
@@ -81,11 +144,18 @@ public struct AnalysisView: View {
                     onSeek: { time in viewModel.seek(to: time) }
                 )
 
-                SpectrogramView(currentTime: viewModel.currentTime)
-                    .frame(height: 200)
+                SpectrogramView(
+                    currentTime: viewModel.currentTime,
+                    spectrogramData: viewModel.analysisResult?.spectrogramData
+                )
+                .frame(height: 200)
 
-                PitchAnalysisView(currentTime: viewModel.currentTime)
-                    .frame(height: 200)
+                PitchAnalysisView(
+                    currentTime: viewModel.currentTime,
+                    pitchData: viewModel.analysisResult?.pitchData,
+                    scaleSettings: viewModel.analysisResult?.scaleSettings
+                )
+                .frame(height: 200)
             }
             .padding()
         }
@@ -234,10 +304,11 @@ struct PlaybackControl: View {
     }
 }
 
-// MARK: - Spectrogram View (Mock)
+// MARK: - Spectrogram View
 
 struct SpectrogramView: View {
     let currentTime: Double
+    let spectrogramData: SpectrogramData?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -245,73 +316,150 @@ struct SpectrogramView: View {
                 .font(.subheadline)
                 .fontWeight(.semibold)
 
-            ZStack {
-                // Mock spectrogram visualization
+            ZStack(alignment: .topLeading) {
                 GeometryReader { geometry in
                     Canvas { context, size in
-                        // Draw mock spectrogram with color gradient
-                        let columns = 50
-                        let rows = 20
-                        let cellWidth = size.width / CGFloat(columns)
-                        let cellHeight = size.height / CGFloat(rows)
-
-                        for col in 0..<columns {
-                            for row in 0..<rows {
-                                let intensity = sin(Double(col) * 0.3 + Double(row) * 0.2) * 0.5 + 0.5
-                                let hue = 0.6 - intensity * 0.6 // Blue to red
-                                let color = Color(hue: hue, saturation: 0.8, brightness: 0.9)
-
-                                let rect = CGRect(
-                                    x: CGFloat(col) * cellWidth,
-                                    y: size.height - CGFloat(row + 1) * cellHeight,
-                                    width: cellWidth,
-                                    height: cellHeight
-                                )
-                                context.fill(Path(rect), with: .color(color))
-                            }
+                        if let data = spectrogramData, !data.timeStamps.isEmpty {
+                            drawSpectrogram(context: context, size: size, data: data)
+                        } else {
+                            drawPlaceholder(context: context, size: size)
                         }
 
                         // Draw playback position line
-                        let position = currentTime / 10.0 * size.width // Assuming 10 seconds duration
-                        context.stroke(
-                            Path { path in
-                                path.move(to: CGPoint(x: position, y: 0))
-                                path.addLine(to: CGPoint(x: position, y: size.height))
-                            },
-                            with: .color(.white),
-                            lineWidth: 2
-                        )
+                        drawPlaybackPosition(context: context, size: size)
+
+                        // Draw time axis
+                        drawSpectrogramTimeAxis(context: context, size: size)
                     }
                 }
 
-                // Frequency labels
-                VStack {
+                // Frequency labels (overlay on top)
+                VStack(spacing: 0) {
                     HStack {
                         Text("2000Hz")
                             .font(.caption2)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 2)
+                            .background(Color.black.opacity(0.5))
+                            .cornerRadius(4)
+                        Spacer()
+                    }
+                    Spacer()
+                    HStack {
+                        Text("1100Hz")
+                            .font(.caption2)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 2)
+                            .background(Color.black.opacity(0.5))
+                            .cornerRadius(4)
                         Spacer()
                     }
                     Spacer()
                     HStack {
                         Text("200Hz")
                             .font(.caption2)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 2)
+                            .background(Color.black.opacity(0.5))
+                            .cornerRadius(4)
                         Spacer()
                     }
                 }
                 .padding(8)
+                .allowsHitTesting(false)
             }
             .background(Color.black.opacity(0.1))
             .cornerRadius(8)
         }
     }
+
+    private func drawSpectrogram(context: GraphicsContext, size: CGSize, data: SpectrogramData) {
+        let timeWindow = 6.0  // Display 6 seconds total (3 sec before, 3 sec after)
+        let centerX = size.width / 2  // Playback position at center
+
+        // Find max magnitude for normalization
+        let maxMagnitude = data.magnitudes.flatMap { $0 }.max() ?? 1.0
+
+        let freqBinCount = data.frequencyBins.count
+        let cellHeight = size.height / CGFloat(freqBinCount)
+
+        // Draw cells for visible time range
+        for (timeIndex, timestamp) in data.timeStamps.enumerated() {
+            let timeOffset = timestamp - currentTime  // Offset from current time
+
+            // Only draw if within visible time window (-3 to +3 seconds from current)
+            guard abs(timeOffset) <= timeWindow / 2 else { continue }
+
+            // Calculate x position: center + offset scaled to pixels
+            let pixelsPerSecond = size.width / timeWindow
+            let x = centerX + CGFloat(timeOffset) * pixelsPerSecond
+
+            let cellWidth = pixelsPerSecond * 0.1  // 0.1 sec per cell
+
+            guard timeIndex < data.magnitudes.count else { continue }
+            let magnitudeFrame = data.magnitudes[timeIndex]
+
+            for (freqIndex, magnitude) in magnitudeFrame.enumerated() {
+                let normalizedMagnitude = CGFloat(magnitude / maxMagnitude)
+                let hue = 0.6 - normalizedMagnitude * 0.6 // Blue (low) to red (high)
+                let color = Color(hue: hue, saturation: 0.8, brightness: 0.9 * normalizedMagnitude + 0.1)
+
+                let rect = CGRect(
+                    x: x,
+                    y: size.height - CGFloat(freqIndex + 1) * cellHeight,
+                    width: cellWidth,
+                    height: cellHeight
+                )
+                context.fill(Path(rect), with: .color(color))
+            }
+        }
+    }
+
+    private func drawPlaceholder(context: GraphicsContext, size: CGSize) {
+        let text = Text("分析データなし").font(.caption).foregroundColor(.secondary)
+        context.draw(text, at: CGPoint(x: size.width / 2, y: size.height / 2))
+    }
+
+    private func drawPlaybackPosition(context: GraphicsContext, size: CGSize) {
+        // Draw playback position line at center
+        let centerX = size.width / 2
+
+        context.stroke(
+            Path { path in
+                path.move(to: CGPoint(x: centerX, y: 0))
+                path.addLine(to: CGPoint(x: centerX, y: size.height))
+            },
+            with: .color(.white),
+            lineWidth: 2
+        )
+    }
+
+    private func drawSpectrogramTimeAxis(context: GraphicsContext, size: CGSize) {
+        // Draw time labels at left (-3s), center (current), right (+3s)
+        let timeOffsets: [Double] = [-3, 0, 3]
+        let positions: [CGFloat] = [0.1, 0.5, 0.9]
+
+        for (offset, position) in zip(timeOffsets, positions) {
+            let time = currentTime + offset
+            guard time >= 0 else { continue }
+
+            let x = size.width * position
+            let y = size.height - 5
+            let text = Text(String(format: "%.1fs", time)).font(.caption2).foregroundColor(.white)
+            context.draw(text, at: CGPoint(x: x, y: y))
+        }
+    }
 }
 
-// MARK: - Pitch Analysis View (Mock)
+// MARK: - Pitch Analysis View
 
 struct PitchAnalysisView: View {
     let currentTime: Double
+    let pitchData: PitchAnalysisData?
+    let scaleSettings: ScaleSettings?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -321,143 +469,261 @@ struct PitchAnalysisView: View {
 
             GeometryReader { geometry in
                 Canvas { context, size in
-                    // Draw target scale line (horizontal reference lines)
-                    let notes = [
-                        "scale.note_do".localized,
-                        "scale.note_re".localized,
-                        "scale.note_mi".localized,
-                        "scale.note_fa".localized,
-                        "scale.note_so".localized
-                    ]
-                    let noteHeight = size.height * 0.6
-                    let noteSpacing = size.width / CGFloat(notes.count + 1)
-
-                    // Target pitch line
-                    context.stroke(
-                        Path { path in
-                            for i in 0..<notes.count {
-                                let x = CGFloat(i + 1) * noteSpacing
-                                if i == 0 {
-                                    path.move(to: CGPoint(x: x, y: noteHeight))
-                                } else {
-                                    path.addLine(to: CGPoint(x: x, y: noteHeight))
-                                }
-                            }
-                        },
-                        with: .color(.gray.opacity(0.5)),
-                        style: StrokeStyle(lineWidth: 2, dash: [5, 5])
-                    )
-
-                    // Detected pitch line with variation
-                    context.stroke(
-                        Path { path in
-                            for i in 0..<notes.count {
-                                let x = CGFloat(i + 1) * noteSpacing
-                                let variation = sin(Double(i) * 1.2) * 20 // Mock variation
-                                let y = noteHeight + variation
-
-                                if i == 0 {
-                                    path.move(to: CGPoint(x: x, y: y))
-                                } else {
-                                    path.addLine(to: CGPoint(x: x, y: y))
-                                }
-
-                                // Draw dot
-                                context.fill(
-                                    Path(ellipseIn: CGRect(x: x - 4, y: y - 4, width: 8, height: 8)),
-                                    with: .color(.blue)
-                                )
-                            }
-                        },
-                        with: .color(.blue),
-                        lineWidth: 2
-                    )
-
-                    // Note labels
-                    for (i, note) in notes.enumerated() {
-                        let x = CGFloat(i + 1) * noteSpacing
-                        let text = Text(note).font(.caption)
-                        context.draw(text, at: CGPoint(x: x, y: size.height - 10))
+                    if let data = pitchData, !data.timeStamps.isEmpty {
+                        drawPitchGraph(context: context, size: size, data: data)
+                    } else {
+                        drawPlaceholder(context: context, size: size)
                     }
-
-                    // Legend
-                    let legendY: CGFloat = 20
-                    context.stroke(
-                        Path { path in
-                            path.move(to: CGPoint(x: 10, y: legendY))
-                            path.addLine(to: CGPoint(x: 40, y: legendY))
-                        },
-                        with: .color(.gray.opacity(0.5)),
-                        style: StrokeStyle(lineWidth: 2, dash: [5, 5])
-                    )
-                    context.draw(Text("analysis.target_scale".localized).font(.caption), at: CGPoint(x: 80, y: legendY))
-
-                    context.stroke(
-                        Path { path in
-                            path.move(to: CGPoint(x: 10, y: legendY + 20))
-                            path.addLine(to: CGPoint(x: 40, y: legendY + 20))
-                        },
-                        with: .color(.blue),
-                        lineWidth: 2
-                    )
-                    context.draw(Text("analysis.detected_pitch".localized).font(.caption), at: CGPoint(x: 80, y: legendY + 20))
+                    drawLegend(context: context, size: size)
                 }
             }
             .background(Color(.systemGray6))
             .cornerRadius(8)
         }
     }
-}
 
-// MARK: - Mock ViewModel
+    private func drawPitchGraph(context: GraphicsContext, size: CGSize, data: PitchAnalysisData) {
+        let frequencies = data.frequencies
+        guard !frequencies.isEmpty else { return }
 
-class MockAnalysisViewModel: ObservableObject {
-    @Published var isPlaying = false
-    @Published var currentTime: Double = 0.0
+        // Calculate frequency range
+        let minFreq = frequencies.min() ?? 200.0
+        let maxFreq = frequencies.max() ?? 800.0
+        let freqRange = maxFreq - minFreq
+        guard freqRange > 0 else { return }
 
-    private var timer: Timer?
+        let timeWindow = 6.0  // Display 6 seconds total (3 sec before, 3 sec after)
+        let leftMargin: CGFloat = 40
+        let rightMargin: CGFloat = 10
+        let topMargin: CGFloat = 50
+        let bottomMargin: CGFloat = 30
 
-    func togglePlayback() {
-        isPlaying.toggle()
+        let graphWidth = size.width - leftMargin - rightMargin
+        let graphHeight = size.height - topMargin - bottomMargin
+        let centerX = leftMargin + graphWidth / 2  // Playback position at center
 
-        if isPlaying {
-            timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-                guard let self = self else { return }
-                self.currentTime += 0.1
-                if self.currentTime >= 10.0 {
-                    self.currentTime = 10.0
-                    self.isPlaying = false
-                    self.timer?.invalidate()
+        // Draw target scale lines if available
+        if let settings = scaleSettings {
+            drawTargetScaleLines(context: context, leftMargin: leftMargin, topMargin: topMargin,
+                               graphWidth: graphWidth, graphHeight: graphHeight,
+                               minFreq: minFreq, freqRange: freqRange, settings: settings)
+        }
+
+        // Draw detected pitch line (only visible range)
+        var path = Path()
+        var pathStarted = false
+        let pixelsPerSecond = graphWidth / timeWindow
+
+        for (index, timestamp) in data.timeStamps.enumerated() {
+            let timeOffset = timestamp - currentTime  // Offset from current time
+
+            // Only draw if within visible time window (-3 to +3 seconds from current)
+            guard abs(timeOffset) <= timeWindow / 2 else { continue }
+
+            let frequency = frequencies[index]
+            let x = centerX + CGFloat(timeOffset) * pixelsPerSecond
+            let y = topMargin + graphHeight - CGFloat((frequency - minFreq) / freqRange) * graphHeight
+
+            if !pathStarted {
+                path.move(to: CGPoint(x: x, y: y))
+                pathStarted = true
+            } else {
+                path.addLine(to: CGPoint(x: x, y: y))
+            }
+
+            // Draw confidence indicator (dot size based on confidence)
+            let confidence = data.confidences[index]
+            let dotSize = CGFloat(confidence * 6.0 + 2.0)
+            context.fill(
+                Path(ellipseIn: CGRect(x: x - dotSize/2, y: y - dotSize/2, width: dotSize, height: dotSize)),
+                with: .color(.blue.opacity(Double(confidence)))
+            )
+        }
+
+        if pathStarted {
+            context.stroke(path, with: .color(.blue), lineWidth: 1.5)
+        }
+
+        // Draw playback position line at center
+        context.stroke(
+            Path { path in
+                path.move(to: CGPoint(x: centerX, y: topMargin))
+                path.addLine(to: CGPoint(x: centerX, y: topMargin + graphHeight))
+            },
+            with: .color(.white),
+            lineWidth: 2
+        )
+
+        // Draw frequency axis labels
+        drawFrequencyAxis(context: context, leftMargin: leftMargin, topMargin: topMargin,
+                         graphHeight: graphHeight, minFreq: minFreq, maxFreq: maxFreq)
+
+        // Draw time axis labels
+        drawTimeAxis(context: context, leftMargin: leftMargin, topMargin: topMargin,
+                    graphWidth: graphWidth, graphHeight: graphHeight, bottomMargin: bottomMargin,
+                    centerTime: currentTime, timeWindow: timeWindow)
+    }
+
+    private func drawTargetScaleLines(context: GraphicsContext, leftMargin: CGFloat, topMargin: CGFloat,
+                                     graphWidth: CGFloat, graphHeight: CGFloat,
+                                     minFreq: Float, freqRange: Float, settings: ScaleSettings) {
+        // Draw horizontal reference lines for target notes
+        // Generate notes from start to end using intervals
+        var notes: [MIDINote] = []
+        let startValue = settings.startNote.value
+        let endValue = settings.endNote.value
+
+        // Generate all notes in the range using the pattern intervals
+        var currentOctaveStart = Int(startValue)
+        while currentOctaveStart <= Int(endValue) {
+            for interval in settings.notePattern.intervals {
+                let noteValue = UInt8(currentOctaveStart + interval)
+                if noteValue >= startValue && noteValue <= endValue {
+                    if let note = try? MIDINote(noteValue) {
+                        notes.append(note)
+                    }
                 }
             }
-        } else {
-            timer?.invalidate()
+            currentOctaveStart += 12  // Next octave
+        }
+
+        for note in notes {
+            let frequency = Float(note.frequency)
+            let y = topMargin + graphHeight - CGFloat((frequency - minFreq) / freqRange) * graphHeight
+
+            var path = Path()
+            path.move(to: CGPoint(x: leftMargin, y: y))
+            path.addLine(to: CGPoint(x: leftMargin + graphWidth, y: y))
+
+            context.stroke(path, with: .color(.gray.opacity(0.3)), style: StrokeStyle(lineWidth: 1, dash: [5, 5]))
         }
     }
 
-    func seek(to time: Double) {
-        currentTime = time
+    private func drawFrequencyAxis(context: GraphicsContext, leftMargin: CGFloat, topMargin: CGFloat,
+                                   graphHeight: CGFloat, minFreq: Float, maxFreq: Float) {
+        let labels = [maxFreq, (maxFreq + minFreq) / 2, minFreq]
+        let positions: [CGFloat] = [0, 0.5, 1.0]
+
+        for (label, position) in zip(labels, positions) {
+            let y = topMargin + graphHeight * position
+            let text = Text(String(format: "%.0fHz", label)).font(.caption2).foregroundColor(.secondary)
+            context.draw(text, at: CGPoint(x: leftMargin - 25, y: y))
+        }
+    }
+
+    private func drawTimeAxis(context: GraphicsContext, leftMargin: CGFloat, topMargin: CGFloat,
+                             graphWidth: CGFloat, graphHeight: CGFloat, bottomMargin: CGFloat,
+                             centerTime: Double, timeWindow: Double) {
+        // Draw time labels at -3s, 0s (center), +3s
+        let timeOffsets: [Double] = [-3, 0, 3]
+        let positions: [CGFloat] = [0, 0.5, 1.0]
+
+        for (offset, position) in zip(timeOffsets, positions) {
+            let time = centerTime + offset
+            guard time >= 0 else { continue }  // Don't show negative times
+
+            let x = leftMargin + graphWidth * position
+            let y = topMargin + graphHeight + 15
+            let text = Text(String(format: "%.1fs", time)).font(.caption2).foregroundColor(.secondary)
+            context.draw(text, at: CGPoint(x: x, y: y))
+        }
+    }
+
+    private func drawPlaceholder(context: GraphicsContext, size: CGSize) {
+        let text = Text("ピッチデータなし").font(.caption).foregroundColor(.secondary)
+        context.draw(text, at: CGPoint(x: size.width / 2, y: size.height / 2))
+    }
+
+    private func drawLegend(context: GraphicsContext, size: CGSize) {
+        let legendY: CGFloat = 20
+
+        // Target scale legend
+        var path1 = Path()
+        path1.move(to: CGPoint(x: 10, y: legendY))
+        path1.addLine(to: CGPoint(x: 40, y: legendY))
+        context.stroke(path1, with: .color(.gray.opacity(0.3)), style: StrokeStyle(lineWidth: 1, dash: [5, 5]))
+        context.draw(Text("目標音階").font(.caption2), at: CGPoint(x: 70, y: legendY))
+
+        // Detected pitch legend
+        var path2 = Path()
+        path2.move(to: CGPoint(x: 120, y: legendY))
+        path2.addLine(to: CGPoint(x: 150, y: legendY))
+        context.stroke(path2, with: .color(.blue), lineWidth: 1.5)
+        context.draw(Text("検出ピッチ").font(.caption2), at: CGPoint(x: 185, y: legendY))
     }
 }
+
 
 // MARK: - Preview
 
 #if DEBUG
+private class PreviewAudioPlayer: AudioPlayerProtocol {
+    var isPlaying: Bool = false
+    var currentTime: TimeInterval = 0.0
+    var duration: TimeInterval = 10.0
+
+    func play(url: URL) async throws {
+        isPlaying = true
+    }
+
+    func stop() async {
+        isPlaying = false
+    }
+
+    func pause() {
+        isPlaying = false
+    }
+
+    func resume() {
+        isPlaying = true
+    }
+
+    func seek(to time: TimeInterval) {
+        currentTime = time
+    }
+}
+
+private class PreviewAudioFileAnalyzer: AudioFileAnalyzerProtocol {
+    func analyze(fileURL: URL) async throws -> (pitchData: PitchAnalysisData, spectrogramData: SpectrogramData) {
+        let pitchData = PitchAnalysisData(
+            timeStamps: [0.0, 0.05, 0.10],
+            frequencies: [261.6, 262.3, 261.9],
+            confidences: [0.85, 0.92, 0.88],
+            targetNotes: [nil, nil, nil]
+        )
+
+        let spectrogramData = SpectrogramData(
+            timeStamps: [0.0, 0.1, 0.2],
+            frequencyBins: [80, 180, 280],
+            magnitudes: [[0.1, 0.3, 0.8], [0.2, 0.4, 0.7], [0.3, 0.5, 0.6]]
+        )
+
+        return (pitchData, spectrogramData)
+    }
+}
+
 struct AnalysisView_Previews: PreviewProvider {
     static var previews: some View {
         NavigationStack {
-            AnalysisView(recording: Recording(
-                id: RecordingId(),
-                fileURL: URL(fileURLWithPath: "/tmp/test.m4a"),
-                createdAt: Date(),
-                duration: Duration(seconds: 10.0),
-                scaleSettings: ScaleSettings(
-                    startNote: try! MIDINote(60), // C3
-                    endNote: try! MIDINote(72),   // C4
-                    notePattern: .fiveToneScale,
-                    tempo: try! Tempo(secondsPerNote: 0.5)
+            AnalysisView(
+                recording: Recording(
+                    id: RecordingId(),
+                    fileURL: URL(fileURLWithPath: "/tmp/test.m4a"),
+                    createdAt: Date(),
+                    duration: Duration(seconds: 10.0),
+                    scaleSettings: ScaleSettings(
+                        startNote: try! MIDINote(60), // C3
+                        endNote: try! MIDINote(72),   // C4
+                        notePattern: .fiveToneScale,
+                        tempo: try! Tempo(secondsPerNote: 0.5)
+                    )
+                ),
+                audioPlayer: PreviewAudioPlayer(),
+                analyzeRecordingUseCase: AnalyzeRecordingUseCase(
+                    audioFileAnalyzer: PreviewAudioFileAnalyzer(),
+                    analysisCache: AnalysisCache()
                 )
-            ))
+            )
         }
         .previewInterfaceOrientation(.landscapeLeft)
     }

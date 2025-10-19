@@ -33,6 +33,14 @@ public class DependencyContainer {
         RealtimePitchDetector()
     }()
 
+    private lazy var audioFileAnalyzer: AudioFileAnalyzerProtocol = {
+        AudioFileAnalyzer()
+    }()
+
+    private lazy var analysisCache: AnalysisCacheProtocol = {
+        AnalysisCache(maxCacheSize: 10)
+    }()
+
     // MARK: - Application Layer
 
     private lazy var startRecordingUseCase: StartRecordingUseCaseProtocol = {
@@ -51,6 +59,13 @@ public class DependencyContainer {
             audioRecorder: audioRecorder,
             scalePlayer: scalePlayer,
             recordingRepository: recordingRepository
+        )
+    }()
+
+    public lazy var analyzeRecordingUseCase: AnalyzeRecordingUseCase = {
+        AnalyzeRecordingUseCase(
+            audioFileAnalyzer: audioFileAnalyzer,
+            analysisCache: analysisCache
         )
     }()
 

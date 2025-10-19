@@ -6,8 +6,17 @@ public struct RecordingListView: View {
     @StateObject private var viewModel: RecordingListViewModel
     @StateObject private var localization = LocalizationManager.shared
 
-    public init(viewModel: RecordingListViewModel) {
+    private let audioPlayer: AudioPlayerProtocol
+    private let analyzeRecordingUseCase: AnalyzeRecordingUseCase
+
+    public init(
+        viewModel: RecordingListViewModel,
+        audioPlayer: AudioPlayerProtocol,
+        analyzeRecordingUseCase: AnalyzeRecordingUseCase
+    ) {
         _viewModel = StateObject(wrappedValue: viewModel)
+        self.audioPlayer = audioPlayer
+        self.analyzeRecordingUseCase = analyzeRecordingUseCase
     }
 
     public var body: some View {
@@ -62,6 +71,8 @@ public struct RecordingListView: View {
                 RecordingRow(
                     recording: recording,
                     isPlaying: viewModel.playingRecordingId == recording.id,
+                    audioPlayer: audioPlayer,
+                    analyzeRecordingUseCase: analyzeRecordingUseCase,
                     onTap: {
                         Task {
                             await viewModel.playRecording(recording)
@@ -83,6 +94,8 @@ public struct RecordingListView: View {
 private struct RecordingRow: View {
     let recording: Recording
     let isPlaying: Bool
+    let audioPlayer: AudioPlayerProtocol
+    let analyzeRecordingUseCase: AnalyzeRecordingUseCase
     let onTap: () -> Void
     let onDelete: () -> Void
 
@@ -111,7 +124,11 @@ private struct RecordingRow: View {
             Spacer()
 
             // Analysis button
-            NavigationLink(destination: AnalysisView(recording: recording)) {
+            NavigationLink(destination: AnalysisView(
+                recording: recording,
+                audioPlayer: audioPlayer,
+                analyzeRecordingUseCase: analyzeRecordingUseCase
+            )) {
                 Image(systemName: "waveform.path.ecg")
                     .foregroundColor(.blue)
                     .font(.title3)

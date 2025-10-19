@@ -16,6 +16,22 @@ public class AVAudioPlayerWrapper: NSObject, AudioPlayerProtocol {
         return audioPlayer?.currentTime ?? 0
     }
 
+    public var duration: TimeInterval {
+        return audioPlayer?.duration ?? 0
+    }
+
+    public func pause() {
+        audioPlayer?.pause()
+    }
+
+    public func resume() {
+        audioPlayer?.play()
+    }
+
+    public func seek(to time: TimeInterval) {
+        audioPlayer?.currentTime = time
+    }
+
     public func play(url: URL) async throws {
         // Check if file exists
         guard FileManager.default.fileExists(atPath: url.path) else {

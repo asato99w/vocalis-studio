@@ -48,6 +48,8 @@
 
 // MARK: - AnalysisView
 "analysis.title" = "録音分析";
+"analysis.analyzing" = "分析中...";
+"analysis.error" = "分析エラー";
 "analysis.info_title" = "録音情報";
 "analysis.info_datetime" = "日時";
 "analysis.info_duration" = "長さ";

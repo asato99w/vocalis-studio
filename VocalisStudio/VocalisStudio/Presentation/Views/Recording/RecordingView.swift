@@ -31,7 +31,9 @@ public struct RecordingView: View {
                     viewModel: RecordingListViewModel(
                         recordingRepository: DependencyContainer.shared.recordingRepository,
                         audioPlayer: DependencyContainer.shared.audioPlayer
-                    )
+                    ),
+                    audioPlayer: DependencyContainer.shared.audioPlayer,
+                    analyzeRecordingUseCase: DependencyContainer.shared.analyzeRecordingUseCase
                 )) {
                     HStack(spacing: 4) {
                         Image(systemName: "list.bullet")
@@ -285,6 +287,7 @@ private class PreviewMockStopRecordingUseCase: StopRecordingUseCaseProtocol {
 private class PreviewMockAudioPlayer: AudioPlayerProtocol {
     var isPlaying: Bool = false
     var currentTime: TimeInterval = 0
+    var duration: TimeInterval = 10.0
 
     func play(url: URL) async throws {
         isPlaying = true
@@ -292,6 +295,18 @@ private class PreviewMockAudioPlayer: AudioPlayerProtocol {
 
     func stop() async {
         isPlaying = false
+    }
+
+    func pause() {
+        isPlaying = false
+    }
+
+    func resume() {
+        isPlaying = true
+    }
+
+    func seek(to time: TimeInterval) {
+        currentTime = time
     }
 }
 #endif
