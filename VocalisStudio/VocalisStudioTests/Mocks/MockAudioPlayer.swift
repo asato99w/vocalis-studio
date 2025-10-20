@@ -35,6 +35,10 @@ final class MockAudioPlayer: AudioPlayerProtocol {
         }
 
         _isPlaying = true
+
+        // Simulate playback completion after a short delay
+        try await Task.sleep(nanoseconds: 10_000_000) // 10ms
+        _isPlaying = false
     }
 
     func stop() async {

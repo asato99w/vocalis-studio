@@ -7,14 +7,17 @@ final class StartRecordingWithScaleUseCaseTests: XCTestCase {
     var sut: StartRecordingWithScaleUseCase!
     var mockScalePlayer: MockScalePlayer!
     var mockAudioRecorder: MockAudioRecorder!
+    var mockLogger: MockLogger!
 
     override func setUp() {
         super.setUp()
         mockScalePlayer = MockScalePlayer()
         mockAudioRecorder = MockAudioRecorder()
+        mockLogger = MockLogger()
         sut = StartRecordingWithScaleUseCase(
             scalePlayer: mockScalePlayer,
-            audioRecorder: mockAudioRecorder
+            audioRecorder: mockAudioRecorder,
+            logger: mockLogger
         )
     }
 
@@ -22,6 +25,7 @@ final class StartRecordingWithScaleUseCaseTests: XCTestCase {
         sut = nil
         mockAudioRecorder = nil
         mockScalePlayer = nil
+        mockLogger = nil
         super.tearDown()
     }
 

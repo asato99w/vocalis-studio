@@ -13,6 +13,10 @@ public class DependencyContainer {
 
     // MARK: - Infrastructure Layer
 
+    private lazy var logger: LoggerProtocol = {
+        OSLogAdapter.useCase
+    }()
+
     public lazy var scalePlayer: ScalePlayerProtocol = {
         AVAudioEngineScalePlayer()
     }()
@@ -50,7 +54,8 @@ public class DependencyContainer {
     private lazy var startRecordingWithScaleUseCase: StartRecordingWithScaleUseCaseProtocol = {
         StartRecordingWithScaleUseCase(
             scalePlayer: scalePlayer,
-            audioRecorder: audioRecorder
+            audioRecorder: audioRecorder,
+            logger: logger
         )
     }()
 
@@ -65,7 +70,8 @@ public class DependencyContainer {
     public lazy var analyzeRecordingUseCase: AnalyzeRecordingUseCase = {
         AnalyzeRecordingUseCase(
             audioFileAnalyzer: audioFileAnalyzer,
-            analysisCache: analysisCache
+            analysisCache: analysisCache,
+            logger: logger
         )
     }()
 

@@ -1,6 +1,5 @@
 import Foundation
 import VocalisDomain
-import OSLog
 
 /// Protocol for audio file analysis
 public protocol AudioFileAnalyzerProtocol {
@@ -26,14 +25,16 @@ public protocol AnalysisCacheProtocol {
 public class AnalyzeRecordingUseCase {
     private let audioFileAnalyzer: AudioFileAnalyzerProtocol
     private let analysisCache: AnalysisCacheProtocol
-    private let logger = Logger(subsystem: "com.kazuasato.VocalisStudio", category: "AnalyzeRecordingUseCase")
+    private let logger: LoggerProtocol
 
     public init(
         audioFileAnalyzer: AudioFileAnalyzerProtocol,
-        analysisCache: AnalysisCacheProtocol
+        analysisCache: AnalysisCacheProtocol,
+        logger: LoggerProtocol
     ) {
         self.audioFileAnalyzer = audioFileAnalyzer
         self.analysisCache = analysisCache
+        self.logger = logger
     }
 
     /// Analyze recording and return analysis result
@@ -41,15 +42,15 @@ public class AnalyzeRecordingUseCase {
     /// - Returns: Analysis result with pitch and spectrogram data
     /// - Throws: Error if file reading or analysis fails
     public func execute(recording: Recording) async throws -> AnalysisResult {
-        logger.info("Starting analysis for recording: \(recording.id.value.uuidString)")
+        logger.info("Starting analysis for recording: \(recording.id.value.uuidString)", category: "useCase")
 
         // Check cache first
         if let cachedResult = analysisCache.get(recording.id) {
-            logger.info("Cache hit for recording: \(recording.id.value.uuidString)")
+            logger.info("Cache hit for recording: \(recording.id.value.uuidString)", category: "useCase")
             return cachedResult
         }
 
-        logger.info("Cache miss - analyzing file: \(recording.fileURL.path)")
+        logger.info("Cache miss - analyzing file: \(recording.fileURL.path)", category: "useCase")
 
         // Analyze audio file
         let (pitchData, spectrogramData) = try await audioFileAnalyzer.analyze(fileURL: recording.fileURL)
@@ -64,7 +65,7 @@ public class AnalyzeRecordingUseCase {
         // Cache the result
         analysisCache.set(recording.id, result: result)
 
-        logger.info("Analysis completed for recording: \(recording.id.value.uuidString)")
+        logger.info("Analysis completed for recording: \(recording.id.value.uuidString)", category: "useCase")
 
         return result
     }

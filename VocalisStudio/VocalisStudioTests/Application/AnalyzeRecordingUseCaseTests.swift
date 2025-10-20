@@ -6,6 +6,7 @@ final class AnalyzeRecordingUseCaseTests: XCTestCase {
     var sut: AnalyzeRecordingUseCase!
     fileprivate var mockAnalyzer: MockAudioFileAnalyzer!
     fileprivate var mockCache: MockAnalysisCache!
+    var mockLogger: MockLogger!
     var testRecording: Recording!
 
     @MainActor
@@ -13,9 +14,11 @@ final class AnalyzeRecordingUseCaseTests: XCTestCase {
         super.setUp()
         mockAnalyzer = MockAudioFileAnalyzer()
         mockCache = MockAnalysisCache()
+        mockLogger = MockLogger()
         sut = AnalyzeRecordingUseCase(
             audioFileAnalyzer: mockAnalyzer,
-            analysisCache: mockCache
+            analysisCache: mockCache,
+            logger: mockLogger
         )
         testRecording = createTestRecording()
     }
@@ -24,6 +27,7 @@ final class AnalyzeRecordingUseCaseTests: XCTestCase {
         sut = nil
         mockAnalyzer = nil
         mockCache = nil
+        mockLogger = nil
         testRecording = nil
         super.tearDown()
     }

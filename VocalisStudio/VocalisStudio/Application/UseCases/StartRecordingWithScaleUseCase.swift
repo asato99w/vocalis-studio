@@ -1,6 +1,5 @@
 import Foundation
 import VocalisDomain
-import OSLog
 
 /// Use case for starting a recording session with scale playback
 public protocol StartRecordingWithScaleUseCaseProtocol {
@@ -10,35 +9,37 @@ public protocol StartRecordingWithScaleUseCaseProtocol {
 public class StartRecordingWithScaleUseCase: StartRecordingWithScaleUseCaseProtocol {
     private let scalePlayer: ScalePlayerProtocol
     private let audioRecorder: AudioRecorderProtocol
+    private let logger: LoggerProtocol
 
     public init(
         scalePlayer: ScalePlayerProtocol,
-        audioRecorder: AudioRecorderProtocol
+        audioRecorder: AudioRecorderProtocol,
+        logger: LoggerProtocol
     ) {
         self.scalePlayer = scalePlayer
         self.audioRecorder = audioRecorder
+        self.logger = logger
     }
 
     public func execute(settings: ScaleSettings) async throws -> RecordingSession {
         let tempo = settings.tempo.secondsPerNote
-        Logger.useCase.info("Starting recording with scale settings, tempo: \(tempo)s")
-        FileLogger.shared.log(level: "INFO", category: "usecase", message: "Starting recording with scale settings, tempo: \(tempo)s")
+        logger.info("Starting recording with scale settings, tempo: \(tempo)s", category: "useCase")
 
         // 1. Generate scale elements with key change chords
         let scaleElements = settings.generateScaleWithKeyChange()
-        Logger.useCase.debug("Generated \(scaleElements.count) scale elements")
+        logger.debug("Generated \(scaleElements.count) scale elements", category: "useCase")
 
         // 2. Prepare recording - get the URL where audio will be saved
         let recordingURL = try await audioRecorder.prepareRecording()
-        Logger.recording.info("Recording prepared: \(recordingURL.lastPathComponent)")
+        logger.info("Recording prepared: \(recordingURL.lastPathComponent)", category: "recording")
 
         // 3. Load scale elements into player (with chord support)
         try await scalePlayer.loadScaleElements(scaleElements, tempo: settings.tempo)
-        Logger.scalePlayer.debug("Scale elements loaded")
+        logger.debug("Scale elements loaded", category: "scalePlayer")
 
         // 4. Start recording
         try await audioRecorder.startRecording()
-        Logger.recording.info("Recording started")
+        logger.info("Recording started", category: "recording")
 
         // 5. Start scale playback (async - will complete when scale finishes)
         // We start the playback task but don't wait for it to complete
@@ -46,22 +47,20 @@ public class StartRecordingWithScaleUseCase: StartRecordingWithScaleUseCaseProto
         let playbackTask = Task {
             try await scalePlayer.play()
         }
-        Logger.scalePlayer.info("Scale playback started")
-        FileLogger.shared.log(level: "INFO", category: "scale", message: "Scale playback started")
+        logger.info("Scale playback started", category: "scalePlayer")
 
         // Give playback a moment to start to ensure recording captures it
         try await Task.sleep(nanoseconds: 10_000_000) // 10ms
 
         // Check if playback failed to start
         if playbackTask.isCancelled {
-            Logger.scalePlayer.error("Playback task was cancelled")
+            logger.error("Playback task was cancelled", category: "scalePlayer")
             _ = try await audioRecorder.stopRecording()
             throw ScalePlayerError.playbackFailed("Playback task was cancelled")
         }
 
         // 6. Return session info
-        Logger.useCase.info("Recording session created successfully")
-        FileLogger.shared.log(level: "INFO", category: "usecase", message: "Recording session created successfully")
+        logger.info("Recording session created successfully", category: "useCase")
         return RecordingSession(
             recordingURL: recordingURL,
             settings: settings,

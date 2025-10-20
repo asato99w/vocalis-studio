@@ -702,6 +702,13 @@ private class PreviewAudioFileAnalyzer: AudioFileAnalyzerProtocol {
     }
 }
 
+private class PreviewLogger: LoggerProtocol {
+    func debug(_ message: String, category: String) {}
+    func info(_ message: String, category: String) {}
+    func warning(_ message: String, category: String) {}
+    func error(_ message: String, category: String) {}
+}
+
 struct AnalysisView_Previews: PreviewProvider {
     static var previews: some View {
         NavigationStack {
@@ -721,7 +728,8 @@ struct AnalysisView_Previews: PreviewProvider {
                 audioPlayer: PreviewAudioPlayer(),
                 analyzeRecordingUseCase: AnalyzeRecordingUseCase(
                     audioFileAnalyzer: PreviewAudioFileAnalyzer(),
-                    analysisCache: AnalysisCache()
+                    analysisCache: AnalysisCache(),
+                    logger: PreviewLogger()
                 )
             )
         }

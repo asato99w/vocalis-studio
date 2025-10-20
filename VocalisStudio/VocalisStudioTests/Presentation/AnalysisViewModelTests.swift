@@ -249,7 +249,8 @@ fileprivate class MockAnalyzeRecordingUseCase: AnalyzeRecordingUseCase {
         // Initialize with dummy dependencies (won't be used)
         let dummyAnalyzer = DummyAnalyzer()
         let dummyCache = DummyCache()
-        super.init(audioFileAnalyzer: dummyAnalyzer, analysisCache: dummyCache)
+        let dummyLogger = DummyLogger()
+        super.init(audioFileAnalyzer: dummyAnalyzer, analysisCache: dummyCache, logger: dummyLogger)
     }
 
     override func execute(recording: Recording) async throws -> AnalysisResult {
@@ -285,6 +286,24 @@ fileprivate class DummyCache: AnalysisCacheProtocol {
     }
 
     func clear() {
+        fatalError("Should not be called")
+    }
+}
+
+fileprivate class DummyLogger: LoggerProtocol {
+    func debug(_ message: String, category: String) {
+        fatalError("Should not be called")
+    }
+
+    func info(_ message: String, category: String) {
+        fatalError("Should not be called")
+    }
+
+    func warning(_ message: String, category: String) {
+        fatalError("Should not be called")
+    }
+
+    func error(_ message: String, category: String) {
         fatalError("Should not be called")
     }
 }
