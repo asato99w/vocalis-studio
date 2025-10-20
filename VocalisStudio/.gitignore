@@ -92,3 +92,9 @@ iOSInjectionProject/
 
 # macOS
 .DS_Store
+
+# Test Resources
+# CSD (Children's Song Dataset) - Large audio files, should be downloaded separately
+VocalisStudioTests/Resources/CSD/audio/*.wav
+VocalisStudioTests/Resources/CSD/midi/*.mid
+VocalisStudioTests/Resources/CSD/csv/*.csv

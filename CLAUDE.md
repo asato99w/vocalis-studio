@@ -147,6 +147,11 @@ VocalisStudio/
 ❌ **Batch Testing**: Writing many tests at once
 ❌ **Skip Red**: Not verifying test failure
 ❌ **Skip Green**: Not verifying test success
+❌ **Skip Refactor**: Most common anti-pattern - skipping refactoring after Green
+   - **⚠️ CRITICAL**: Minimal implementation ALWAYS needs refactoring
+   - Code duplication, long methods, unclear naming are normal after Green
+   - Refactoring is NOT optional - it's a mandatory TDD step
+   - Test safety net makes refactoring safe and fast
 
 ### Quick Check Before Moving On
 
