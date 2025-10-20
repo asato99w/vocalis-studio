@@ -6,7 +6,7 @@ import Accelerate
 
 /// Real-time pitch detector using FFT-based analysis
 @MainActor
-public class RealtimePitchDetector: ObservableObject {
+public class RealtimePitchDetector: ObservableObject, PitchDetectorProtocol {
     @Published public private(set) var detectedPitch: DetectedPitch?
     @Published public private(set) var isDetecting: Bool = false
     @Published public private(set) var spectrum: [Float]?
