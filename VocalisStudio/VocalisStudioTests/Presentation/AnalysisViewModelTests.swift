@@ -129,24 +129,16 @@ final class AnalysisViewModelTests: XCTestCase {
     // MARK: - Playback Control Tests
 
     @MainActor
-    func testTogglePlayback_WhenNotPlaying_StartsPlayback() {
+    func testTogglePlayback_WhenNotPlaying_StartsPlayback() async {
         // Given: Not playing and ready state
-        sut = AnalysisViewModel(
-            recording: testRecording,
-            audioPlayer: mockAudioPlayer,
-            analyzeRecordingUseCase: mockUseCase
-        )
-        // Manually set ready state for testing
-        Task { @MainActor in
-            mockUseCase.resultToReturn = createTestAnalysisResult()
-            await sut.startAnalysis()
+        mockUseCase.resultToReturn = createTestAnalysisResult()
+        await sut.startAnalysis()
 
-            // When: Toggling playback
-            sut.togglePlayback()
+        // When: Toggling playback
+        sut.togglePlayback()
 
-            // Then: Should start playing
-            XCTAssertTrue(sut.isPlaying)
-        }
+        // Then: Should start playing
+        XCTAssertTrue(sut.isPlaying)
     }
 
     @MainActor

@@ -38,3 +38,15 @@ local.properties
 .DS_Store
 .AppleDouble
 .LSOverride
+
+# Xcode user-specific settings
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcodeproj/xcshareddata/xcschemes/*.xcscheme
+xcuserdata/
+
+# Test datasets (vocadito, etc.)
+dataset/
+*.wav
+*.mp3
+*.f0
