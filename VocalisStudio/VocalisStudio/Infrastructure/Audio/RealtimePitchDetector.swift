@@ -13,7 +13,7 @@ public class RealtimePitchDetector: ObservableObject, PitchDetectorProtocol {
 
     private let audioEngine = AVAudioEngine()
     private var audioBuffer: [Float] = []
-    private let bufferSize = 4096
+    private let bufferSize = 8192  // Phase 2D: Improved frequency resolution (5.39 Hz/bin vs 10.77 Hz/bin)
     private let hopSize = 2048
 
     // FFT setup
@@ -29,6 +29,91 @@ public class RealtimePitchDetector: ObservableObject, PitchDetectorProtocol {
         if let setup = fftSetup {
             vDSP_DFT_DestroySetup(setup)
         }
+    }
+
+    // MARK: - Multi-Factor Confidence Calculation
+
+    /// Calculate noise floor from bottom 10% of spectrum
+    private func calculateNoiseFloor(magnitudes: [Float]) -> Float {
+        let sortedMagnitudes = magnitudes.sorted()
+        let bottomCount = max(1, magnitudes.count / 10)
+        let bottom10Percent = sortedMagnitudes.prefix(bottomCount)
+        return bottom10Percent.reduce(0, +) / Float(bottomCount)
+    }
+
+    /// Check if harmonics are present above noise threshold
+    private func calculateHarmonicConsistency(
+        frequency: Double,
+        magnitudes: [Float],
+        sampleRate: Double,
+        bufferSize: Int,
+        noiseFloor: Float
+    ) -> Double {
+        let fundamentalBin = Int(frequency * Double(bufferSize) / sampleRate)
+        let threshold = noiseFloor * 2.0 // Harmonics should be above noise
+
+        var presentHarmonics = 0
+        let totalHarmonics = 4 // Check 2f0, 3f0, 4f0, 5f0
+
+        for harmonic in 2...5 {
+            let harmonicBin = fundamentalBin * harmonic
+            guard harmonicBin < magnitudes.count else { continue }
+
+            if magnitudes[harmonicBin] > threshold {
+                presentHarmonics += 1
+            }
+        }
+
+        return Double(presentHarmonics) / Double(totalHarmonics)
+    }
+
+    /// Calculate spectral clarity (peak vs noise ratio)
+    private func calculateSpectralClarity(
+        peakMagnitude: Float,
+        noiseFloor: Float
+    ) -> Double {
+        let ratio = Double(peakMagnitude / (noiseFloor + 0.001))
+        // Normalize: SNR of 10 → 1.0
+        return min(1.0, ratio / 10.0)
+    }
+
+    /// Calculate multi-factor confidence combining peak prominence, harmonic consistency, and spectral clarity
+    private func calculateMultiFactorConfidence(
+        peakMagnitude: Float,
+        avgMagnitude: Float,
+        frequency: Double,
+        magnitudes: [Float],
+        sampleRate: Double,
+        bufferSize: Int
+    ) -> Double {
+        // 1. Peak Prominence (existing metric)
+        let peakProminence = min(1.0, Double(peakMagnitude / (avgMagnitude + 0.001)) / 10.0)
+
+        // 2. Harmonic Consistency (most important for pitch accuracy)
+        let noiseFloor = calculateNoiseFloor(magnitudes: magnitudes)
+        let harmonicConsistency = calculateHarmonicConsistency(
+            frequency: frequency,
+            magnitudes: magnitudes,
+            sampleRate: sampleRate,
+            bufferSize: bufferSize,
+            noiseFloor: noiseFloor
+        )
+
+        // 3. Spectral Clarity
+        let spectralClarity = calculateSpectralClarity(
+            peakMagnitude: peakMagnitude,
+            noiseFloor: noiseFloor
+        )
+
+        // Weighted combination
+        // w2 (harmonic) is most important as true fundamental should have harmonics
+        let w1 = 0.3  // Peak prominence
+        let w2 = 0.5  // Harmonic consistency (most important)
+        let w3 = 0.2  // Spectral clarity
+
+        let confidence = w1 * peakProminence + w2 * harmonicConsistency + w3 * spectralClarity
+
+        return min(1.0, max(0.0, confidence))
     }
 
     /// Start real-time pitch detection from microphone
@@ -117,9 +202,21 @@ public class RealtimePitchDetector: ObservableObject, PitchDetectorProtocol {
         var realPartOut = [Float](repeating: 0, count: bufferSize)
         var imagPartOut = [Float](repeating: 0, count: bufferSize)
 
-        // Apply Hanning window to reduce spectral leakage
+        // Apply Blackman-Harris window for better frequency resolution
+        // Coefficients for Blackman-Harris window: a0 = 0.35875, a1 = 0.48829, a2 = 0.14128, a3 = 0.01168
         var window = [Float](repeating: 0, count: bufferSize)
-        vDSP_hann_window(&window, vDSP_Length(bufferSize), Int32(vDSP_HANN_NORM))
+        let a0: Float = 0.35875
+        let a1: Float = 0.48829
+        let a2: Float = 0.14128
+        let a3: Float = 0.01168
+        for i in 0..<bufferSize {
+            let n = Float(i)
+            let N = Float(bufferSize)
+            window[i] = a0
+                - a1 * cos(2.0 * .pi * n / N)
+                + a2 * cos(4.0 * .pi * n / N)
+                - a3 * cos(6.0 * .pi * n / N)
+        }
 
         var windowedSamples = [Float](repeating: 0, count: bufferSize)
         vDSP_vmul(samples, 1, window, 1, &windowedSamples, 1, vDSP_Length(bufferSize))
@@ -153,7 +250,8 @@ public class RealtimePitchDetector: ObservableObject, PitchDetectorProtocol {
         spectrum = Array(magnitudes[minBin..<maxBin])
 
         // Create HPS by multiplying harmonics (start from fundamental, then multiply by harmonics)
-        let numHarmonics = 5 // Use harmonics 1, 2, 3, 4, 5
+        // Increased from 5 to 7 to improve low-frequency accuracy and reduce octave errors
+        let numHarmonics = 7 // Use harmonics 1, 2, 3, 4, 5, 6, 7
         var hps = [Float](repeating: 0.0, count: maxBin)
 
         // Initialize with fundamental (1st harmonic)
@@ -187,28 +285,38 @@ public class RealtimePitchDetector: ObservableObject, PitchDetectorProtocol {
             return
         }
 
-        // Parabolic interpolation using HPS values for sub-bin accuracy
+        // Quinn's first estimator for improved sub-bin accuracy
+        // More accurate than parabolic interpolation, especially for reducing high-frequency bias
         var interpolatedBin = Double(peakBin)
         if peakBin > 0 && peakBin < hps.count - 1 {
             let alpha = Double(hps[peakBin - 1])
             let beta = Double(hps[peakBin])
             let gamma = Double(hps[peakBin + 1])
 
-            let denominator = alpha - 2.0 * beta + gamma
-            if abs(denominator) > 0.0001 {  // Avoid division by near-zero
-                let offset = 0.5 * (alpha - gamma) / denominator
-                // Clamp offset to reasonable range
-                let clampedOffset = max(-0.5, min(0.5, offset))
-                interpolatedBin = Double(peakBin) + clampedOffset
+            // Quinn's first estimator formula
+            // tau(x) = (alpha - gamma) / (2 * (2*beta - alpha - gamma))
+            let numerator = alpha - gamma
+            let denominator = 2.0 * (2.0 * beta - alpha - gamma)
+
+            if abs(denominator) > 0.0001 && abs(numerator / denominator) <= 1.0 {
+                let tau = numerator / denominator
+                interpolatedBin = Double(peakBin) + tau
             }
         }
 
         // Convert bin to frequency
         let frequency = interpolatedBin * sampleRate / Double(bufferSize)
 
-        // Calculate confidence based on peak prominence
+        // Calculate multi-factor confidence
         let avgMagnitude = magnitudes[minBin..<maxBin].reduce(0, +) / Float(maxBin - minBin)
-        let confidence = min(Double(maxMagnitude / (avgMagnitude + 0.001)), 1.0)
+        let confidence = calculateMultiFactorConfidence(
+            peakMagnitude: maxMagnitude,
+            avgMagnitude: avgMagnitude,
+            frequency: frequency,
+            magnitudes: magnitudes,
+            sampleRate: sampleRate,
+            bufferSize: bufferSize
+        )
 
         // Only report if confidence is high enough
         guard confidence > 0.4 else {
@@ -303,9 +411,20 @@ public class RealtimePitchDetector: ObservableObject, PitchDetectorProtocol {
         var realPartOut = [Float](repeating: 0, count: bufferSize)
         var imagPartOut = [Float](repeating: 0, count: bufferSize)
 
-        // Apply window
+        // Apply Blackman-Harris window for better frequency resolution
         var window = [Float](repeating: 0, count: size)
-        vDSP_hann_window(&window, vDSP_Length(size), Int32(vDSP_HANN_NORM))
+        let a0: Float = 0.35875
+        let a1: Float = 0.48829
+        let a2: Float = 0.14128
+        let a3: Float = 0.01168
+        for i in 0..<size {
+            let n = Float(i)
+            let N = Float(size)
+            window[i] = a0
+                - a1 * cos(2.0 * .pi * n / N)
+                + a2 * cos(4.0 * .pi * n / N)
+                - a3 * cos(6.0 * .pi * n / N)
+        }
 
         var windowedSamples = [Float](repeating: 0, count: size)
         vDSP_vmul(Array(samples.prefix(size)), 1, window, 1, &windowedSamples, 1, vDSP_Length(size))
@@ -339,7 +458,8 @@ public class RealtimePitchDetector: ObservableObject, PitchDetectorProtocol {
         }
 
         // Create HPS by multiplying harmonics (start from fundamental, then multiply by harmonics)
-        let numHarmonics = 5 // Use harmonics 1, 2, 3, 4, 5
+        // Increased from 5 to 7 to improve low-frequency accuracy and reduce octave errors
+        let numHarmonics = 7 // Use harmonics 1, 2, 3, 4, 5, 6, 7
         var hps = [Float](repeating: 0.0, count: maxBin)
 
         // Initialize with fundamental (1st harmonic)
@@ -372,19 +492,22 @@ public class RealtimePitchDetector: ObservableObject, PitchDetectorProtocol {
             return nil
         }
 
-        // Parabolic interpolation using HPS values
+        // Quinn's first estimator for improved sub-bin accuracy
+        // More accurate than parabolic interpolation, especially for reducing high-frequency bias
         var interpolatedBin = Double(peakBin)
         if peakBin > 0 && peakBin < hps.count - 1 {
             let alpha = Double(hps[peakBin - 1])
             let beta = Double(hps[peakBin])
             let gamma = Double(hps[peakBin + 1])
 
-            let denominator = alpha - 2.0 * beta + gamma
-            if abs(denominator) > 0.0001 {  // Avoid division by near-zero
-                let offset = 0.5 * (alpha - gamma) / denominator
-                // Clamp offset to reasonable range
-                let clampedOffset = max(-0.5, min(0.5, offset))
-                interpolatedBin = Double(peakBin) + clampedOffset
+            // Quinn's first estimator formula
+            // tau(x) = (alpha - gamma) / (2 * (2*beta - alpha - gamma))
+            let numerator = alpha - gamma
+            let denominator = 2.0 * (2.0 * beta - alpha - gamma)
+
+            if abs(denominator) > 0.0001 && abs(numerator / denominator) <= 1.0 {
+                let tau = numerator / denominator
+                interpolatedBin = Double(peakBin) + tau
             }
         }
 
@@ -395,9 +518,16 @@ public class RealtimePitchDetector: ObservableObject, PitchDetectorProtocol {
             return nil
         }
 
-        // Calculate confidence
+        // Calculate multi-factor confidence
         let avgMagnitude = magnitudes[minBin..<maxBin].reduce(0, +) / Float(maxBin - minBin)
-        let confidence = min(Double(maxMagnitude / (avgMagnitude + 0.001)), 1.0)
+        let confidence = calculateMultiFactorConfidence(
+            peakMagnitude: maxMagnitude,
+            avgMagnitude: avgMagnitude,
+            frequency: frequency,
+            magnitudes: magnitudes,
+            sampleRate: sampleRate,
+            bufferSize: bufferSize
+        )
 
         // Lower confidence threshold for playback analysis
         if confidence <= 0.3 {  // Lowered from 0.4
