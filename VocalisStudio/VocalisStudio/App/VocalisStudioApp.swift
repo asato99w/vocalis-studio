@@ -18,6 +18,7 @@ public struct VocalisStudioApp: App {
     public var body: some Scene {
         WindowGroup {
             HomeView()
+                .environmentObject(DependencyContainer.shared.subscriptionViewModel)
         }
     }
 }

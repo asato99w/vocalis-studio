@@ -60,6 +60,24 @@ public struct HomeView: View {
                     .padding(.horizontal, 40)
 
                     Spacer()
+
+                    // Debug button (only in debug builds) - unobtrusive
+                    #if DEBUG
+                    NavigationLink(destination: DebugMenuView()) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "ant.fill")
+                                .font(.system(size: 10))
+                            Text("Debug")
+                                .font(.system(size: 10))
+                        }
+                        .foregroundColor(.white.opacity(0.3))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.white.opacity(0.1))
+                        .cornerRadius(6)
+                    }
+                    .padding(.bottom, 8)
+                    #endif
                 }
             }
             .navigationBarHidden(true)

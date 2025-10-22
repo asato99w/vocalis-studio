@@ -13,6 +13,7 @@ final class RecordingViewModelTests: XCTestCase {
     var mockAudioPlayer: MockAudioPlayer!
     var mockScalePlayer: MockScalePlayer!
     var pitchDetector: RealtimePitchDetector!
+    var mockSubscriptionViewModel: SubscriptionViewModel!
     var cancellables: Set<AnyCancellable>!
 
     override func setUp() async throws {
@@ -23,13 +24,19 @@ final class RecordingViewModelTests: XCTestCase {
         mockAudioPlayer = MockAudioPlayer()
         mockScalePlayer = MockScalePlayer()
         pitchDetector = RealtimePitchDetector()
+        mockSubscriptionViewModel = SubscriptionViewModel(
+            getStatusUseCase: MockGetSubscriptionStatusUseCase(),
+            purchaseUseCase: MockPurchaseSubscriptionUseCase(),
+            restoreUseCase: MockRestorePurchasesUseCase()
+        )
         sut = RecordingViewModel(
             startRecordingUseCase: mockStartRecordingUseCase,
             startRecordingWithScaleUseCase: mockStartRecordingWithScaleUseCase,
             stopRecordingUseCase: mockStopRecordingUseCase,
             audioPlayer: mockAudioPlayer,
             pitchDetector: pitchDetector,
-            scalePlayer: mockScalePlayer
+            scalePlayer: mockScalePlayer,
+            subscriptionViewModel: mockSubscriptionViewModel
         )
         cancellables = []
     }

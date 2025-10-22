@@ -45,6 +45,27 @@ public class DependencyContainer {
         AnalysisCache(maxCacheSize: 10)
     }()
 
+    // Subscription Infrastructure
+    private lazy var storeKitProductService: StoreKitProductServiceProtocol = {
+        StoreKitProductService()
+    }()
+
+    private lazy var storeKitPurchaseService: StoreKitPurchaseServiceProtocol = {
+        StoreKitPurchaseService()
+    }()
+
+    private lazy var userCohortStore: UserCohortStoreProtocol = {
+        UserDefaultsCohortStore()
+    }()
+
+    public lazy var subscriptionRepository: SubscriptionRepositoryProtocol = {
+        StoreKitSubscriptionRepository(
+            productService: storeKitProductService,
+            purchaseService: storeKitPurchaseService,
+            cohortStore: userCohortStore
+        )
+    }()
+
     // MARK: - Application Layer
 
     private lazy var startRecordingUseCase: StartRecordingUseCaseProtocol = {
@@ -75,6 +96,19 @@ public class DependencyContainer {
         )
     }()
 
+    // Subscription Use Cases
+    private lazy var getSubscriptionStatusUseCase: GetSubscriptionStatusUseCaseProtocol = {
+        GetSubscriptionStatusUseCase(repository: subscriptionRepository)
+    }()
+
+    private lazy var purchaseSubscriptionUseCase: PurchaseSubscriptionUseCaseProtocol = {
+        PurchaseSubscriptionUseCase(repository: subscriptionRepository)
+    }()
+
+    private lazy var restorePurchasesUseCase: RestorePurchasesUseCaseProtocol = {
+        RestorePurchasesUseCase(repository: subscriptionRepository)
+    }()
+
     // MARK: - Presentation Layer
 
     public lazy var recordingViewModel: RecordingViewModel = {
@@ -84,7 +118,25 @@ public class DependencyContainer {
             stopRecordingUseCase: stopRecordingUseCase,
             audioPlayer: audioPlayer,
             pitchDetector: pitchDetector,
-            scalePlayer: scalePlayer
+            scalePlayer: scalePlayer,
+            subscriptionViewModel: subscriptionViewModel
+        )
+    }()
+
+    // Subscription ViewModels
+    public lazy var subscriptionViewModel: SubscriptionViewModel = {
+        SubscriptionViewModel(
+            getStatusUseCase: getSubscriptionStatusUseCase,
+            purchaseUseCase: purchaseSubscriptionUseCase,
+            restoreUseCase: restorePurchasesUseCase
+        )
+    }()
+
+    public lazy var paywallViewModel: PaywallViewModel = {
+        PaywallViewModel(
+            getStatusUseCase: getSubscriptionStatusUseCase,
+            purchaseUseCase: purchaseSubscriptionUseCase,
+            restoreUseCase: restorePurchasesUseCase
         )
     }()
 

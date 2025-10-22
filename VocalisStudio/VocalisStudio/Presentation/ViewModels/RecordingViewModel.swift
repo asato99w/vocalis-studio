@@ -24,6 +24,12 @@ public class RecordingViewModel: ObservableObject {
     @Published public private(set) var lastRecordingSettings: ScaleSettings?
     @Published public private(set) var isPlayingRecording: Bool = false
 
+    // MARK: - Subscription Properties
+
+    @Published public private(set) var currentTier: SubscriptionTier = .free
+    @Published public private(set) var dailyRecordingCount: Int = 0
+    @Published public private(set) var recordingLimit: RecordingLimit = RecordingLimit.forTier(.free)
+
     // MARK: - Pitch Detection Properties
 
     @Published public private(set) var targetPitch: DetectedPitch?
@@ -39,12 +45,16 @@ public class RecordingViewModel: ObservableObject {
     private let audioPlayer: AudioPlayerProtocol
     private let pitchDetector: RealtimePitchDetector
     private let scalePlayer: ScalePlayerProtocol
+    private let subscriptionViewModel: SubscriptionViewModel
+    private let usageTracker: RecordingUsageTracker
 
     // MARK: - Private Properties
 
     private var countdownTask: Task<Void, Never>?
     private var progressMonitorTask: Task<Void, Never>?
     private var pitchDetectionTask: Task<Void, Never>?
+    private var durationMonitorTask: Task<Void, Never>?
+    private var recordingStartTime: Date?
     private var cancellables = Set<AnyCancellable>()
 
     // MARK: - Initialization
@@ -55,7 +65,9 @@ public class RecordingViewModel: ObservableObject {
         stopRecordingUseCase: StopRecordingUseCaseProtocol,
         audioPlayer: AudioPlayerProtocol,
         pitchDetector: RealtimePitchDetector,
-        scalePlayer: ScalePlayerProtocol
+        scalePlayer: ScalePlayerProtocol,
+        subscriptionViewModel: SubscriptionViewModel,
+        usageTracker: RecordingUsageTracker = RecordingUsageTracker()
     ) {
         self.startRecordingUseCase = startRecordingUseCase
         self.startRecordingWithScaleUseCase = startRecordingWithScaleUseCase
@@ -63,6 +75,8 @@ public class RecordingViewModel: ObservableObject {
         self.audioPlayer = audioPlayer
         self.pitchDetector = pitchDetector
         self.scalePlayer = scalePlayer
+        self.subscriptionViewModel = subscriptionViewModel
+        self.usageTracker = usageTracker
 
         // Subscribe to pitch detector updates
         pitchDetector.$detectedPitch
@@ -84,6 +98,22 @@ public class RecordingViewModel: ObservableObject {
             }
             .store(in: &cancellables)
 
+        // Subscribe to subscription status updates
+        subscriptionViewModel.$currentStatus
+            .sink { [weak self] status in
+                guard let self = self else { return }
+                Task { @MainActor in
+                    if let status = status {
+                        self.currentTier = status.tier
+                        self.recordingLimit = RecordingLimit.forTier(status.tier)
+                    }
+                }
+            }
+            .store(in: &cancellables)
+
+        // Initialize usage count
+        dailyRecordingCount = usageTracker.getTodayCount()
+
         Logger.viewModel.info("RecordingViewModel initialized")
         FileLogger.shared.log(level: "INFO", category: "viewmodel", message: "RecordingViewModel initialized")
     }
@@ -95,6 +125,14 @@ public class RecordingViewModel: ObservableObject {
         // Don't start if already recording or in countdown
         guard recordingState == .idle else {
             Logger.viewModel.warning("Start recording ignored: already in state \(String(describing: self.recordingState))")
+            return
+        }
+
+        // Check recording count limit
+        self.dailyRecordingCount = usageTracker.getTodayCount()
+        if !recordingLimit.isCountWithinLimit(self.dailyRecordingCount) {
+            Logger.viewModel.warning("Recording limit reached: \(self.dailyRecordingCount)")
+            errorMessage = "本日の録音回数の上限に達しました (\(currentTier.displayName)プラン)"
             return
         }
 
@@ -158,6 +196,11 @@ public class RecordingViewModel: ObservableObject {
             let filename = recordingURL?.lastPathComponent ?? "unknown"
             Logger.viewModel.info("Recording stopped successfully: \(filename)")
             FileLogger.shared.log(level: "INFO", category: "viewmodel", message: "Recording stopped successfully: \(filename)")
+
+            // Increment recording count
+            usageTracker.incrementCount()
+            self.dailyRecordingCount = usageTracker.getTodayCount()
+            Logger.viewModel.info("Daily recording count: \(self.dailyRecordingCount)")
 
             // Update state
             recordingState = .idle

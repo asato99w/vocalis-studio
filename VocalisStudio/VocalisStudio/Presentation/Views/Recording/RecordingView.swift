@@ -233,7 +233,12 @@ struct RecordingView_Previews: PreviewProvider {
                     stopRecordingUseCase: PreviewMockStopRecordingUseCase(),
                     audioPlayer: PreviewMockAudioPlayer(),
                     pitchDetector: RealtimePitchDetector(),
-                    scalePlayer: PreviewMockScalePlayer()
+                    scalePlayer: PreviewMockScalePlayer(),
+                    subscriptionViewModel: SubscriptionViewModel(
+                        getStatusUseCase: PreviewMockGetStatusUseCase(),
+                        purchaseUseCase: PreviewMockPurchaseUseCase(),
+                        restoreUseCase: PreviewMockRestoreUseCase()
+                    )
                 )
             )
         }
@@ -307,6 +312,24 @@ private class PreviewMockAudioPlayer: AudioPlayerProtocol {
 
     func seek(to time: TimeInterval) {
         currentTime = time
+    }
+}
+
+private class PreviewMockGetStatusUseCase: GetSubscriptionStatusUseCaseProtocol {
+    func execute() async throws -> SubscriptionStatus {
+        return SubscriptionStatus(tier: .free, cohort: .v2_0)
+    }
+}
+
+private class PreviewMockPurchaseUseCase: PurchaseSubscriptionUseCaseProtocol {
+    func execute(tier: SubscriptionTier) async throws {
+        // Mock implementation for preview
+    }
+}
+
+private class PreviewMockRestoreUseCase: RestorePurchasesUseCaseProtocol {
+    func execute() async throws {
+        // Mock implementation for preview
     }
 }
 #endif
