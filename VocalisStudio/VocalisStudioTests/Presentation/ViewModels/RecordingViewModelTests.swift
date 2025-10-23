@@ -210,4 +210,41 @@ final class RecordingViewModelTests: XCTestCase {
         try? await Task.sleep(nanoseconds: 1_100_000_000)
         XCTAssertEqual(sut.countdownValue, 1)
     }
+
+    // MARK: - Bug Reproduction Tests
+
+    /// BUG REPRODUCTION: Scale audio continues playing after stop button pressed
+    /// Expected: ScalePlayer.stop() should be called when stopRecording() is called
+    /// Actual: Scale audio continues playing (ScalePlayer.stop() not called)
+    func testBugRepro_ScaleAudio_ContinuesAfterStop() async {
+        // Given: Recording with scale playback
+        let settings = try! ScaleSettings(
+            startNote: MIDINote(60),
+            endNote: MIDINote(72),
+            notePattern: .fiveToneScale,
+            tempo: Tempo(secondsPerNote: 0.5)
+        )
+        mockStartRecordingWithScaleUseCase.executeResult = RecordingSession(
+            recordingURL: URL(fileURLWithPath: "/tmp/test.m4a"),
+            settings: settings
+        )
+
+        await sut.startRecording(settings: settings)
+        try? await Task.sleep(nanoseconds: 3_500_000_000) // Wait for countdown
+
+        // Verify scale is playing
+        XCTAssertEqual(sut.recordingState, .recording, "Recording should have started")
+        XCTAssertTrue(mockScalePlayer.playCalled, "Scale should be playing")
+
+        // Reset the flag to track stop call
+        mockScalePlayer.stopCalled = false
+
+        // When: User presses stop button
+        await sut.stopRecording()
+
+        // Then: Scale player should be stopped
+        // THIS TEST SHOULD FAIL - demonstrating the bug exists
+        XCTAssertTrue(mockScalePlayer.stopCalled, "BUG: ScalePlayer.stop() should be called")
+        XCTAssertFalse(mockScalePlayer.isPlaying, "BUG: ScalePlayer should not be playing")
+    }
 }
