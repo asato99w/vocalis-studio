@@ -15,10 +15,10 @@ final class DebugMenuViewIntegrationTests: XCTestCase {
     var subscriptionViewModel: SubscriptionViewModel!
 
     override func setUp() async throws {
-        // Create mock dependencies
-        let mockGetStatusUseCase = MockGetSubscriptionStatusUseCase()
-        let mockPurchaseUseCase = MockPurchaseSubscriptionUseCase()
-        let mockRestoreUseCase = MockRestorePurchasesUseCase()
+        // Create mock dependencies with unique names
+        let mockGetStatusUseCase = DebugMenuMockGetSubscriptionStatusUseCase()
+        let mockPurchaseUseCase = DebugMenuMockPurchaseSubscriptionUseCase()
+        let mockRestoreUseCase = DebugMenuMockRestorePurchasesUseCase()
 
         subscriptionViewModel = SubscriptionViewModel(
             getStatusUseCase: mockGetStatusUseCase,
@@ -125,9 +125,10 @@ final class DebugMenuViewIntegrationTests: XCTestCase {
     }
 }
 
-// MARK: - Mock Use Cases
+// MARK: - DebugMenu-specific Mock Use Cases
+// Note: Using unique names to avoid conflicts with other test files
 
-private class MockGetSubscriptionStatusUseCase: GetSubscriptionStatusUseCaseProtocol {
+private class DebugMenuMockGetSubscriptionStatusUseCase: GetSubscriptionStatusUseCaseProtocol {
     func execute() async throws -> SubscriptionStatus {
         return SubscriptionStatus(
             tier: .free,
@@ -140,13 +141,13 @@ private class MockGetSubscriptionStatusUseCase: GetSubscriptionStatusUseCaseProt
     }
 }
 
-private class MockPurchaseSubscriptionUseCase: PurchaseSubscriptionUseCaseProtocol {
+private class DebugMenuMockPurchaseSubscriptionUseCase: PurchaseSubscriptionUseCaseProtocol {
     func execute(tier: SubscriptionTier) async throws {
         // Mock implementation
     }
 }
 
-private class MockRestorePurchasesUseCase: RestorePurchasesUseCaseProtocol {
+private class DebugMenuMockRestorePurchasesUseCase: RestorePurchasesUseCaseProtocol {
     func execute() async throws {
         // Mock implementation
     }
