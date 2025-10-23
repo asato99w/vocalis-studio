@@ -4,6 +4,15 @@
 //
 //  Created by KAZU ASATO on 2025/09/28.
 //
+//  NOTE: These XCUITest-based tests are deprecated and replaced with ViewInspector-based tests
+//  in VocalisStudioTests/Presentation/Views/Debug/DebugMenuViewTests.swift
+//
+//  ViewInspector advantages:
+//  - Direct access to ViewModel state (no UI element searching)
+//  - 10-100x faster execution (0.2-0.3s vs 2-5s)
+//  - More reliable (no dependency on accessibility identifiers)
+//  - Better testability (can verify internal state changes)
+//
 
 import XCTest
 

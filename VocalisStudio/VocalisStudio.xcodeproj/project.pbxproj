@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		E3CE2EF02E9E410900481878 /* VocalisDomain in Frameworks */ = {isa = PBXBuildFile; productRef = D6BF83C72E890B390076B2FC /* VocalisDomain */; };
 		E3CE2FB92EA0BD4400481878 /* AudioKit in Frameworks */ = {isa = PBXBuildFile; productRef = E3CE2FB82EA0BD4400481878 /* AudioKit */; };
+		E3D5D8392EA9E3500032C880 /* ViewInspector in Frameworks */ = {isa = PBXBuildFile; productRef = E3D5D8382EA9E3500032C880 /* ViewInspector */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -66,6 +67,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E3D5D8392EA9E3500032C880 /* ViewInspector in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -88,7 +90,15 @@
 				E3CE314E2EA23C1900481878 /* VocalisStudio.app */,
 				E3CE314F2EA23C1900481878 /* VocalisStudioTests.xctest */,
 				E3CE31502EA23C1900481878 /* VocalisStudioUITests.xctest */,
+				E3D5D8372EA9E3500032C880 /* Frameworks */,
 			);
+			sourceTree = "<group>";
+		};
+		E3D5D8372EA9E3500032C880 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -136,6 +146,7 @@
 			);
 			name = VocalisStudioTests;
 			packageProductDependencies = (
+				E3D5D8382EA9E3500032C880 /* ViewInspector */,
 			);
 			productName = VocalisStudioTests;
 			productReference = E3CE314F2EA23C1900481878 /* VocalisStudioTests.xctest */;
@@ -200,6 +211,7 @@
 			packageReferences = (
 				D6BF83C62E890B390076B2FC /* XCLocalSwiftPackageReference "Packages/VocalisDomain" */,
 				E3CE2FB72EA0BD4400481878 /* XCRemoteSwiftPackageReference "AudioKit" */,
+				E3D5D8332EA9E20B0032C880 /* XCRemoteSwiftPackageReference "ViewInspector" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = D6BF83932E890B370076B2FC;
@@ -583,6 +595,14 @@
 				minimumVersion = 5.6.5;
 			};
 		};
+		E3D5D8332EA9E20B0032C880 /* XCRemoteSwiftPackageReference "ViewInspector" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/nalexn/ViewInspector";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.10.3;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -595,6 +615,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = E3CE2FB72EA0BD4400481878 /* XCRemoteSwiftPackageReference "AudioKit" */;
 			productName = AudioKit;
+		};
+		E3D5D8382EA9E3500032C880 /* ViewInspector */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E3D5D8332EA9E20B0032C880 /* XCRemoteSwiftPackageReference "ViewInspector" */;
+			productName = ViewInspector;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
