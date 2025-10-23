@@ -52,7 +52,8 @@ public class AutoPitchEvaluator: ObservableObject {
         try await scalePlayer.play(muted: false)
 
         // Start monitoring task
-        evaluationTask = Task {
+        evaluationTask = Task { [weak self] in
+            guard let self = self else { return }
             await self.monitorEvaluation()
         }
     }

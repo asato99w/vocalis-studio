@@ -258,9 +258,10 @@ public class RecordingViewModel: ObservableObject {
                 try await scalePlayer.loadScaleElements(scaleElements, tempo: settings.tempo)
 
                 // Start muted scale playback in background
-                Task {
+                Task { [weak self] in
+                    guard let self = self else { return }
                     do {
-                        try await scalePlayer.play(muted: true)
+                        try await self.scalePlayer.play(muted: true)
                     } catch {
                         // Silently handle muted scale playback errors
                     }
@@ -381,14 +382,15 @@ public class RecordingViewModel: ObservableObject {
 
     /// Start monitoring scale player progress to update target pitch
     private func startTargetPitchMonitoring(settings: ScaleSettings) {
-        progressMonitorTask = Task {
+        progressMonitorTask = Task { [weak self] in
+            guard let self = self else { return }
             while !Task.isCancelled {
                 // Get current scale element from ScalePlayer
-                if let currentElement = scalePlayer.currentScaleElement {
-                    await updateTargetPitchFromScaleElement(currentElement)
+                if let currentElement = self.scalePlayer.currentScaleElement {
+                    await self.updateTargetPitchFromScaleElement(currentElement)
                 } else {
                     // No current element (silence or completed)
-                    targetPitch = nil
+                    await MainActor.run { self.targetPitch = nil }
                 }
 
                 // Check every 100ms
@@ -466,25 +468,31 @@ public class RecordingViewModel: ObservableObject {
 
     /// Start detecting pitch from recording file during playback
     private func startPlaybackPitchDetection(url: URL) {
-        pitchDetectionTask = Task {
+        pitchDetectionTask = Task { [weak self] in
+            guard let self = self else { return }
+
             // Wait for playback to start (max 3 seconds)
             var waitCount = 0
-            while !audioPlayer.isPlaying && waitCount < 30 {
+            while !(await MainActor.run { self.audioPlayer.isPlaying }) && waitCount < 30 {
                 try? await Task.sleep(nanoseconds: 100_000_000) // 100ms
                 waitCount += 1
             }
 
-            if !audioPlayer.isPlaying {
+            if !(await MainActor.run { self.audioPlayer.isPlaying }) {
                 return
             }
 
-            while !Task.isCancelled && audioPlayer.isPlaying {
+            while !Task.isCancelled {
+                // Check if still playing
+                let isPlaying = await MainActor.run { self.audioPlayer.isPlaying }
+                guard isPlaying else { break }
+
                 // Get current playback time
-                let currentTime = audioPlayer.currentTime
+                let currentTime = await MainActor.run { self.audioPlayer.currentTime }
 
                 // Analyze pitch at current time (await completion before next iteration)
                 await withCheckedContinuation { continuation in
-                    pitchDetector.analyzePitchFromFile(url, atTime: currentTime) { [weak self] pitch in
+                    self.pitchDetector.analyzePitchFromFile(url, atTime: currentTime) { [weak self] pitch in
                         guard let self = self else {
                             continuation.resume()
                             return
@@ -504,8 +512,10 @@ public class RecordingViewModel: ObservableObject {
 
     /// Start monitoring recording duration and auto-stop when limit is reached
     private func startDurationMonitoring(maxDuration: TimeInterval) {
-        durationMonitorTask = Task {
-            guard let startTime = recordingStartTime else { return }
+        durationMonitorTask = Task { [weak self] in
+            guard let self = self else { return }
+            let startTime = await MainActor.run { self.recordingStartTime }
+            guard let startTime = startTime else { return }
 
             while !Task.isCancelled {
                 let elapsed = Date().timeIntervalSince(startTime)
@@ -515,10 +525,13 @@ public class RecordingViewModel: ObservableObject {
                     Logger.viewModel.warning("Recording duration limit reached: \(elapsed)s / \(maxDuration)s")
 
                     // Stop recording automatically
-                    await stopRecording()
+                    await self.stopRecording()
 
                     // Show message to user
-                    errorMessage = "録音時間の上限に達しました (\(currentTier.displayName)プラン: \(Int(maxDuration))秒)"
+                    await MainActor.run {
+                        let tierName = self.currentTier.displayName
+                        self.errorMessage = "録音時間の上限に達しました (\(tierName)プラン: \(Int(maxDuration))秒)"
+                    }
                     return
                 }
 

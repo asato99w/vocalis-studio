@@ -110,16 +110,17 @@ public class AnalysisViewModel: ObservableObject {
         isPlaying = true
 
         // Start audio playback
-        Task {
+        Task { [weak self] in
+            guard let self = self else { return }
             do {
-                try await audioPlayer.play(url: recording.fileURL)
+                try await self.audioPlayer.play(url: self.recording.fileURL)
                 // Playback finished
                 await MainActor.run {
                     self.pause()
                     self.currentTime = self.duration
                 }
             } catch {
-                logger.error("Audio playback failed: \(error.localizedDescription)")
+                self.logger.error("Audio playback failed: \(error.localizedDescription)")
                 await MainActor.run {
                     self.pause()
                 }

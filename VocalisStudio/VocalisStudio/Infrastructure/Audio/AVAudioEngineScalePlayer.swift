@@ -143,23 +143,24 @@ public class AVAudioEngineScalePlayer: ScalePlayerProtocol {
 
             try engine.start()
 
-            playbackTask = Task {
+            playbackTask = Task { [weak self] in
+                guard let self = self else { return }
                 for (index, element) in scaleElements.enumerated() {
                     try Task.checkCancellation()
-                    _currentNoteIndex = index
+                    self._currentNoteIndex = index
 
                     switch element {
                     case .chordShort(let notes):
                         // Play chord for 0.3s
-                        try await playChord(notes, duration: 0.3)
+                        try await self.playChord(notes, duration: 0.3)
 
                     case .chordLong(let notes):
                         // Play chord for 1.0s
-                        try await playChord(notes, duration: 1.0)
+                        try await self.playChord(notes, duration: 1.0)
 
                     case .scaleNote(let note):
                         // Play single note with tempo duration
-                        try await playNote(note, duration: tempo!.secondsPerNote)
+                        try await self.playNote(note, duration: self.tempo!.secondsPerNote)
 
                     case .silence(let duration):
                         // Silent gap
@@ -168,9 +169,9 @@ public class AVAudioEngineScalePlayer: ScalePlayerProtocol {
                 }
 
                 // Playback completed
-                _currentNoteIndex = scaleElements.count
-                _isPlaying = false
-                engine.stop()
+                self._currentNoteIndex = scaleElements.count
+                self._isPlaying = false
+                self.engine.stop()
             }
 
             try await playbackTask?.value
@@ -192,27 +193,28 @@ public class AVAudioEngineScalePlayer: ScalePlayerProtocol {
 
             try engine.start()
 
-            playbackTask = Task {
+            playbackTask = Task { [weak self] in
+                guard let self = self else { return }
                 for (index, note) in scale.enumerated() {
                     try Task.checkCancellation()
-                    _currentNoteIndex = index
+                    self._currentNoteIndex = index
 
                     // Play note (legato: stop previous note just before next one plays)
-                    sampler.startNote(note.value, withVelocity: 64, onChannel: 0)
+                    self.sampler.startNote(note.value, withVelocity: 64, onChannel: 0)
 
                     // Most of the note duration
-                    try await Task.sleep(nanoseconds: UInt64(tempo!.secondsPerNote * 0.9 * 1_000_000_000))
+                    try await Task.sleep(nanoseconds: UInt64(self.tempo!.secondsPerNote * 0.9 * 1_000_000_000))
 
-                    sampler.stopNote(note.value, onChannel: 0)
+                    self.sampler.stopNote(note.value, onChannel: 0)
 
                     // Small gap between notes
-                    try await Task.sleep(nanoseconds: UInt64(tempo!.secondsPerNote * 0.1 * 1_000_000_000))
+                    try await Task.sleep(nanoseconds: UInt64(self.tempo!.secondsPerNote * 0.1 * 1_000_000_000))
                 }
 
                 // Playback completed
-                _currentNoteIndex = scale.count
-                _isPlaying = false
-                engine.stop()
+                self._currentNoteIndex = scale.count
+                self._isPlaying = false
+                self.engine.stop()
             }
 
             try await playbackTask?.value
