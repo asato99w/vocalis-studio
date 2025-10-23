@@ -12,7 +12,7 @@ final class RecordingStateViewModelTests: XCTestCase {
     var mockAudioPlayer: RecordingStateMockAudioPlayer!
     var mockScalePlayer: RecordingStateMockScalePlayer!
     var mockSubscriptionViewModel: SubscriptionViewModel!
-    var mockUsageTracker: RecordingStateMockUsageTracker!
+    var mockUsageTrackerWrapper: RecordingStateMockUsageTracker!
     var mockLimitConfig: RecordingStateMockLimitConfig!
     var cancellables: Set<AnyCancellable>!
 
@@ -22,7 +22,7 @@ final class RecordingStateViewModelTests: XCTestCase {
         mockStopRecordingUseCase = RecordingStateMockStopRecordingUseCase()
         mockAudioPlayer = RecordingStateMockAudioPlayer()
         mockScalePlayer = RecordingStateMockScalePlayer()
-        mockUsageTracker = RecordingStateMockUsageTracker()
+        mockUsageTrackerWrapper = RecordingStateMockUsageTracker()
         mockLimitConfig = RecordingStateMockLimitConfig()
         cancellables = Set<AnyCancellable>()
 
@@ -41,7 +41,7 @@ final class RecordingStateViewModelTests: XCTestCase {
             audioPlayer: mockAudioPlayer,
             scalePlayer: mockScalePlayer,
             subscriptionViewModel: mockSubscriptionViewModel,
-            usageTracker: mockUsageTracker,
+            usageTracker: mockUsageTrackerWrapper.tracker,
             limitConfig: mockLimitConfig
         )
     }
@@ -50,7 +50,7 @@ final class RecordingStateViewModelTests: XCTestCase {
         cancellables = nil
         sut = nil
         mockLimitConfig = nil
-        mockUsageTracker = nil
+        mockUsageTrackerWrapper = nil
         mockSubscriptionViewModel = nil
         mockScalePlayer = nil
         mockAudioPlayer = nil
@@ -84,9 +84,13 @@ final class RecordingStateViewModelTests: XCTestCase {
 
     func testStartRecording_withScale_shouldStartCountdownAndExecute() async throws {
         // Given
-        let settings = try ScaleSettings(scale: .cMajor, tempo: try Tempo(secondsPerNote: 0.5))
+        let settings = ScaleSettings(
+            startNote: try MIDINote(60),
+            endNote: try MIDINote(72),
+            notePattern: .fiveToneScale,
+            tempo: try Tempo(secondsPerNote: 0.5)
+        )
         let expectedSession = RecordingSession(
-            id: RecordingSessionId(),
             recordingURL: URL(fileURLWithPath: "/tmp/test.m4a"),
             settings: settings
         )
@@ -120,8 +124,8 @@ final class RecordingStateViewModelTests: XCTestCase {
 
     func testStartRecording_whenLimitReached_shouldShowError() async {
         // Given: Set count at limit
-        mockUsageTracker.todayCount = 10
-        mockLimitConfig.limit = RecordingLimit(maxCount: 10, maxDurationSeconds: 60)
+        mockUsageTrackerWrapper.todayCount = 10
+        mockLimitConfig.limit = RecordingLimit(dailyCount: 10, maxDuration: 60)
 
         // When
         await sut.startRecording(settings: nil)
@@ -152,9 +156,13 @@ final class RecordingStateViewModelTests: XCTestCase {
     func testStopRecording_shouldStopAndSaveURL() async throws {
         // Given: Start recording first
         let expectedURL = URL(fileURLWithPath: "/tmp/test.m4a")
-        let settings = try ScaleSettings(scale: .cMajor, tempo: try Tempo(secondsPerNote: 0.5))
+        let settings = ScaleSettings(
+            startNote: try MIDINote(60),
+            endNote: try MIDINote(72),
+            notePattern: .fiveToneScale,
+            tempo: try Tempo(secondsPerNote: 0.5)
+        )
         let session = RecordingSession(
-            id: RecordingSessionId(),
             recordingURL: expectedURL,
             settings: settings
         )
@@ -180,9 +188,13 @@ final class RecordingStateViewModelTests: XCTestCase {
     func testPlayLastRecording_withValidURL_shouldStartPlayback() async throws {
         // Given: Set up a last recording
         let url = URL(fileURLWithPath: "/tmp/test.m4a")
-        let settings = try ScaleSettings(scale: .cMajor, tempo: try Tempo(secondsPerNote: 0.5))
+        let settings = ScaleSettings(
+            startNote: try MIDINote(60),
+            endNote: try MIDINote(72),
+            notePattern: .fiveToneScale,
+            tempo: try Tempo(secondsPerNote: 0.5)
+        )
         let session = RecordingSession(
-            id: RecordingSessionId(),
             recordingURL: url,
             settings: settings
         )
@@ -210,9 +222,12 @@ final class RecordingStateViewModelTests: XCTestCase {
         XCTAssertFalse(mockAudioPlayer.playCalled)
     }
 
-    func testStopPlayback_shouldStopAudioPlayer() {
+    func testStopPlayback_shouldStopAudioPlayer() async {
         // When
         sut.stopPlayback()
+
+        // Wait for async Task to complete
+        try? await Task.sleep(nanoseconds: 100_000_000) // 100ms
 
         // Then
         XCTAssertTrue(mockAudioPlayer.stopCalled)
@@ -223,9 +238,13 @@ final class RecordingStateViewModelTests: XCTestCase {
 
     func testRecording_shouldUpdateProgress() async throws {
         // Given
-        let settings = try ScaleSettings(scale: .cMajor, tempo: try Tempo(secondsPerNote: 0.5))
+        let settings = ScaleSettings(
+            startNote: try MIDINote(60),
+            endNote: try MIDINote(72),
+            notePattern: .fiveToneScale,
+            tempo: try Tempo(secondsPerNote: 0.5)
+        )
         let session = RecordingSession(
-            id: RecordingSessionId(),
             recordingURL: URL(fileURLWithPath: "/tmp/test.m4a"),
             settings: settings
         )
@@ -255,7 +274,6 @@ class RecordingStateMockStartRecordingUseCase: StartRecordingUseCaseProtocol {
             return session
         }
         return RecordingSession(
-            id: RecordingSessionId(),
             recordingURL: URL(fileURLWithPath: "/tmp/default.m4a"),
             settings: nil
         )
@@ -272,7 +290,6 @@ class RecordingStateMockStartRecordingWithScaleUseCase: StartRecordingWithScaleU
             return session
         }
         return RecordingSession(
-            id: RecordingSessionId(),
             recordingURL: URL(fileURLWithPath: "/tmp/default.m4a"),
             settings: settings
         )
@@ -282,20 +299,16 @@ class RecordingStateMockStartRecordingWithScaleUseCase: StartRecordingWithScaleU
 class RecordingStateMockStopRecordingUseCase: StopRecordingUseCaseProtocol {
     var executeCalled = false
 
-    func execute() async throws -> Recording {
+    func execute() async throws -> StopRecordingResult {
         executeCalled = true
-        return Recording(
-            id: RecordingId(),
-            createdAt: Date(),
-            duration: Duration(seconds: 5.0),
-            fileURL: URL(fileURLWithPath: "/tmp/test.m4a")
-        )
+        return StopRecordingResult(duration: 5.0)
     }
 }
 
 class RecordingStateMockAudioPlayer: AudioPlayerProtocol {
     var isPlaying: Bool = false
-    var currentTime: Double = 0.0
+    var currentTime: TimeInterval = 0.0
+    var duration: TimeInterval = 0.0
     var playCalled = false
     var stopCalled = false
 
@@ -308,13 +321,17 @@ class RecordingStateMockAudioPlayer: AudioPlayerProtocol {
         isPlaying = false
     }
 
-    func stop() {
+    func resume() {
+        isPlaying = true
+    }
+
+    func stop() async {
         stopCalled = true
         isPlaying = false
         currentTime = 0.0
     }
 
-    func seek(to time: Double) {
+    func seek(to time: TimeInterval) {
         currentTime = time
     }
 }
@@ -343,22 +360,36 @@ class RecordingStateMockScalePlayer: ScalePlayerProtocol {
     }
 }
 
-class RecordingStateMockUsageTracker: RecordingUsageTracker {
-    var todayCount: Int = 0
-    var incrementCalled = false
+// RecordingUsageTracker wrapper for testing with controlled UserDefaults
+class RecordingStateMockUsageTracker {
+    let tracker: RecordingUsageTracker
+    private let mockDefaults: UserDefaults
 
-    override func getTodayCount() -> Int {
-        return todayCount
+    init() {
+        // Create a mock UserDefaults with unique suite name
+        let suiteName = "test.\(UUID().uuidString)"
+        self.mockDefaults = UserDefaults(suiteName: suiteName)!
+        self.tracker = RecordingUsageTracker(userDefaults: mockDefaults)
     }
 
-    override func incrementCount() {
-        incrementCalled = true
-        todayCount += 1
+    var todayCount: Int {
+        get { tracker.getTodayCount() }
+        set {
+            mockDefaults.set(newValue, forKey: "daily_recording_count")
+            mockDefaults.set(Date(), forKey: "last_reset_date")
+        }
+    }
+
+    deinit {
+        // Clean up test suite
+        if let suiteName = mockDefaults.dictionaryRepresentation().keys.first {
+            mockDefaults.removePersistentDomain(forName: suiteName)
+        }
     }
 }
 
 class RecordingStateMockLimitConfig: RecordingLimitConfigProtocol {
-    var limit: RecordingLimit = RecordingLimit(maxCount: 100, maxDurationSeconds: 60)
+    var limit: RecordingLimit = RecordingLimit(dailyCount: 100, maxDuration: 60)
 
     func limitForTier(_ tier: SubscriptionTier) -> RecordingLimit {
         return limit

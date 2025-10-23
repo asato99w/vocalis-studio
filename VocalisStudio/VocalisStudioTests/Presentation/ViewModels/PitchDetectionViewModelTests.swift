@@ -45,7 +45,12 @@ final class PitchDetectionViewModelTests: XCTestCase {
 
     func testStartTargetPitchMonitoring_shouldLoadScale() async throws {
         // Given
-        let settings = try ScaleSettings(scale: .cMajor, tempo: try Tempo(secondsPerNote: 0.5))
+        let settings = ScaleSettings(
+            startNote: try MIDINote(60),
+            endNote: try MIDINote(72),
+            notePattern: .fiveToneScale,
+            tempo: try Tempo(secondsPerNote: 0.5)
+        )
 
         // When
         try await sut.startTargetPitchMonitoring(settings: settings)
@@ -56,9 +61,18 @@ final class PitchDetectionViewModelTests: XCTestCase {
         XCTAssertNotNil(mockScalePlayer.lastLoadedTempo)
     }
 
-    func testStopTargetPitchMonitoring_shouldClearTargetPitch() async {
-        // Given
-        sut.targetPitch = DetectedPitch.fromFrequency(440.0, confidence: 0.8)
+    func testStopTargetPitchMonitoring_shouldClearTargetPitch() async throws {
+        // Given: Start monitoring first
+        let settings = ScaleSettings(
+            startNote: try MIDINote(60),
+            endNote: try MIDINote(72),
+            notePattern: .fiveToneScale,
+            tempo: try Tempo(secondsPerNote: 0.5)
+        )
+        try await sut.startTargetPitchMonitoring(settings: settings)
+
+        // Wait for monitoring to establish
+        try? await Task.sleep(nanoseconds: 200_000_000) // 200ms
 
         // When
         await sut.stopTargetPitchMonitoring()
@@ -110,7 +124,12 @@ final class PitchDetectionViewModelTests: XCTestCase {
 
     func testUpdateDetectedPitch_withTargetAndDetected_shouldCalculateAccuracy() async throws {
         // Given
-        let settings = try ScaleSettings(scale: .cMajor, tempo: try Tempo(secondsPerNote: 0.5))
+        let settings = ScaleSettings(
+            startNote: try MIDINote(60),
+            endNote: try MIDINote(72),
+            notePattern: .fiveToneScale,
+            tempo: try Tempo(secondsPerNote: 0.5)
+        )
         try await sut.startTargetPitchMonitoring(settings: settings)
 
         // Set detected pitch directly for testing
@@ -127,11 +146,21 @@ final class PitchDetectionViewModelTests: XCTestCase {
 
     // MARK: - Reset Tests
 
-    func testReset_shouldClearAllState() {
-        // Given
-        sut.targetPitch = DetectedPitch.fromFrequency(440.0, confidence: 1.0)
-        sut.detectedPitch = DetectedPitch.fromFrequency(442.0, confidence: 0.9)
-        sut.pitchAccuracy = .good
+    func testReset_shouldClearAllState() async throws {
+        // Given: Set up pitch detection with active monitoring
+        let settings = ScaleSettings(
+            startNote: try MIDINote(60),
+            endNote: try MIDINote(72),
+            notePattern: .fiveToneScale,
+            tempo: try Tempo(secondsPerNote: 0.5)
+        )
+        try await sut.startTargetPitchMonitoring(settings: settings)
+
+        // Set detected pitch through mock
+        mockPitchDetector.detectedPitch = DetectedPitch.fromFrequency(442.0, confidence: 0.9)
+
+        // Wait for monitoring to pick up values
+        try? await Task.sleep(nanoseconds: 200_000_000) // 200ms
 
         // When
         sut.reset()
@@ -191,7 +220,8 @@ class PitchDetectionMockScalePlayer: ScalePlayerProtocol {
 
 class PitchDetectionMockAudioPlayer: AudioPlayerProtocol {
     var isPlaying: Bool = false
-    var currentTime: Double = 0.0
+    var currentTime: TimeInterval = 0.0
+    var duration: TimeInterval = 0.0
 
     func play(url: URL) async throws {
         isPlaying = true
@@ -201,12 +231,16 @@ class PitchDetectionMockAudioPlayer: AudioPlayerProtocol {
         isPlaying = false
     }
 
-    func stop() {
+    func resume() {
+        isPlaying = true
+    }
+
+    func stop() async {
         isPlaying = false
         currentTime = 0.0
     }
 
-    func seek(to time: Double) {
+    func seek(to time: TimeInterval) {
         currentTime = time
     }
 }
