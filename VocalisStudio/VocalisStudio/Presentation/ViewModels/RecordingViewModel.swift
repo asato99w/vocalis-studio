@@ -28,7 +28,7 @@ public class RecordingViewModel: ObservableObject {
 
     @Published public private(set) var currentTier: SubscriptionTier = .free
     @Published public private(set) var dailyRecordingCount: Int = 0
-    @Published public private(set) var recordingLimit: RecordingLimit = RecordingLimit.forTier(.free)
+    @Published public private(set) var recordingLimit: RecordingLimit = ProductionRecordingLimitConfig().limitForTier(.free)
 
     // MARK: - Pitch Detection Properties
 
@@ -47,6 +47,7 @@ public class RecordingViewModel: ObservableObject {
     private let scalePlayer: ScalePlayerProtocol
     private let subscriptionViewModel: SubscriptionViewModel
     private let usageTracker: RecordingUsageTracker
+    private let limitConfig: RecordingLimitConfigProtocol
 
     // MARK: - Private Properties
 
@@ -56,6 +57,10 @@ public class RecordingViewModel: ObservableObject {
     private var durationMonitorTask: Task<Void, Never>?
     private var recordingStartTime: Date?
     private var cancellables = Set<AnyCancellable>()
+
+    // MARK: - Constants
+
+    private static let durationMonitoringIntervalNanoseconds: UInt64 = 500_000_000 // 500ms
 
     // MARK: - Initialization
 
@@ -67,7 +72,8 @@ public class RecordingViewModel: ObservableObject {
         pitchDetector: RealtimePitchDetector,
         scalePlayer: ScalePlayerProtocol,
         subscriptionViewModel: SubscriptionViewModel,
-        usageTracker: RecordingUsageTracker = RecordingUsageTracker()
+        usageTracker: RecordingUsageTracker = RecordingUsageTracker(),
+        limitConfig: RecordingLimitConfigProtocol = ProductionRecordingLimitConfig()
     ) {
         self.startRecordingUseCase = startRecordingUseCase
         self.startRecordingWithScaleUseCase = startRecordingWithScaleUseCase
@@ -77,6 +83,7 @@ public class RecordingViewModel: ObservableObject {
         self.scalePlayer = scalePlayer
         self.subscriptionViewModel = subscriptionViewModel
         self.usageTracker = usageTracker
+        self.limitConfig = limitConfig
 
         // Subscribe to pitch detector updates
         pitchDetector.$detectedPitch
@@ -105,7 +112,7 @@ public class RecordingViewModel: ObservableObject {
                 Task { @MainActor in
                     if let status = status {
                         self.currentTier = status.tier
-                        self.recordingLimit = RecordingLimit.forTier(status.tier)
+                        self.recordingLimit = self.limitConfig.limitForTier(status.tier)
                     }
                 }
             }
@@ -180,10 +187,13 @@ public class RecordingViewModel: ObservableObject {
         Logger.viewModel.info("Stopping recording")
         FileLogger.shared.log(level: "INFO", category: "viewmodel", message: "Stopping recording")
 
-        // Stop pitch detection
+        // Stop pitch detection and monitoring tasks
         pitchDetector.stopRealtimeDetection()
         progressMonitorTask?.cancel()
         progressMonitorTask = nil
+        durationMonitorTask?.cancel()
+        durationMonitorTask = nil
+        recordingStartTime = nil
 
         do {
             // Save the recording URL and settings before clearing currentSession
@@ -344,6 +354,7 @@ public class RecordingViewModel: ObservableObject {
             // Update state
             currentSession = session
             recordingState = .recording
+            recordingStartTime = Date()
 
             // Start pitch detection
             do {
@@ -351,6 +362,11 @@ public class RecordingViewModel: ObservableObject {
                 Logger.pitchDetection.debug("Real-time pitch detection started")
             } catch {
                 Logger.pitchDetection.error("Failed to start pitch detection: \(error.localizedDescription)")
+            }
+
+            // Start duration monitoring if there's a limit
+            if let maxDuration = recordingLimit.maxDuration {
+                startDurationMonitoring(maxDuration: maxDuration)
             }
 
         } catch {
@@ -482,6 +498,32 @@ public class RecordingViewModel: ObservableObject {
 
                 // Check every 100ms
                 try? await Task.sleep(nanoseconds: 100_000_000)
+            }
+        }
+    }
+
+    /// Start monitoring recording duration and auto-stop when limit is reached
+    private func startDurationMonitoring(maxDuration: TimeInterval) {
+        durationMonitorTask = Task {
+            guard let startTime = recordingStartTime else { return }
+
+            while !Task.isCancelled {
+                let elapsed = Date().timeIntervalSince(startTime)
+
+                // Check if duration limit reached
+                if elapsed >= maxDuration {
+                    Logger.viewModel.warning("Recording duration limit reached: \(elapsed)s / \(maxDuration)s")
+
+                    // Stop recording automatically
+                    await stopRecording()
+
+                    // Show message to user
+                    errorMessage = "録音時間の上限に達しました (\(currentTier.displayName)プラン: \(Int(maxDuration))秒)"
+                    return
+                }
+
+                // Check at regular intervals
+                try? await Task.sleep(nanoseconds: Self.durationMonitoringIntervalNanoseconds)
             }
         }
     }
