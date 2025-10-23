@@ -10,6 +10,7 @@
 		E3CE2EF02E9E410900481878 /* VocalisDomain in Frameworks */ = {isa = PBXBuildFile; productRef = D6BF83C72E890B390076B2FC /* VocalisDomain */; };
 		E3CE2FB92EA0BD4400481878 /* AudioKit in Frameworks */ = {isa = PBXBuildFile; productRef = E3CE2FB82EA0BD4400481878 /* AudioKit */; };
 		E3D5D8392EA9E3500032C880 /* ViewInspector in Frameworks */ = {isa = PBXBuildFile; productRef = E3D5D8382EA9E3500032C880 /* ViewInspector */; };
+		E3D5D83C2EA9FA7F0032C880 /* SnapshotTesting in Frameworks */ = {isa = PBXBuildFile; productRef = E3D5D83B2EA9FA7F0032C880 /* SnapshotTesting */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -68,6 +69,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				E3D5D8392EA9E3500032C880 /* ViewInspector in Frameworks */,
+				E3D5D83C2EA9FA7F0032C880 /* SnapshotTesting in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -147,6 +149,7 @@
 			name = VocalisStudioTests;
 			packageProductDependencies = (
 				E3D5D8382EA9E3500032C880 /* ViewInspector */,
+				E3D5D83B2EA9FA7F0032C880 /* SnapshotTesting */,
 			);
 			productName = VocalisStudioTests;
 			productReference = E3CE314F2EA23C1900481878 /* VocalisStudioTests.xctest */;
@@ -212,6 +215,7 @@
 				D6BF83C62E890B390076B2FC /* XCLocalSwiftPackageReference "Packages/VocalisDomain" */,
 				E3CE2FB72EA0BD4400481878 /* XCRemoteSwiftPackageReference "AudioKit" */,
 				E3D5D8332EA9E20B0032C880 /* XCRemoteSwiftPackageReference "ViewInspector" */,
+				E3D5D83A2EA9FA7F0032C880 /* XCRemoteSwiftPackageReference "swift-snapshot-testing" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = D6BF83932E890B370076B2FC;
@@ -603,6 +607,14 @@
 				minimumVersion = 0.10.3;
 			};
 		};
+		E3D5D83A2EA9FA7F0032C880 /* XCRemoteSwiftPackageReference "swift-snapshot-testing" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/pointfreeco/swift-snapshot-testing";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.18.7;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -620,6 +632,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = E3D5D8332EA9E20B0032C880 /* XCRemoteSwiftPackageReference "ViewInspector" */;
 			productName = ViewInspector;
+		};
+		E3D5D83B2EA9FA7F0032C880 /* SnapshotTesting */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E3D5D83A2EA9FA7F0032C880 /* XCRemoteSwiftPackageReference "swift-snapshot-testing" */;
+			productName = SnapshotTesting;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
