@@ -1,7 +1,11 @@
 import Foundation
+import SubscriptionDomain
 import VocalisDomain
+import SubscriptionDomain
 import Combine
+import SubscriptionDomain
 import OSLog
+import SubscriptionDomain
 
 /// ViewModel for recording state management
 /// Manages core recording functionality including countdown, start, stop, and duration monitoring
@@ -245,12 +249,10 @@ public class RecordingStateViewModel: ObservableObject {
     }
 
     /// Stop playing the recording
-    public func stopPlayback() {
-        Task { @MainActor in
-            await audioPlayer.stop()
-            isPlayingRecording = false
-            Logger.viewModel.info("Playback stopped")
-        }
+    public func stopPlayback() async {
+        await audioPlayer.stop()
+        isPlayingRecording = false
+        Logger.viewModel.info("Playback stopped")
     }
 
     // MARK: - Private Methods

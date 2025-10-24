@@ -213,14 +213,43 @@ final class RecordingStateViewModelTests: XCTestCase {
 
     func testStopPlayback_shouldStopAudioPlayer() async {
         // When
-        sut.stopPlayback()
-
-        // Wait for async Task to complete
-        try? await Task.sleep(nanoseconds: 100_000_000) // 100ms
+        await sut.stopPlayback()
 
         // Then
         XCTAssertTrue(mockAudioPlayer.stopCalled)
         XCTAssertFalse(sut.isPlayingRecording)
+    }
+
+    func testStopPlayback_shouldAwaitCompletion() async throws {
+        // Given: Set up a last recording
+        let url = URL(fileURLWithPath: "/tmp/test.m4a")
+        let settings = ScaleSettings(
+            startNote: try MIDINote(60),
+            endNote: try MIDINote(72),
+            notePattern: .fiveToneScale,
+            tempo: try Tempo(secondsPerNote: 0.5)
+        )
+        let session = RecordingSession(
+            recordingURL: url,
+            settings: settings
+        )
+        mockStartRecordingWithScaleUseCase.sessionToReturn = session
+
+        // Record and stop to set lastRecordingURL
+        await sut.startRecording(settings: settings)
+        try await Task.sleep(nanoseconds: 3_500_000_000)
+        await sut.stopRecording()
+
+        // Start playback
+        await sut.playLastRecording()
+        try await Task.sleep(nanoseconds: 100_000_000) // 100ms - let playback start
+
+        // When: Stop playback - await for completion
+        await sut.stopPlayback()  // ← This should be ASYNC and await completion
+
+        // Then: audioPlayer.stop() MUST be completed before this line executes
+        XCTAssertTrue(mockAudioPlayer.stopCalled, "audioPlayer.stop() must complete before stopPlayback() returns")
+        XCTAssertFalse(sut.isPlayingRecording, "isPlayingRecording must be false immediately after stopPlayback() returns")
     }
 
     // MARK: - Duration Monitoring Tests

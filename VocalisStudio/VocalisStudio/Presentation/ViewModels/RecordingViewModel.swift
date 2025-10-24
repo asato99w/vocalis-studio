@@ -1,7 +1,11 @@
 import Foundation
+import SubscriptionDomain
 import VocalisDomain
+import SubscriptionDomain
 import Combine
+import SubscriptionDomain
 import OSLog
+import SubscriptionDomain
 
 /// Recording state for the main recording screen
 public enum RecordingState: Equatable {
@@ -208,7 +212,7 @@ public class RecordingViewModel: ObservableObject {
 
     /// Stop playing the recording
     public func stopPlayback() async {
-        recordingStateVM.stopPlayback()
+        await recordingStateVM.stopPlayback()
         await pitchDetectionVM.stopTargetPitchMonitoring()
         pitchDetectionVM.stopPlaybackPitchDetection()
     }

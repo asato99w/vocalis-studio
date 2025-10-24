@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SubscriptionDomain
 
 public struct SubscriptionManagementView: View {
 

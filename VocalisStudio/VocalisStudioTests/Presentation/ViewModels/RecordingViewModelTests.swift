@@ -269,6 +269,16 @@ final class RecordingViewModelTests: XCTestCase {
     }
 
     func testStopPlayback_withScale_shouldStopTargetPitchMonitoring() async throws {
+        // RACE CONDITION CONCERN:
+        // This test documents the expected behavior: stopPlayback() should ensure targetPitch is nil
+        // before returning. The implementation must await progressMonitorTask?.value to guarantee
+        // the monitoring task completes before clearing targetPitch, preventing a race where the
+        // task's while loop executes one more iteration after cancel() but before Task.isCancelled check.
+        //
+        // Note: This test cannot reliably reproduce the production race condition timing because
+        // mock objects complete synchronously while real AVFoundation has actual async delays.
+        // The test verifies correct behavior under ideal timing, not edge cases.
+
         // Given: Record with scale and start playback
         let settings = ScaleSettings.mvpDefault
         mockStartRecordingWithScaleUseCase.executeResult = RecordingSession(
@@ -291,14 +301,48 @@ final class RecordingViewModelTests: XCTestCase {
         // Verify target pitch is being monitored
         XCTAssertNotNil(sut.targetPitch, "Target pitch should be set during playback")
 
-        // When: Stop playback
+        // When: Stop playback (await for completion)
         await sut.stopPlayback()
 
-        // Wait a bit for monitoring to stop
-        try? await Task.sleep(nanoseconds: 100_000_000) // 100ms
-
-        // Then: Target pitch should be cleared after stopping
-        XCTAssertNil(sut.targetPitch, "Target pitch should be nil after stopping playback")
+        // Then: Target pitch should be cleared immediately after stopPlayback() returns
+        // No wait needed - stopPlayback() is async and should complete all cleanup before returning
+        XCTAssertNil(sut.targetPitch, "Target pitch should be nil immediately after stopPlayback() returns")
     }
+
+    func testMultiplePlaybackCycles_shouldClearTargetPitchConsistently() async throws {
+        // Given: Record with scale
+        let settings = ScaleSettings.mvpDefault
+        mockStartRecordingWithScaleUseCase.executeResult = RecordingSession(
+            recordingURL: URL(fileURLWithPath: "/tmp/test.m4a"),
+            settings: settings
+        )
+
+        let expectedNote = try MIDINote(60) // C4: 261.63 Hz
+        mockScalePlayer.currentScaleElement = .scaleNote(expectedNote)
+
+        // Record and stop
+        await sut.startRecording(settings: settings)
+        try? await Task.sleep(nanoseconds: 10_000_000) // 10ms
+        await sut.stopRecording()
+
+        // When: Perform multiple play-stop cycles rapidly
+        for cycle in 1...3 {
+            // Play
+            await sut.playLastRecording()
+            try? await Task.sleep(nanoseconds: 50_000_000) // 50ms - short playback
+
+            // Verify target pitch is set during playback
+            XCTAssertNotNil(sut.targetPitch, "Target pitch should be set during playback (cycle \(cycle))")
+
+            // Stop
+            await sut.stopPlayback()
+
+            // Immediately check without waiting - this should catch the race condition
+            // Then: Target pitch must be cleared immediately after await returns
+            XCTAssertNil(sut.targetPitch,
+                        "Target pitch should be nil immediately after stopPlayback() returns (cycle \(cycle))")
+        }
+    }
+
 }
 

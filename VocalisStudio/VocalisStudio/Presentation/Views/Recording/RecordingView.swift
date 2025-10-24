@@ -1,5 +1,7 @@
 import SwiftUI
+import SubscriptionDomain
 import VocalisDomain
+import SubscriptionDomain
 
 /// Main recording screen view with settings panel and real-time visualization
 public struct RecordingView: View {

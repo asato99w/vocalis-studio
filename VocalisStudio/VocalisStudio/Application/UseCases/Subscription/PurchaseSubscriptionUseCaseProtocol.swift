@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import SubscriptionDomain
 
 public protocol PurchaseSubscriptionUseCaseProtocol {
     func execute(tier: SubscriptionTier) async throws

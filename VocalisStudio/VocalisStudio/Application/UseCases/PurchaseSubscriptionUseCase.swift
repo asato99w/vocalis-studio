@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import SubscriptionDomain
 
 /// Error types for subscription purchase
 public enum PurchaseError: Error, Equatable {

@@ -6,7 +6,9 @@
 //
 
 import Foundation
+import SubscriptionDomain
 import Combine
+import SubscriptionDomain
 
 @MainActor
 public final class SubscriptionViewModel: ObservableObject {

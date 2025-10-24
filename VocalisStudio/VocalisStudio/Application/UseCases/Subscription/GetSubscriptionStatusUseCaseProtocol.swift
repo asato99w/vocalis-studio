@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import SubscriptionDomain
 
 public protocol GetSubscriptionStatusUseCaseProtocol {
     func execute() async throws -> SubscriptionStatus

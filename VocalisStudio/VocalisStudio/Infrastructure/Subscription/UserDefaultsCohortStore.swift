@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import SubscriptionDomain
 
 public final class UserDefaultsCohortStore: UserCohortStoreProtocol {
 

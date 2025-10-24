@@ -6,7 +6,9 @@
 //
 
 import Foundation
+import SubscriptionDomain
 import StoreKit
+import SubscriptionDomain
 
 /// StoreKit implementation of subscription repository
 @available(iOS 15.0, *)

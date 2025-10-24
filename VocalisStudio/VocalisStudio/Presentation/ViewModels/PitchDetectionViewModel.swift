@@ -80,6 +80,7 @@ public class PitchDetectionViewModel: ObservableObject {
     /// Stop target pitch monitoring
     public func stopTargetPitchMonitoring() async {
         progressMonitorTask?.cancel()
+        _ = await progressMonitorTask?.value  // Wait for task completion to prevent race condition
         progressMonitorTask = nil
         targetPitch = nil
     }
