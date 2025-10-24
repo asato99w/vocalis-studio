@@ -191,6 +191,7 @@ public class RecordingViewModel: ObservableObject {
     /// Play the last recording
     public func playLastRecording() async {
         // If we have settings, start pitch detection BEFORE playback starts
+        // This ensures pitch detection is ready when audio starts playing
         if let url = lastRecordingURL, let settings = lastRecordingSettings {
             do {
                 // Start target pitch monitoring for scale element tracking

@@ -267,4 +267,38 @@ final class RecordingViewModelTests: XCTestCase {
                           "Target pitch frequency should match the scale element note during playback")
         }
     }
+
+    func testStopPlayback_withScale_shouldStopTargetPitchMonitoring() async throws {
+        // Given: Record with scale and start playback
+        let settings = ScaleSettings.mvpDefault
+        mockStartRecordingWithScaleUseCase.executeResult = RecordingSession(
+            recordingURL: URL(fileURLWithPath: "/tmp/test.m4a"),
+            settings: settings
+        )
+
+        let expectedNote = try MIDINote(60) // C4: 261.63 Hz
+        mockScalePlayer.currentScaleElement = .scaleNote(expectedNote)
+
+        // Record and stop to set lastRecordingURL
+        await sut.startRecording(settings: settings)
+        try? await Task.sleep(nanoseconds: 10_000_000) // 10ms
+        await sut.stopRecording()
+
+        // Start playback
+        await sut.playLastRecording()
+        try? await Task.sleep(nanoseconds: 300_000_000) // 300ms - wait for pitch detection to start
+
+        // Verify target pitch is being monitored
+        XCTAssertNotNil(sut.targetPitch, "Target pitch should be set during playback")
+
+        // When: Stop playback
+        await sut.stopPlayback()
+
+        // Wait a bit for monitoring to stop
+        try? await Task.sleep(nanoseconds: 100_000_000) // 100ms
+
+        // Then: Target pitch should be cleared after stopping
+        XCTAssertNil(sut.targetPitch, "Target pitch should be nil after stopping playback")
+    }
 }
+
