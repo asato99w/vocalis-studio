@@ -190,9 +190,8 @@ public class RecordingViewModel: ObservableObject {
 
     /// Play the last recording
     public func playLastRecording() async {
-        await recordingStateVM.playLastRecording()
-
-        // If we have settings, start pitch detection for playback
+        // If we have settings, start pitch detection BEFORE playback starts
+        // This ensures pitch detection is ready when audio starts playing
         if let url = lastRecordingURL, lastRecordingSettings != nil {
             do {
                 try await pitchDetectionVM.startPlaybackPitchDetection(url: url)
@@ -200,6 +199,8 @@ public class RecordingViewModel: ObservableObject {
                 Logger.viewModel.logError(error)
             }
         }
+
+        await recordingStateVM.playLastRecording()
     }
 
     /// Stop playing the recording
