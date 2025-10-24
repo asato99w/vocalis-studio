@@ -7,6 +7,10 @@ final class MockStopRecordingUseCase: StopRecordingUseCaseProtocol {
     var executeResult: StopRecordingResult?
     var executeShouldFail = false
 
+    func setRecordingContext(url: URL, settings: ScaleSettings?) {
+        // Mock doesn't need to track context
+    }
+
     func execute() async throws -> StopRecordingResult {
         executeCalled = true
 

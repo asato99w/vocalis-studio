@@ -255,6 +255,9 @@ public class RecordingStateViewModel: ObservableObject {
                 Logger.viewModel.info("Recording started without scale")
             }
 
+            // Set recording context for StopRecordingUseCase
+            stopRecordingUseCase.setRecordingContext(url: session.recordingURL, settings: session.settings)
+
             // Update state
             recordingState = .recording
             currentSession = session

@@ -260,6 +260,38 @@ final class RecordingStateViewModelTests: XCTestCase {
         // Then: Progress should have increased
         XCTAssertGreaterThan(sut.progress, 0.0)
     }
+
+    // MARK: - Bug Reproduction Test
+
+    func testStartRecording_withScale_shouldSetStopRecordingContext() async throws {
+        // Given
+        let expectedURL = URL(fileURLWithPath: "/tmp/test.m4a")
+        let settings = ScaleSettings(
+            startNote: try MIDINote(60),
+            endNote: try MIDINote(72),
+            notePattern: .fiveToneScale,
+            tempo: try Tempo(secondsPerNote: 0.5)
+        )
+        let session = RecordingSession(
+            recordingURL: expectedURL,
+            settings: settings
+        )
+        mockStartRecordingWithScaleUseCase.sessionToReturn = session
+
+        // When
+        await sut.startRecording(settings: settings)
+        try await Task.sleep(nanoseconds: 3_500_000_000) // Wait for countdown
+
+        // Then: StopRecordingUseCase should receive the recording context
+        XCTAssertTrue(mockStopRecordingUseCase.setRecordingContextCalled,
+                     "setRecordingContext should be called when recording starts with scale")
+        XCTAssertEqual(mockStopRecordingUseCase.contextURL, expectedURL,
+                      "Context URL should match the recording URL")
+        XCTAssertEqual(mockStopRecordingUseCase.contextSettings?.startNote, settings.startNote,
+                      "Context settings should match the recording settings")
+        XCTAssertEqual(mockStopRecordingUseCase.contextSettings?.endNote, settings.endNote,
+                      "Context settings should match the recording settings")
+    }
 }
 
 // MARK: - Mock Objects
@@ -298,6 +330,15 @@ class RecordingStateMockStartRecordingWithScaleUseCase: StartRecordingWithScaleU
 
 class RecordingStateMockStopRecordingUseCase: StopRecordingUseCaseProtocol {
     var executeCalled = false
+    var setRecordingContextCalled = false
+    var contextURL: URL?
+    var contextSettings: ScaleSettings?
+
+    func setRecordingContext(url: URL, settings: ScaleSettings?) {
+        setRecordingContextCalled = true
+        contextURL = url
+        contextSettings = settings
+    }
 
     func execute() async throws -> StopRecordingResult {
         executeCalled = true
