@@ -1,5 +1,6 @@
 import Foundation
 import VocalisDomain
+import SubscriptionDomain
 
 @MainActor
 public class DependencyContainer {
