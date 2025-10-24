@@ -31,7 +31,7 @@ public class RecordingViewModel: ObservableObject {
     @Published public var currentSession: RecordingSession?
     @Published public var errorMessage: String?
     @Published public var progress: Double = 0.0
-    @Published public var countdownValue: Int = 3
+    @Published public var countdownValue: Int = 0 // Forwarded from RecordingStateViewModel
     @Published public var lastRecordingURL: URL?
     @Published public var lastRecordingSettings: ScaleSettings?
     @Published public var isPlayingRecording: Bool = false
@@ -56,7 +56,10 @@ public class RecordingViewModel: ObservableObject {
         scalePlayer: ScalePlayerProtocol,
         subscriptionViewModel: SubscriptionViewModel,
         usageTracker: RecordingUsageTracker = RecordingUsageTracker(),
-        limitConfig: RecordingLimitConfigProtocol = ProductionRecordingLimitConfig()
+        limitConfig: RecordingLimitConfigProtocol = ProductionRecordingLimitConfig(),
+        countdownDuration: Int = 3,
+        targetPitchPollingIntervalNanoseconds: UInt64 = 100_000_000,
+        playbackPitchPollingIntervalNanoseconds: UInt64 = 50_000_000
     ) {
         self.pitchDetector = pitchDetector
         self.subscriptionViewModel = subscriptionViewModel
@@ -70,13 +73,16 @@ public class RecordingViewModel: ObservableObject {
             scalePlayer: scalePlayer,
             subscriptionViewModel: subscriptionViewModel,
             usageTracker: usageTracker,
-            limitConfig: limitConfig
+            limitConfig: limitConfig,
+            countdownDuration: countdownDuration
         )
 
         self.pitchDetectionVM = PitchDetectionViewModel(
             pitchDetector: pitchDetector,
             scalePlayer: scalePlayer,
-            audioPlayer: audioPlayer
+            audioPlayer: audioPlayer,
+            targetPitchPollingIntervalNanoseconds: targetPitchPollingIntervalNanoseconds,
+            playbackPitchPollingIntervalNanoseconds: playbackPitchPollingIntervalNanoseconds
         )
 
         setupBindings()
@@ -150,7 +156,10 @@ public class RecordingViewModel: ObservableObject {
         await recordingStateVM.startRecording(settings: settings)
 
         // If settings provided, start pitch detection monitoring
-        if let settings = settings, recordingState == .recording {
+        // Note: We start monitoring regardless of current state because:
+        // 1. With countdown=0, recording starts immediately but state may not be updated yet
+        // 2. With countdown>0, we start monitoring during countdown so it's ready when recording begins
+        if let settings = settings {
             do {
                 try await pitchDetectionVM.startTargetPitchMonitoring(settings: settings)
                 try pitchDetector.startRealtimeDetection()

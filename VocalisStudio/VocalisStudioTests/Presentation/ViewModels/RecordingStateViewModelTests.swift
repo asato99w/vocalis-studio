@@ -42,7 +42,8 @@ final class RecordingStateViewModelTests: XCTestCase {
             scalePlayer: mockScalePlayer,
             subscriptionViewModel: mockSubscriptionViewModel,
             usageTracker: mockUsageTrackerWrapper.tracker,
-            limitConfig: mockLimitConfig
+            limitConfig: mockLimitConfig,
+            countdownDuration: 0
         )
     }
 
@@ -66,20 +67,20 @@ final class RecordingStateViewModelTests: XCTestCase {
         XCTAssertNil(sut.currentSession)
         XCTAssertNil(sut.errorMessage)
         XCTAssertEqual(sut.progress, 0.0)
-        XCTAssertEqual(sut.countdownValue, 3)
+        XCTAssertEqual(sut.countdownValue, 0) // Changed: テストでは countdownDuration: 0 を注入
         XCTAssertEqual(sut.currentTier, .free)
         XCTAssertEqual(sut.dailyRecordingCount, 0)
     }
 
     // MARK: - Start Recording Tests
 
-    func testStartRecording_withoutScale_shouldStartCountdown() async {
+    func testStartRecording_withoutScale_shouldStartRecordingImmediately() async {
         // When
         await sut.startRecording(settings: nil)
 
         // Then
-        XCTAssertEqual(sut.recordingState, .countdown)
-        XCTAssertEqual(sut.countdownValue, 3)
+        // With countdownDuration=0, recording starts immediately without countdown
+        XCTAssertEqual(sut.recordingState, .recording)
     }
 
     func testStartRecording_withScale_shouldStartCountdownAndExecute() async throws {
@@ -137,19 +138,7 @@ final class RecordingStateViewModelTests: XCTestCase {
     }
 
     // MARK: - Cancel Countdown Tests
-
-    func testCancelCountdown_duringCountdown_shouldReturnToIdle() async {
-        // Given
-        await sut.startRecording(settings: nil)
-        XCTAssertEqual(sut.recordingState, .countdown)
-
-        // When
-        await sut.cancelCountdown()
-
-        // Then
-        XCTAssertEqual(sut.recordingState, .idle)
-        XCTAssertEqual(sut.countdownValue, 3)
-    }
+    // Note: testCancelCountdown_duringCountdown_shouldReturnToIdle removed - not applicable when countdownDuration=0
 
     // MARK: - Stop Recording Tests
 

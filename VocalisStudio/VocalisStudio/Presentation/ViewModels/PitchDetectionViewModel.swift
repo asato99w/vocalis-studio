@@ -24,16 +24,25 @@ public class PitchDetectionViewModel: ObservableObject {
     private var progressMonitorTask: Task<Void, Never>?
     private var pitchDetectionTask: Task<Void, Never>?
 
+    // MARK: - Configuration
+
+    private let targetPitchPollingIntervalNanoseconds: UInt64
+    private let playbackPitchPollingIntervalNanoseconds: UInt64
+
     // MARK: - Initialization
 
     public init(
         pitchDetector: PitchDetectorProtocol,
         scalePlayer: ScalePlayerProtocol,
-        audioPlayer: AudioPlayerProtocol
+        audioPlayer: AudioPlayerProtocol,
+        targetPitchPollingIntervalNanoseconds: UInt64 = 100_000_000,
+        playbackPitchPollingIntervalNanoseconds: UInt64 = 50_000_000
     ) {
         self.pitchDetector = pitchDetector
         self.scalePlayer = scalePlayer
         self.audioPlayer = audioPlayer
+        self.targetPitchPollingIntervalNanoseconds = targetPitchPollingIntervalNanoseconds
+        self.playbackPitchPollingIntervalNanoseconds = playbackPitchPollingIntervalNanoseconds
 
         setupPitchDetectorSubscription()
     }
@@ -56,13 +65,14 @@ public class PitchDetectionViewModel: ObservableObject {
         // Start monitoring task
         progressMonitorTask = Task { [weak self] in
             guard let self = self else { return }
+            let pollingInterval = await self.targetPitchPollingIntervalNanoseconds
             while !Task.isCancelled {
                 if let currentElement = self.scalePlayer.currentScaleElement {
                     await self.updateTargetPitchFromScaleElement(currentElement)
                 } else {
                     await MainActor.run { self.targetPitch = nil }
                 }
-                try? await Task.sleep(nanoseconds: 100_000_000) // 100ms
+                try? await Task.sleep(nanoseconds: pollingInterval)
             }
         }
     }
@@ -82,6 +92,7 @@ public class PitchDetectionViewModel: ObservableObject {
         // Monitor audio player progress
         pitchDetectionTask = Task { [weak self] in
             guard let self = self else { return }
+            let pollingInterval = await self.playbackPitchPollingIntervalNanoseconds
             while !Task.isCancelled {
                 let isPlaying = await MainActor.run { self.audioPlayer.isPlaying }
                 guard isPlaying else { break }
@@ -91,7 +102,7 @@ public class PitchDetectionViewModel: ObservableObject {
                     self.updateDetectedPitch(detected)
                 }
 
-                try? await Task.sleep(nanoseconds: 50_000_000) // 50ms
+                try? await Task.sleep(nanoseconds: pollingInterval)
             }
         }
     }

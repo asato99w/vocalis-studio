@@ -20,7 +20,9 @@ final class PitchDetectionViewModelTests: XCTestCase {
         sut = PitchDetectionViewModel(
             pitchDetector: mockPitchDetector,
             scalePlayer: mockScalePlayer,
-            audioPlayer: mockAudioPlayer
+            audioPlayer: mockAudioPlayer,
+            targetPitchPollingIntervalNanoseconds: 1_000_000,
+            playbackPitchPollingIntervalNanoseconds: 1_000_000
         )
     }
 
