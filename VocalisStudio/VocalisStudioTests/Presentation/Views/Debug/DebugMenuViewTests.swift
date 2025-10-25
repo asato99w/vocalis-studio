@@ -9,6 +9,7 @@ import XCTest
 import SwiftUI
 import ViewInspector
 import VocalisDomain
+import SubscriptionDomain
 @testable import VocalisStudio
 
 @MainActor

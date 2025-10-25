@@ -9,6 +9,7 @@ import XCTest
 import SwiftUI
 import SnapshotTesting
 import VocalisDomain
+import SubscriptionDomain
 @testable import VocalisStudio
 
 // MARK: - Test Class

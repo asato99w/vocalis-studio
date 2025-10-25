@@ -6,6 +6,7 @@
 //
 
 import XCTest
+import SubscriptionDomain
 @testable import VocalisStudio
 
 final class PurchaseSubscriptionUseCaseTests: XCTestCase {

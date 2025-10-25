@@ -1,5 +1,6 @@
 import XCTest
 import VocalisDomain
+import SubscriptionDomain
 @testable import VocalisStudio
 
 final class RecordingLimitTests: XCTestCase {

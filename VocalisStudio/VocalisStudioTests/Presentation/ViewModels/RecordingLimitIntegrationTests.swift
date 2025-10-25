@@ -7,6 +7,7 @@
 
 import XCTest
 import VocalisDomain
+import SubscriptionDomain
 @testable import VocalisStudio
 
 @MainActor

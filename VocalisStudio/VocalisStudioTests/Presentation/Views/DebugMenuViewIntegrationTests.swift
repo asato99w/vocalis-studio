@@ -7,6 +7,7 @@
 
 import XCTest
 import SwiftUI
+import SubscriptionDomain
 @testable import VocalisStudio
 
 @MainActor

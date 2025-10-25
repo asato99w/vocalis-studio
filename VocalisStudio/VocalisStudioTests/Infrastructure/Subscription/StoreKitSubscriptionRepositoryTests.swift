@@ -7,6 +7,7 @@
 
 import XCTest
 import StoreKit
+import SubscriptionDomain
 @testable import VocalisStudio
 
 final class StoreKitSubscriptionRepositoryTests: XCTestCase {

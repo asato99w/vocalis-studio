@@ -1,6 +1,7 @@
 import XCTest
 import Combine
 import VocalisDomain
+import SubscriptionDomain
 @testable import VocalisStudio
 
 @MainActor
