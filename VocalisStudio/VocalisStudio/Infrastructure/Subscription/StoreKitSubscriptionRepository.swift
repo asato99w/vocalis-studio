@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import SubscriptionDomain
 import StoreKit
 
 /// StoreKit implementation of subscription repository
@@ -27,7 +28,7 @@ public final class StoreKitSubscriptionRepository: SubscriptionRepositoryProtoco
 
     // MARK: - SubscriptionRepositoryProtocol
 
-    public func getCurrentStatus() async throws -> SubscriptionStatus {
+    public func getCurrentStatus() async throws -> SubscriptionDomain.SubscriptionStatus {
         // Get or determine user cohort
         let cohort = try await getUserCohort()
 

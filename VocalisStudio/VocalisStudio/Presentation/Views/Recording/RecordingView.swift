@@ -1,5 +1,7 @@
 import SwiftUI
+import SubscriptionDomain
 import VocalisDomain
+import SubscriptionDomain
 
 /// Main recording screen view with settings panel and real-time visualization
 public struct RecordingView: View {
@@ -283,6 +285,10 @@ private class PreviewMockStartRecordingWithScaleUseCase: StartRecordingWithScale
 }
 
 private class PreviewMockStopRecordingUseCase: StopRecordingUseCaseProtocol {
+    func setRecordingContext(url: URL, settings: ScaleSettings?) {
+        // Preview mock doesn't need to track context
+    }
+
     func execute() async throws -> StopRecordingResult {
         try await Task.sleep(nanoseconds: 500_000_000)
         return StopRecordingResult(duration: 5.0)

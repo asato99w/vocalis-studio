@@ -16,6 +16,12 @@ public struct RecordingLimit {
     /// Maximum recording duration in seconds (nil = unlimited)
     public let maxDuration: TimeInterval?
 
+    /// Public initializer
+    public init(dailyCount: Int?, maxDuration: TimeInterval?) {
+        self.dailyCount = dailyCount
+        self.maxDuration = maxDuration
+    }
+
     /// Get recording limit for subscription tier
     public static func forTier(_ tier: SubscriptionTier) -> RecordingLimit {
         switch tier {

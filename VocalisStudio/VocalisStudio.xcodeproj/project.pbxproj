@@ -11,6 +11,7 @@
 		E3CE2FB92EA0BD4400481878 /* AudioKit in Frameworks */ = {isa = PBXBuildFile; productRef = E3CE2FB82EA0BD4400481878 /* AudioKit */; };
 		E3D5D8392EA9E3500032C880 /* ViewInspector in Frameworks */ = {isa = PBXBuildFile; productRef = E3D5D8382EA9E3500032C880 /* ViewInspector */; };
 		E3D5D83C2EA9FA7F0032C880 /* SnapshotTesting in Frameworks */ = {isa = PBXBuildFile; productRef = E3D5D83B2EA9FA7F0032C880 /* SnapshotTesting */; };
+		E3D5D8552EAB6CE70032C880 /* SubscriptionDomain in Frameworks */ = {isa = PBXBuildFile; productRef = E3D5D8542EAB6CE70032C880 /* SubscriptionDomain */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -61,6 +62,7 @@
 			files = (
 				E3CE2FB92EA0BD4400481878 /* AudioKit in Frameworks */,
 				E3CE2EF02E9E410900481878 /* VocalisDomain in Frameworks */,
+				E3D5D8552EAB6CE70032C880 /* SubscriptionDomain in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -125,6 +127,7 @@
 			packageProductDependencies = (
 				D6BF83C72E890B390076B2FC /* VocalisDomain */,
 				E3CE2FB82EA0BD4400481878 /* AudioKit */,
+				E3D5D8542EAB6CE70032C880 /* SubscriptionDomain */,
 			);
 			productName = VocalisStudio;
 			productReference = E3CE314E2EA23C1900481878 /* VocalisStudio.app */;
@@ -216,6 +219,7 @@
 				E3CE2FB72EA0BD4400481878 /* XCRemoteSwiftPackageReference "AudioKit" */,
 				E3D5D8332EA9E20B0032C880 /* XCRemoteSwiftPackageReference "ViewInspector" */,
 				E3D5D83A2EA9FA7F0032C880 /* XCRemoteSwiftPackageReference "swift-snapshot-testing" */,
+				E3D5D8532EAB6CE70032C880 /* XCLocalSwiftPackageReference "Packages/SubscriptionDomain" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = D6BF83932E890B370076B2FC;
@@ -588,6 +592,10 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Packages/VocalisDomain;
 		};
+		E3D5D8532EAB6CE70032C880 /* XCLocalSwiftPackageReference "Packages/SubscriptionDomain" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/SubscriptionDomain;
+		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
@@ -637,6 +645,10 @@
 			isa = XCSwiftPackageProductDependency;
 			package = E3D5D83A2EA9FA7F0032C880 /* XCRemoteSwiftPackageReference "swift-snapshot-testing" */;
 			productName = SnapshotTesting;
+		};
+		E3D5D8542EAB6CE70032C880 /* SubscriptionDomain */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SubscriptionDomain;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -1,7 +1,11 @@
 import Foundation
+import SubscriptionDomain
 import VocalisDomain
+import SubscriptionDomain
 import Combine
+import SubscriptionDomain
 import OSLog
+import SubscriptionDomain
 
 /// ViewModel for recording state management
 /// Manages core recording functionality including countdown, start, stop, and duration monitoring
@@ -46,6 +50,10 @@ public class RecordingStateViewModel: ObservableObject {
 
     private static let durationMonitoringIntervalNanoseconds: UInt64 = 500_000_000 // 500ms
 
+    // MARK: - Configuration
+
+    private let countdownDuration: Int
+
     // MARK: - Initialization
 
     public init(
@@ -56,7 +64,8 @@ public class RecordingStateViewModel: ObservableObject {
         scalePlayer: ScalePlayerProtocol,
         subscriptionViewModel: SubscriptionViewModel,
         usageTracker: RecordingUsageTracker = RecordingUsageTracker(),
-        limitConfig: RecordingLimitConfigProtocol = ProductionRecordingLimitConfig()
+        limitConfig: RecordingLimitConfigProtocol = ProductionRecordingLimitConfig(),
+        countdownDuration: Int = 3
     ) {
         self.startRecordingUseCase = startRecordingUseCase
         self.startRecordingWithScaleUseCase = startRecordingWithScaleUseCase
@@ -66,6 +75,8 @@ public class RecordingStateViewModel: ObservableObject {
         self.subscriptionViewModel = subscriptionViewModel
         self.usageTracker = usageTracker
         self.limitConfig = limitConfig
+        self.countdownDuration = countdownDuration
+        self.countdownValue = countdownDuration
 
         // Subscribe to subscription status updates
         subscriptionViewModel.$currentStatus
@@ -110,15 +121,21 @@ public class RecordingStateViewModel: ObservableObject {
         // Clear any previous error
         errorMessage = nil
 
+        // If countdown is 0, skip countdown and start recording immediately
+        if countdownDuration == 0 {
+            await executeRecording(settings: settings)
+            return
+        }
+
         // Start countdown
         recordingState = .countdown
-        countdownValue = 3
+        countdownValue = countdownDuration
 
         // Create countdown task
         countdownTask = Task { [weak self] in
             guard let self = self else { return }
-            // Countdown: 3, 2, 1
-            for value in (1...3).reversed() {
+            // Countdown: countdownDuration, ..., 2, 1
+            for value in (1...self.countdownDuration).reversed() {
                 if Task.isCancelled { return }
                 await MainActor.run { self.countdownValue = value }
                 try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
@@ -138,7 +155,7 @@ public class RecordingStateViewModel: ObservableObject {
         countdownTask?.cancel()
         countdownTask = nil
         recordingState = .idle
-        countdownValue = 3
+        countdownValue = countdownDuration
     }
 
     /// Stop the current recording
@@ -232,12 +249,10 @@ public class RecordingStateViewModel: ObservableObject {
     }
 
     /// Stop playing the recording
-    public func stopPlayback() {
-        Task { @MainActor in
-            await audioPlayer.stop()
-            isPlayingRecording = false
-            Logger.viewModel.info("Playback stopped")
-        }
+    public func stopPlayback() async {
+        await audioPlayer.stop()
+        isPlayingRecording = false
+        Logger.viewModel.info("Playback stopped")
     }
 
     // MARK: - Private Methods
@@ -254,6 +269,9 @@ public class RecordingStateViewModel: ObservableObject {
                 session = try await startRecordingUseCase.execute()
                 Logger.viewModel.info("Recording started without scale")
             }
+
+            // Set recording context for StopRecordingUseCase
+            stopRecordingUseCase.setRecordingContext(url: session.recordingURL, settings: session.settings)
 
             // Update state
             recordingState = .recording

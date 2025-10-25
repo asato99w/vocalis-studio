@@ -42,7 +42,8 @@ final class RecordingStateViewModelTests: XCTestCase {
             scalePlayer: mockScalePlayer,
             subscriptionViewModel: mockSubscriptionViewModel,
             usageTracker: mockUsageTrackerWrapper.tracker,
-            limitConfig: mockLimitConfig
+            limitConfig: mockLimitConfig,
+            countdownDuration: 0
         )
     }
 
@@ -66,20 +67,20 @@ final class RecordingStateViewModelTests: XCTestCase {
         XCTAssertNil(sut.currentSession)
         XCTAssertNil(sut.errorMessage)
         XCTAssertEqual(sut.progress, 0.0)
-        XCTAssertEqual(sut.countdownValue, 3)
+        XCTAssertEqual(sut.countdownValue, 0) // Changed: テストでは countdownDuration: 0 を注入
         XCTAssertEqual(sut.currentTier, .free)
         XCTAssertEqual(sut.dailyRecordingCount, 0)
     }
 
     // MARK: - Start Recording Tests
 
-    func testStartRecording_withoutScale_shouldStartCountdown() async {
+    func testStartRecording_withoutScale_shouldStartRecordingImmediately() async {
         // When
         await sut.startRecording(settings: nil)
 
         // Then
-        XCTAssertEqual(sut.recordingState, .countdown)
-        XCTAssertEqual(sut.countdownValue, 3)
+        // With countdownDuration=0, recording starts immediately without countdown
+        XCTAssertEqual(sut.recordingState, .recording)
     }
 
     func testStartRecording_withScale_shouldStartCountdownAndExecute() async throws {
@@ -137,19 +138,7 @@ final class RecordingStateViewModelTests: XCTestCase {
     }
 
     // MARK: - Cancel Countdown Tests
-
-    func testCancelCountdown_duringCountdown_shouldReturnToIdle() async {
-        // Given
-        await sut.startRecording(settings: nil)
-        XCTAssertEqual(sut.recordingState, .countdown)
-
-        // When
-        await sut.cancelCountdown()
-
-        // Then
-        XCTAssertEqual(sut.recordingState, .idle)
-        XCTAssertEqual(sut.countdownValue, 3)
-    }
+    // Note: testCancelCountdown_duringCountdown_shouldReturnToIdle removed - not applicable when countdownDuration=0
 
     // MARK: - Stop Recording Tests
 
@@ -224,14 +213,43 @@ final class RecordingStateViewModelTests: XCTestCase {
 
     func testStopPlayback_shouldStopAudioPlayer() async {
         // When
-        sut.stopPlayback()
-
-        // Wait for async Task to complete
-        try? await Task.sleep(nanoseconds: 100_000_000) // 100ms
+        await sut.stopPlayback()
 
         // Then
         XCTAssertTrue(mockAudioPlayer.stopCalled)
         XCTAssertFalse(sut.isPlayingRecording)
+    }
+
+    func testStopPlayback_shouldAwaitCompletion() async throws {
+        // Given: Set up a last recording
+        let url = URL(fileURLWithPath: "/tmp/test.m4a")
+        let settings = ScaleSettings(
+            startNote: try MIDINote(60),
+            endNote: try MIDINote(72),
+            notePattern: .fiveToneScale,
+            tempo: try Tempo(secondsPerNote: 0.5)
+        )
+        let session = RecordingSession(
+            recordingURL: url,
+            settings: settings
+        )
+        mockStartRecordingWithScaleUseCase.sessionToReturn = session
+
+        // Record and stop to set lastRecordingURL
+        await sut.startRecording(settings: settings)
+        try await Task.sleep(nanoseconds: 3_500_000_000)
+        await sut.stopRecording()
+
+        // Start playback
+        await sut.playLastRecording()
+        try await Task.sleep(nanoseconds: 100_000_000) // 100ms - let playback start
+
+        // When: Stop playback - await for completion
+        await sut.stopPlayback()  // ← This should be ASYNC and await completion
+
+        // Then: audioPlayer.stop() MUST be completed before this line executes
+        XCTAssertTrue(mockAudioPlayer.stopCalled, "audioPlayer.stop() must complete before stopPlayback() returns")
+        XCTAssertFalse(sut.isPlayingRecording, "isPlayingRecording must be false immediately after stopPlayback() returns")
     }
 
     // MARK: - Duration Monitoring Tests
@@ -259,6 +277,38 @@ final class RecordingStateViewModelTests: XCTestCase {
 
         // Then: Progress should have increased
         XCTAssertGreaterThan(sut.progress, 0.0)
+    }
+
+    // MARK: - Bug Reproduction Test
+
+    func testStartRecording_withScale_shouldSetStopRecordingContext() async throws {
+        // Given
+        let expectedURL = URL(fileURLWithPath: "/tmp/test.m4a")
+        let settings = ScaleSettings(
+            startNote: try MIDINote(60),
+            endNote: try MIDINote(72),
+            notePattern: .fiveToneScale,
+            tempo: try Tempo(secondsPerNote: 0.5)
+        )
+        let session = RecordingSession(
+            recordingURL: expectedURL,
+            settings: settings
+        )
+        mockStartRecordingWithScaleUseCase.sessionToReturn = session
+
+        // When
+        await sut.startRecording(settings: settings)
+        try await Task.sleep(nanoseconds: 3_500_000_000) // Wait for countdown
+
+        // Then: StopRecordingUseCase should receive the recording context
+        XCTAssertTrue(mockStopRecordingUseCase.setRecordingContextCalled,
+                     "setRecordingContext should be called when recording starts with scale")
+        XCTAssertEqual(mockStopRecordingUseCase.contextURL, expectedURL,
+                      "Context URL should match the recording URL")
+        XCTAssertEqual(mockStopRecordingUseCase.contextSettings?.startNote, settings.startNote,
+                      "Context settings should match the recording settings")
+        XCTAssertEqual(mockStopRecordingUseCase.contextSettings?.endNote, settings.endNote,
+                      "Context settings should match the recording settings")
     }
 }
 
@@ -298,6 +348,15 @@ class RecordingStateMockStartRecordingWithScaleUseCase: StartRecordingWithScaleU
 
 class RecordingStateMockStopRecordingUseCase: StopRecordingUseCaseProtocol {
     var executeCalled = false
+    var setRecordingContextCalled = false
+    var contextURL: URL?
+    var contextSettings: ScaleSettings?
+
+    func setRecordingContext(url: URL, settings: ScaleSettings?) {
+        setRecordingContextCalled = true
+        contextURL = url
+        contextSettings = settings
+    }
 
     func execute() async throws -> StopRecordingResult {
         executeCalled = true

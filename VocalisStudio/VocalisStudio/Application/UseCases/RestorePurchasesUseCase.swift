@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import SubscriptionDomain
 
 /// Use case that restores previous subscription purchases
 public final class RestorePurchasesUseCase {

@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import SubscriptionDomain
 
 /// Use case that retrieves current subscription status for the user
 public final class GetSubscriptionStatusUseCase {

@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import SubscriptionDomain
 
 /// Protocol for user cohort storage
 public protocol UserCohortStoreProtocol {

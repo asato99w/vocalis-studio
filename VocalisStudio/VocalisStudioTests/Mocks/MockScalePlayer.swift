@@ -32,9 +32,7 @@ final class MockScalePlayer: ScalePlayerProtocol {
         0.0
     }
 
-    var currentScaleElement: ScaleElement? {
-        nil
-    }
+    var currentScaleElement: ScaleElement?
 
     func loadScale(_ notes: [MIDINote], tempo: Tempo) async throws {
         loadScaleCalled = true

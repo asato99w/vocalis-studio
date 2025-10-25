@@ -3,6 +3,7 @@ import VocalisDomain
 
 /// Use case for stopping a recording session
 public protocol StopRecordingUseCaseProtocol {
+    func setRecordingContext(url: URL, settings: ScaleSettings?)
     func execute() async throws -> StopRecordingResult
 }
 

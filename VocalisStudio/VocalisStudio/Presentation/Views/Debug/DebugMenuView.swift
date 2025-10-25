@@ -1,4 +1,5 @@
 import SwiftUI
+import SubscriptionDomain
 import VocalisDomain
 
 #if DEBUG

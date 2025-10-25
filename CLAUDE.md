@@ -185,6 +185,74 @@ xcodebuild test -only-testing:VocalisStudioTests/MIDINoteTests/testInit
 - **No Over-Engineering**: Build only what tests require
 - **Living Documentation**: Tests show how code works
 
+### TDD for Bug Fixes - CRITICAL PATTERN
+
+**バグ修正でもTDDサイクルを厳守してください。** テストファーストでバグを再現し、修正後も回帰を防ぎます。
+
+#### Bug Fix Workflow
+
+```
+1. 🔴 Red: バグ再現テストを作成
+   - バグを再現する失敗するテストを書く
+   - テストコードのみ変更（製品コードに触れない）
+   - テスト実行して失敗を確認
+
+2. 🟢 Green: 実装を修正
+   - 製品コードのみ変更（テストコードに触れない）
+   - テスト実行してパスを確認
+   - 既存テストもすべてパスすることを確認
+
+3. 🔵 Refactor: コード品質改善
+   - 必要に応じてリファクタリング
+   - すべてのテストがパスすることを確認
+```
+
+#### 実例: スケール停止バグの修正 (Commit: 1735866)
+
+**問題**: 録音停止時にスケール再生が停止しない
+
+**🔴 Red Phase**:
+```swift
+// RecordingStateViewModelTests.swift
+func testStartRecording_withScale_shouldSetStopRecordingContext() async throws {
+    // Given: スケール付き録音の準備
+    let settings = ScaleSettings(...)
+    mockStartRecordingWithScaleUseCase.sessionToReturn = session
+
+    // When: 録音開始
+    await sut.startRecording(settings: settings)
+
+    // Then: StopRecordingUseCaseにコンテキストが設定されているはず
+    XCTAssertTrue(mockStopRecordingUseCase.setRecordingContextCalled)
+    XCTAssertEqual(mockStopRecordingUseCase.contextURL, expectedURL)
+}
+```
+
+**結果**: テスト失敗 ✓ (製品コードには一切触れていない)
+
+**🟢 Green Phase**:
+```swift
+// RecordingStateViewModel.swift - executeRecording()
+// セッション取得後に追加
+stopRecordingUseCase.setRecordingContext(
+    url: session.recordingURL,
+    settings: session.settings
+)
+```
+
+**結果**: テストパス ✓ (テストコードには一切触れていない)
+
+**検証**: 既存テスト12個すべてパス ✓
+
+#### Key Points
+
+- ✅ テストファーストでバグを正確に再現
+- ✅ 製品コード変更時にテストコード変更なし（厳守）
+- ✅ テストコード変更時に製品コード変更なし（厳守）
+- ✅ 既存機能を破壊していないことを確認
+- ✅ 将来の回帰を防ぐテストが追加された
+- ✅ バグ修正のドキュメントとしても機能
+
 ### Reference Documents
 
 - **Full TDD Guidelines**: `docs/TDD_PRINCIPLES.md` (comprehensive explanation)
