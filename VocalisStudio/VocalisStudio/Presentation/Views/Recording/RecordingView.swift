@@ -263,7 +263,7 @@ private class PreviewMockScalePlayer: ScalePlayerProtocol {
 }
 
 private class PreviewMockStartRecordingUseCase: StartRecordingUseCaseProtocol {
-    func execute() async throws -> RecordingSession {
+    func execute(user: User) async throws -> RecordingSession {
         try await Task.sleep(nanoseconds: 1_000_000_000)
         return RecordingSession(
             recordingURL: URL(fileURLWithPath: "/tmp/preview.m4a"),
@@ -274,7 +274,7 @@ private class PreviewMockStartRecordingUseCase: StartRecordingUseCaseProtocol {
 }
 
 private class PreviewMockStartRecordingWithScaleUseCase: StartRecordingWithScaleUseCaseProtocol {
-    func execute(settings: ScaleSettings) async throws -> RecordingSession {
+    func execute(user: User, settings: ScaleSettings) async throws -> RecordingSession {
         try await Task.sleep(nanoseconds: 1_000_000_000)
         return RecordingSession(
             recordingURL: URL(fileURLWithPath: "/tmp/preview.m4a"),

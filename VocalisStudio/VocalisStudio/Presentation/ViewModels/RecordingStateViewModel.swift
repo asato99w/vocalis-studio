@@ -257,16 +257,37 @@ public class RecordingStateViewModel: ObservableObject {
 
     // MARK: - Private Methods
 
+    /// Create User object from current state
+    private func createCurrentUser() -> User {
+        let stats = RecordingStats(
+            todayCount: dailyRecordingCount,
+            lastResetDate: Date(),
+            totalCount: 0
+        )
+
+        // Use current subscription status, or default to free tier
+        let status = subscriptionViewModel.currentStatus ?? .defaultFree(cohort: .v2_0)
+
+        return User(
+            id: UserId(),
+            subscriptionStatus: status,
+            recordingStats: stats
+        )
+    }
+
     /// Execute the actual recording after countdown
     private func executeRecording(settings: ScaleSettings?) async {
         do {
+            // Create user object from current state
+            let user = createCurrentUser()
+
             // Start recording based on settings
             let session: RecordingSession
             if let settings = settings {
-                session = try await startRecordingWithScaleUseCase.execute(settings: settings)
+                session = try await startRecordingWithScaleUseCase.execute(user: user, settings: settings)
                 Logger.viewModel.info("Recording started with scale")
             } else {
-                session = try await startRecordingUseCase.execute()
+                session = try await startRecordingUseCase.execute(user: user)
                 Logger.viewModel.info("Recording started without scale")
             }
 

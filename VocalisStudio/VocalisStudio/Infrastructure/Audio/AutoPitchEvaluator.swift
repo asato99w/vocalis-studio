@@ -6,6 +6,8 @@ import Combine
 /// Protocol for pitch detector to enable testing
 public protocol PitchDetectorProtocol {
     var detectedPitch: DetectedPitch? { get }
+    var isDetecting: Bool { get }
+    var spectrum: [Float]? { get }
     func startRealtimeDetection() throws
     func stopRealtimeDetection()
 }

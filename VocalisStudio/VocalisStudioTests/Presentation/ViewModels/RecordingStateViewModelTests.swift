@@ -319,7 +319,7 @@ class RecordingStateMockStartRecordingUseCase: StartRecordingUseCaseProtocol {
     var executeCalled = false
     var sessionToReturn: RecordingSession?
 
-    func execute() async throws -> RecordingSession {
+    func execute(user: User) async throws -> RecordingSession {
         executeCalled = true
         if let session = sessionToReturn {
             return session
@@ -335,7 +335,7 @@ class RecordingStateMockStartRecordingWithScaleUseCase: StartRecordingWithScaleU
     var executeCalled = false
     var sessionToReturn: RecordingSession?
 
-    func execute(settings: ScaleSettings) async throws -> RecordingSession {
+    func execute(user: User, settings: ScaleSettings) async throws -> RecordingSession {
         executeCalled = true
         if let session = sessionToReturn {
             return session

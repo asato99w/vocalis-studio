@@ -72,6 +72,12 @@ public class PitchDetectionViewModel: ObservableObject {
                 } else {
                     await MainActor.run { self.targetPitch = nil }
                 }
+
+                // Also update detected pitch from pitch detector
+                if let detected = self.pitchDetector.detectedPitch {
+                    self.updateDetectedPitch(detected)
+                }
+
                 try? await Task.sleep(nanoseconds: pollingInterval)
             }
         }

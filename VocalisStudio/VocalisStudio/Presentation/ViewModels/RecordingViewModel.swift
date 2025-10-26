@@ -26,7 +26,7 @@ public class RecordingViewModel: ObservableObject {
 
     // MARK: - Dependencies
 
-    private let pitchDetector: RealtimePitchDetector
+    private let pitchDetector: any PitchDetectorProtocol & ObservableObject
     private var cancellables = Set<AnyCancellable>()
 
     // MARK: - Forwarded Properties (for backward compatibility)
@@ -56,7 +56,7 @@ public class RecordingViewModel: ObservableObject {
         startRecordingWithScaleUseCase: StartRecordingWithScaleUseCaseProtocol,
         stopRecordingUseCase: StopRecordingUseCaseProtocol,
         audioPlayer: AudioPlayerProtocol,
-        pitchDetector: RealtimePitchDetector,
+        pitchDetector: any PitchDetectorProtocol & ObservableObject,
         scalePlayer: ScalePlayerProtocol,
         subscriptionViewModel: SubscriptionViewModel,
         usageTracker: RecordingUsageTracker = RecordingUsageTracker(),
@@ -142,36 +142,50 @@ public class RecordingViewModel: ObservableObject {
             .assign(to: &$pitchAccuracy)
 
         // Subscribe to spectrum updates from pitch detector
-        pitchDetector.$spectrum
-            .sink { [weak self] spectrum in
-                guard let self = self else { return }
-                Task { @MainActor in
-                    self.spectrum = spectrum
+        // Note: Using RealtimePitchDetector for spectrum updates
+        if let realtimePitchDetector = pitchDetector as? RealtimePitchDetector {
+            realtimePitchDetector.$spectrum
+                .sink { [weak self] spectrum in
+                    guard let self = self else { return }
+                    Task { @MainActor in
+                        self.spectrum = spectrum
+                    }
                 }
-            }
-            .store(in: &cancellables)
+                .store(in: &cancellables)
+        }
     }
 
     // MARK: - Public Methods (Coordinator)
 
     /// Start the recording process with countdown
     public func startRecording(settings: ScaleSettings? = nil) async {
+        // FileLoggerに直接書き込んで動作確認
+        FileLogger.shared.log(level: "INFO", category: "viewmodel", message: "RecordingViewModel.startRecording() called, settings = \(settings != nil ? "present" : "nil")")
+
         // Start recording through state VM
         await recordingStateVM.startRecording(settings: settings)
+        FileLogger.shared.log(level: "DEBUG", category: "viewmodel", message: "Recording started through state VM")
 
         // If settings provided, start pitch detection monitoring
         // Note: We start monitoring regardless of current state because:
         // 1. With countdown=0, recording starts immediately but state may not be updated yet
         // 2. With countdown>0, we start monitoring during countdown so it's ready when recording begins
         if let settings = settings {
+            FileLogger.shared.log(level: "INFO", category: "viewmodel", message: "Settings present, starting pitch detection...")
             do {
                 try await pitchDetectionVM.startTargetPitchMonitoring(settings: settings)
+                FileLogger.shared.log(level: "DEBUG", category: "viewmodel", message: "✅ Target pitch monitoring started")
+
                 try pitchDetector.startRealtimeDetection()
+                FileLogger.shared.log(level: "INFO", category: "viewmodel", message: "✅ Realtime pitch detection started")
             } catch {
-                Logger.viewModel.logError(error)
+                FileLogger.shared.log(level: "ERROR", category: "viewmodel", message: "❌ Error starting pitch detection: \(error.localizedDescription)")
                 errorMessage = error.localizedDescription
             }
+        } else {
+            FileLogger.shared.log(level: "WARNING", category: "viewmodel", message: "⚠️ No settings provided, pitch detection NOT started")
         }
+        FileLogger.shared.log(level: "INFO", category: "viewmodel", message: "RecordingViewModel.startRecording() completed")
     }
 
     /// Cancel the countdown before recording starts

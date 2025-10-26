@@ -3,6 +3,7 @@ import AVFoundation
 import VocalisDomain
 import Combine
 import Accelerate
+import OSLog
 
 /// Real-time pitch detector using FFT-based analysis
 @MainActor
@@ -118,26 +119,58 @@ public class RealtimePitchDetector: ObservableObject, PitchDetectorProtocol {
 
     /// Start real-time pitch detection from microphone
     public func startRealtimeDetection() throws {
-        guard !isDetecting else { return }
+        FileLogger.shared.log(level: "INFO", category: "pitch", message: "startRealtimeDetection() called")
+
+        guard !isDetecting else {
+            FileLogger.shared.log(level: "DEBUG", category: "pitch", message: "Already detecting, returning early")
+            return
+        }
 
         // Configure audio session for simultaneous playback and recording
+        Logger.pitchDetection.debug("Configuring AVAudioSession...")
         let audioSession = AVAudioSession.sharedInstance()
-        try audioSession.setCategory(.playAndRecord, mode: .measurement, options: [.defaultToSpeaker, .allowBluetooth])
-        try audioSession.setActive(true)
+        do {
+            try audioSession.setCategory(.playAndRecord, mode: .measurement, options: [.defaultToSpeaker, .allowBluetooth])
+            Logger.pitchDetection.debug("✅ Audio session category set successfully")
+        } catch {
+            Logger.pitchDetection.error("❌ Failed to set audio session category: \(error.localizedDescription)")
+            throw error
+        }
+
+        do {
+            try audioSession.setActive(true)
+            Logger.pitchDetection.debug("✅ Audio session activated successfully")
+        } catch {
+            Logger.pitchDetection.error("❌ Failed to activate audio session: \(error.localizedDescription)")
+            throw error
+        }
 
         // Configure audio engine
+        Logger.pitchDetection.debug("Configuring AVAudioEngine...")
         let inputNode = audioEngine.inputNode
         let inputFormat = inputNode.outputFormat(forBus: 0)
+        Logger.pitchDetection.debug("Input format: \(String(describing: inputFormat))")
 
         // Install tap on input node
+        Logger.pitchDetection.debug("Installing tap on input node...")
         inputNode.installTap(onBus: 0, bufferSize: UInt32(hopSize), format: inputFormat) { [weak self] buffer, _ in
             guard let self = self else { return }
             self.processAudioBuffer(buffer)
         }
+        Logger.pitchDetection.debug("✅ Tap installed successfully")
 
         // Start engine
-        try audioEngine.start()
+        Logger.pitchDetection.debug("Starting audio engine...")
+        do {
+            try audioEngine.start()
+            FileLogger.shared.log(level: "INFO", category: "pitch", message: "✅ Audio engine started successfully")
+        } catch {
+            FileLogger.shared.log(level: "ERROR", category: "pitch", message: "❌ Failed to start audio engine: \(error.localizedDescription)")
+            throw error
+        }
+
         isDetecting = true
+        FileLogger.shared.log(level: "INFO", category: "pitch", message: "✅ Pitch detection started successfully (isDetecting = true)")
     }
 
     /// Stop real-time pitch detection
@@ -152,8 +185,21 @@ public class RealtimePitchDetector: ObservableObject, PitchDetectorProtocol {
     }
 
     /// Process audio buffer and detect pitch
+    private var bufferProcessCount = 0
+
     private func processAudioBuffer(_ buffer: AVAudioPCMBuffer) {
-        guard let channelData = buffer.floatChannelData else { return }
+        bufferProcessCount += 1
+        if bufferProcessCount == 1 {
+            FileLogger.shared.log(level: "INFO", category: "pitch", message: "processAudioBuffer called for the first time - audio input is working")
+        }
+        if bufferProcessCount % 100 == 0 {
+            Logger.pitchDetection.debug("processAudioBuffer called \(self.bufferProcessCount) times")
+        }
+
+        guard let channelData = buffer.floatChannelData else {
+            FileLogger.shared.log(level: "ERROR", category: "pitch", message: "❌ No channel data in buffer")
+            return
+        }
 
         let frameLength = Int(buffer.frameLength)
         let samples = Array(UnsafeBufferPointer(start: channelData[0], count: frameLength))
@@ -168,19 +214,34 @@ public class RealtimePitchDetector: ObservableObject, PitchDetectorProtocol {
 
         // Detect pitch if we have enough samples
         if audioBuffer.count >= bufferSize {
-            Task { @MainActor in
-                self.detectPitchFromSamples(Array(audioBuffer.suffix(bufferSize)))
+            Task { @MainActor [weak self] in
+                guard let self = self else { return }
+                self.detectPitchFromSamples(Array(self.audioBuffer.suffix(self.bufferSize)))
             }
         }
     }
 
+    private var pitchDetectionCount = 0
+
     /// Detect pitch from audio samples using FFT-based analysis
     private func detectPitchFromSamples(_ samples: [Float]) {
+        pitchDetectionCount += 1
+
         // Calculate RMS amplitude
         let rms = sqrt(samples.map { $0 * $0 }.reduce(0, +) / Float(samples.count))
 
+        if pitchDetectionCount == 1 {
+            FileLogger.shared.log(level: "INFO", category: "pitch", message: "detectPitchFromSamples called for the first time, RMS: \(String(format: "%.4f", rms))")
+        }
+        if pitchDetectionCount % 100 == 0 {
+            Logger.pitchDetection.debug("detectPitchFromSamples called \(self.pitchDetectionCount) times, RMS: \(String(format: "%.4f", rms))")
+        }
+
         // Silence threshold
         guard rms > 0.02 else {
+            if pitchDetectionCount <= 10 || pitchDetectionCount % 100 == 0 {
+                FileLogger.shared.log(level: "DEBUG", category: "pitch", message: "⚠️ RMS (\(String(format: "%.4f", rms))) below silence threshold (0.02)")
+            }
             detectedPitch = nil
             spectrum = nil
             return

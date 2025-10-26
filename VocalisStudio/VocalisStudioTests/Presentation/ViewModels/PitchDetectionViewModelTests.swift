@@ -178,16 +178,20 @@ final class PitchDetectionViewModelTests: XCTestCase {
 
 class PitchDetectionMockPitchDetector: PitchDetectorProtocol {
     var detectedPitch: DetectedPitch?
+    var isDetecting: Bool = false
+    var spectrum: [Float]?
 
     var startRealtimeDetectionCalled = false
     var stopRealtimeDetectionCalled = false
 
     func startRealtimeDetection() throws {
         startRealtimeDetectionCalled = true
+        isDetecting = true
     }
 
     func stopRealtimeDetection() {
         stopRealtimeDetectionCalled = true
+        isDetecting = false
     }
 }
 

@@ -1,6 +1,7 @@
 import XCTest
 import Combine
 import VocalisDomain
+import OSLog
 @testable import VocalisStudio
 
 @MainActor
@@ -12,7 +13,7 @@ final class RecordingViewModelTests: XCTestCase {
     var mockStopRecordingUseCase: MockStopRecordingUseCase!
     var mockAudioPlayer: MockAudioPlayer!
     var mockScalePlayer: MockScalePlayer!
-    var pitchDetector: RealtimePitchDetector!
+    var mockPitchDetector: MockRealtimePitchDetector!
     var mockSubscriptionViewModel: SubscriptionViewModel!
     var cancellables: Set<AnyCancellable>!
 
@@ -23,7 +24,7 @@ final class RecordingViewModelTests: XCTestCase {
         mockStopRecordingUseCase = MockStopRecordingUseCase()
         mockAudioPlayer = MockAudioPlayer()
         mockScalePlayer = MockScalePlayer()
-        pitchDetector = RealtimePitchDetector()
+        mockPitchDetector = MockRealtimePitchDetector()
         mockSubscriptionViewModel = SubscriptionViewModel(
             getStatusUseCase: MockGetSubscriptionStatusUseCase(),
             purchaseUseCase: MockPurchaseSubscriptionUseCase(),
@@ -34,7 +35,7 @@ final class RecordingViewModelTests: XCTestCase {
             startRecordingWithScaleUseCase: mockStartRecordingWithScaleUseCase,
             stopRecordingUseCase: mockStopRecordingUseCase,
             audioPlayer: mockAudioPlayer,
-            pitchDetector: pitchDetector,
+            pitchDetector: mockPitchDetector,
             scalePlayer: mockScalePlayer,
             subscriptionViewModel: mockSubscriptionViewModel,
             countdownDuration: 0,
@@ -47,7 +48,7 @@ final class RecordingViewModelTests: XCTestCase {
     override func tearDown() async throws {
         cancellables = nil
         sut = nil
-        pitchDetector = nil
+        mockPitchDetector = nil
         mockScalePlayer = nil
         mockAudioPlayer = nil
         mockStopRecordingUseCase = nil
@@ -342,6 +343,37 @@ final class RecordingViewModelTests: XCTestCase {
             XCTAssertNil(sut.targetPitch,
                         "Target pitch should be nil immediately after stopPlayback() returns (cycle \(cycle))")
         }
+    }
+
+    // MARK: - Pitch Detection Bug Reproduction Tests
+
+    /// BUG REPRODUCTION: ピッチ検出がスケール設定なしで録音した場合に開始されない
+    ///
+    /// 問題：
+    /// - RecordingViewModel.startRecording(settings: nil)を呼ぶと、
+    ///   `if let settings = settings`のチェックにより、ピッチ検出が一切開始されない
+    /// - スケール機能OFF（settings = nil）の場合でも、リアルタイムピッチ検出は必要
+    ///
+    /// 期待される動作：
+    /// - settings の有無に関わらず、pitchDetector.startRealtimeDetection()が呼ばれるべき
+    /// - settingsがある場合のみ、targetPitchのモニタリングを開始すべき
+    func testStartRecording_withoutScale_shouldStillStartPitchDetection() async throws {
+        // Given: スケール設定なしで録音を開始（通常録音）
+        mockStartRecordingUseCase.executeResult = RecordingSession(
+            recordingURL: URL(fileURLWithPath: "/tmp/test.m4a"),
+            settings: nil  // ← スケール設定なし
+        )
+
+        // Verify initial state
+        XCTAssertFalse(mockPitchDetector.isDetecting, "Pitch detection should not be active initially")
+
+        // When: スケール設定なしで録音開始（settings = nil）
+        await sut.startRecording(settings: nil)
+
+        // Then: ピッチ検出は開始されるべき（スケールなしでもリアルタイムピッチ検出は必要）
+        // 🐛 BUG: 現在の実装では pitchDetector.startRealtimeDetection() が呼ばれない
+        XCTAssertTrue(mockPitchDetector.isDetecting,
+                     "Pitch detection should be active even without scale settings for realtime pitch visualization")
     }
 
 }

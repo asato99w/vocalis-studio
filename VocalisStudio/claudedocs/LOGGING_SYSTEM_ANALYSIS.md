@@ -1,0 +1,306 @@
+# ロギングシステムの現状分析と改善提案
+
+**作成日**: 2025-10-26
+**調査理由**: ピッチ検出バグのデバッグ時に、ログが取得できない問題を調査
+
+## 現状のロギングアーキテクチャ
+
+### 1. 利用可能なロギング機構
+
+VocalisStudioには3つのロギング機構が存在します：
+
+#### A. FileLogger (Infrastructure層)
+- **ファイルパス**: `VocalisStudio/Infrastructure/Logging/FileLogger.swift`
+- **目的**: DEBUGビルド時にファイルベースのログを出力
+- **出力先**: `Documents/logs/vocalis_YYYY-MM-DDTHH:mm:ss.log`
+- **特徴**:
+  - シングルトン (`FileLogger.shared`)
+  - `#if DEBUG` ブロック内でのみ動作
+  - 非同期書き込み (`DispatchQueue`)
+  - 自動ローテーション (5MB制限、最大5ファイル保持)
+
+**使用方法**:
+```swift
+FileLogger.shared.log(level: "INFO", category: "viewmodel", message: "Recording started")
+```
+
+#### B. Logger+Extensions (Presentation層)
+- **ファイルパス**: `VocalisStudio/Infrastructure/Logging/Logger+Extensions.swift`
+- **目的**: OSLogのカテゴリ別ラッパー
+- **特徴**:
+  - Apple標準のOSLogを使用
+  - カテゴリ別のLoggerインスタンスを提供 (`Logger.viewModel`, `Logger.recording`など)
+  - **⚠️重要**: `Logger.info()`, `Logger.debug()`などはFileLoggerに記録**されない**
+
+**使用方法**:
+```swift
+Logger.viewModel.info("Recording started")  // OSLogのみ、ファイルには記録されない
+```
+
+**FileLoggerに記録されるメソッド** (明示的にFileLogger.shared.log()を呼ぶもののみ):
+```swift
+Logger.viewModel.logError(error)     // FileLoggerに記録される
+Logger.viewModel.logCritical(message) // FileLoggerに記録される
+```
+
+#### C. OSLogAdapter (Infrastructure層)
+- **ファイルパス**: `VocalisStudio/Infrastructure/Logging/OSLogAdapter.swift`
+- **目的**: Domain層のLoggerProtocolを実装
+- **特徴**:
+  - Clean Architectureに準拠した依存性逆転
+  - **すべてのログメソッドがFileLoggerに記録される**
+  - Application層（UseCaseなど）で使用
+
+**使用方法**:
+```swift
+let logger = OSLogAdapter(category: "useCase")
+logger.info("Recording started", category: "useCase")  // OSLog + FileLoggerの両方
+```
+
+### 2. 実際のログ記録状況
+
+#### テスト実行時のログファイル内容の例
+
+**スケール設定あり (settings != nil)**:
+```
+2025-10-26 13:24:28.559 [INFO] [viewmodel] RecordingViewModel.startRecording() called, settings = present
+2025-10-26 13:24:28.563 [DEBUG] [viewmodel] Recording started through state VM
+2025-10-26 13:24:28.569 [INFO] [viewmodel] Settings present, starting pitch detection...
+2025-10-26 13:24:28.569 [DEBUG] [viewmodel] ✅ Target pitch monitoring started
+2025-10-26 13:24:31.071 [INFO] [viewmodel] ✅ Realtime pitch detection started
+2025-10-26 13:24:31.072 [INFO] [viewmodel] RecordingViewModel.startRecording() completed
+```
+
+**スケール設定なし (settings = nil)**:
+```
+2025-10-26 13:25:44.732 [INFO] [viewmodel] RecordingViewModel.startRecording() called, settings = nil
+2025-10-26 13:25:44.733 [DEBUG] [viewmodel] Recording started through state VM
+2025-10-26 13:25:44.733 [WARNING] [viewmodel] ⚠️ No settings provided, pitch detection NOT started
+2025-10-26 13:25:44.733 [INFO] [viewmodel] RecordingViewModel.startRecording() completed
+```
+
+**実アプリ実行時のログファイル** (2025-10-25のログ):
+- `[useCase]`, `[audio]`, `[recording]`, `[scalePlayer]` カテゴリのみ記録
+- `[viewmodel]`, `[pitch]` カテゴリは**一切記録されていない**
+
+### 3. 各層でのロギング使用状況
+
+| 層 | 使用しているLogger | FileLoggerに記録 |
+|----|-------------------|------------------|
+| Domain | なし (純粋なビジネスロジック) | - |
+| Application | OSLogAdapter | ✅ Yes |
+| Infrastructure | OSLogAdapter | ✅ Yes |
+| Presentation | Logger+Extensions | ❌ No (logError/logCriticalのみYes) |
+
+## 問題点
+
+### 1. 一貫性のないロギングAPI
+
+- **Presentation層**: `Logger.viewModel.info()` → ファイルに記録されない
+- **Application層**: `OSLogAdapter.info()` → ファイルに記録される
+
+同じ「info」メソッドでも、使う場所によって動作が異なるため混乱を招く。
+
+### 2. Logger+Extensionsのコメントが不正確
+
+**Logger+Extensions.swift:88-90**のコメント:
+```swift
+// Note: OSLog methods (info, debug, warning, error) automatically log to both
+// system log and file in debug builds through OSLog observation.
+```
+
+このコメントは**誤り**です。実際には`info()`, `debug()`, `warning()`, `error()`はFileLoggerに記録されません。
+
+### 3. Presentation層のログがファイルに残らない
+
+ViewModelやViewのログはOSLogにしか記録されないため：
+- テスト実行時にログファイルから確認できない
+- OSLogは揮発性のため、後から確認しづらい
+- デバッグが困難
+
+### 4. FileLoggerの直接呼び出しが必要
+
+Presentation層でファイルログを残すには、`FileLogger.shared.log()`を直接呼ぶ必要がある：
+```swift
+FileLogger.shared.log(level: "INFO", category: "viewmodel", message: "...")
+```
+
+これはクリーンアーキテクチャの観点から望ましくない（Presentation層がInfrastructure層の具象に依存）。
+
+## 改善提案
+
+### 提案1: Logger+ExtensionsをOSLogAdapterと統一
+
+**目的**: すべての層で一貫したロギングAPI
+
+**実装方法**:
+```swift
+// Logger+Extensions.swift を修正
+extension Logger {
+    static let viewModel = Logger(subsystem: subsystem, category: "viewmodel")
+
+    // すべてのログメソッドでFileLoggerも呼び出す
+    func info(_ message: String) {
+        self.log(level: .info, "\(message)")
+        FileLogger.shared.log(level: "INFO", category: self.category, message: message)
+    }
+
+    func debug(_ message: String) {
+        self.log(level: .debug, "\(message)")
+        FileLogger.shared.log(level: "DEBUG", category: self.category, message: message)
+    }
+
+    // warning, errorも同様
+}
+```
+
+**メリット**:
+- すべての層でファイルログが残る
+- 既存コードの変更が最小限
+- 一貫したAPI
+
+**デメリット**:
+- OSLogのString interpolation最適化が使えなくなる可能性
+
+### 提案2: Presentation層専用のLoggerProtocolを導入
+
+**目的**: Clean Architectureを維持しつつ、Presentation層でもファイルログを残す
+
+**実装方法**:
+1. Domain層に`LoggerProtocol`を定義（既存）
+2. Presentation層用の`PresentationLogger`をInfrastructure層に実装
+3. DependencyContainerで`PresentationLogger`を注入
+
+```swift
+// Infrastructure/Logging/PresentationLogger.swift
+public final class PresentationLogger: LoggerProtocol {
+    private let osLogger: Logger
+    private let fileLogger: FileLogger
+
+    public init(category: String) {
+        self.osLogger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "", category: category)
+        self.fileLogger = FileLogger.shared
+    }
+
+    public func info(_ message: String, category: String) {
+        osLogger.info("\(message)")
+        fileLogger.log(level: "INFO", category: category, message: message)
+    }
+
+    // debug, warning, errorも同様
+}
+
+// DependencyContainer.swift
+let viewModelLogger = PresentationLogger(category: "viewmodel")
+
+// RecordingViewModel.swift
+public class RecordingViewModel: ObservableObject {
+    private let logger: LoggerProtocol
+
+    public init(..., logger: LoggerProtocol) {
+        self.logger = logger
+    }
+
+    public func startRecording(...) async {
+        logger.info("Recording started", category: "viewmodel")
+    }
+}
+```
+
+**メリット**:
+- Clean Architecture準拠
+- テスト時にモックLoggerを注入可能
+- すべての層で統一されたAPI
+
+**デメリット**:
+- ViewModelの初期化にlogger引数追加が必要
+- やや複雑
+
+### 提案3: 現状維持 + ドキュメント整備
+
+**目的**: 最小限の変更で運用改善
+
+**実装方法**:
+1. Logger+Extensions.swiftの不正確なコメントを修正
+2. 使い分けガイドラインをドキュメント化
+3. デバッグ時は`FileLogger.shared.log()`を直接使用することを明記
+
+**メリット**:
+- コード変更が最小限
+- すぐに実施可能
+
+**デメリット**:
+- 一貫性の問題は解決されない
+- Presentation層のログがファイルに残らない問題は継続
+
+## 推奨アプローチ
+
+**短期的 (即座に実施)**:
+- 提案3を実施してドキュメント整備
+- Logger+Extensions.swiftのコメント修正
+
+**中長期的 (次のリファクタリング時)**:
+- 提案1を実施してLogger+Extensionsを修正
+- パフォーマンステストを実施してOSLogの最適化への影響を確認
+
+## テスト時のログ確認方法
+
+### 現状の確認方法
+
+```swift
+// テストコード例
+func testSomething() async throws {
+    // 1. ログを直接書き込み
+    FileLogger.shared.log(level: "INFO", category: "test", message: "Test started")
+
+    // 2. テスト対象コードを実行
+    await sut.someMethod()
+
+    // 3. ログファイルパスを取得
+    let logPath = FileLogger.shared.currentLogPath
+
+    // 4. 待機してログが書き込まれるのを確保
+    try? await Task.sleep(nanoseconds: 500_000_000) // 0.5秒
+
+    // 5. ログファイルを読み込み
+    if let logContent = try? String(contentsOfFile: logPath, encoding: .utf8) {
+        print(logContent)
+        // または /tmp/test_result.txt に出力
+        try? logContent.write(toFile: "/tmp/test_result.txt", atomically: true, encoding: .utf8)
+    }
+}
+```
+
+### 実アプリのログ確認方法
+
+シミュレーター実行時:
+```bash
+# 最新のログファイルを検索
+find ~/Library/Developer/CoreSimulator/Devices -name "vocalis_*.log" -type f -exec ls -lt {} + | head -1
+
+# ログファイルを表示
+cat <ログファイルパス>
+```
+
+## 関連ファイル
+
+- `VocalisStudio/Infrastructure/Logging/FileLogger.swift` - ファイルベースロガー
+- `VocalisStudio/Infrastructure/Logging/Logger+Extensions.swift` - OSLogラッパー
+- `VocalisStudio/Infrastructure/Logging/OSLogAdapter.swift` - LoggerProtocol実装
+- `VocalisDomain/RepositoryProtocols/LoggerProtocol.swift` - Domain層のLogger抽象
+
+## 参考: 今回のバグ調査で判明したこと
+
+**バグ**: ピッチ検出が全く動作しない
+
+**原因**: RecordingViewModel.startRecording()で`settings = nil`の場合、ピッチ検出が開始されない
+
+**ログからの証拠**:
+```
+[WARNING] [viewmodel] ⚠️ No settings provided, pitch detection NOT started
+```
+
+**調査が困難だった理由**:
+- Presentation層のログがFileLoggerに記録されていなかった
+- Logger.viewModel.info()がファイルに残らないことを知らなかった
+- ログシステムの仕様が明確にドキュメント化されていなかった
