@@ -48,6 +48,39 @@ public struct ScaleSettings: Equatable, Codable {
         self.ascendingCount = ascendingCount
     }
 
+    /// Validate scale settings
+    /// Throws ScaleError if settings are invalid
+    public func validate() throws {
+        // Validate note range: start note must be <= end note
+        guard startNote <= endNote else {
+            throw ScaleError.invalidRange(
+                "Start note (\(startNote)) must be lower than or equal to end note (\(endNote))"
+            )
+        }
+
+        // Validate start note is within practical range for vocal training
+        // C3 (MIDI 48) to C6 (MIDI 84) is reasonable for most singers
+        guard startNote.value >= 48 && startNote.value <= 84 else {
+            throw ScaleError.invalidNote(
+                "Start note (\(startNote.value)) should be between C3 (48) and C6 (84) for vocal training"
+            )
+        }
+
+        // Validate ascending count: 1 (half step) to 24 (two octaves) is practical
+        guard ascendingCount >= 1 && ascendingCount <= 24 else {
+            throw ScaleError.invalidAscendingCount(
+                "Ascending count (\(ascendingCount)) must be between 1 and 24"
+            )
+        }
+
+        // Validate tempo: 1 to 3 seconds per note is practical
+        guard tempo.secondsPerNote >= 1.0 && tempo.secondsPerNote <= 3.0 else {
+            throw ScaleError.invalidTempo(
+                "Tempo (\(tempo.secondsPerNote)s per note) must be between 1.0 and 3.0 seconds"
+            )
+        }
+    }
+
     /// Generate full scale with chromatic progression
     /// Returns all notes across the pitch range
     public func generateScale() -> [MIDINote] {

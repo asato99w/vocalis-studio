@@ -15,14 +15,23 @@ let package = Package(
             name: "VocalisDomain",
             targets: ["VocalisDomain"]),
     ],
+    dependencies: [
+        // Local package dependency
+        .package(path: "../SubscriptionDomain")
+    ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
         // Targets can depend on other targets in this package and products from dependencies.
         .target(
             name: "VocalisDomain",
-            dependencies: []),
+            dependencies: [
+                .product(name: "SubscriptionDomain", package: "SubscriptionDomain")
+            ]),
         .testTarget(
             name: "VocalisDomainTests",
-            dependencies: ["VocalisDomain"]),
+            dependencies: [
+                "VocalisDomain",
+                .product(name: "SubscriptionDomain", package: "SubscriptionDomain")
+            ]),
     ]
 )

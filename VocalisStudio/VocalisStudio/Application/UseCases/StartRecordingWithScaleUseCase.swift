@@ -3,25 +3,40 @@ import VocalisDomain
 
 /// Use case for starting a recording session with scale playback
 public protocol StartRecordingWithScaleUseCaseProtocol {
-    func execute(settings: ScaleSettings) async throws -> RecordingSession
+    func execute(user: User, settings: ScaleSettings) async throws -> RecordingSession
 }
 
 public class StartRecordingWithScaleUseCase: StartRecordingWithScaleUseCaseProtocol {
     private let scalePlayer: ScalePlayerProtocol
     private let audioRecorder: AudioRecorderProtocol
+    private let recordingPolicyService: RecordingPolicyService
     private let logger: LoggerProtocol
 
     public init(
         scalePlayer: ScalePlayerProtocol,
         audioRecorder: AudioRecorderProtocol,
+        recordingPolicyService: RecordingPolicyService,
         logger: LoggerProtocol
     ) {
         self.scalePlayer = scalePlayer
         self.audioRecorder = audioRecorder
+        self.recordingPolicyService = recordingPolicyService
         self.logger = logger
     }
 
-    public func execute(settings: ScaleSettings) async throws -> RecordingSession {
+    public func execute(user: User, settings: ScaleSettings) async throws -> RecordingSession {
+        // Check recording permission using domain service
+        let permission = try await recordingPolicyService.canStartRecording(user: user, settings: settings)
+
+        guard case .allowed = permission else {
+            if case .denied(let reason) = permission {
+                logger.warning("Recording denied: \(reason)", category: "useCase")
+                throw RecordingPermissionError.from(reason)
+            }
+            fatalError("Unexpected permission state")
+        }
+
+        logger.info("Recording permission granted", category: "useCase")
         let tempo = settings.tempo.secondsPerNote
         logger.info("Starting recording with scale settings, tempo: \(tempo)s", category: "useCase")
 

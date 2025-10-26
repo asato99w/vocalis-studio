@@ -69,14 +69,23 @@ public class DependencyContainer {
 
     // MARK: - Application Layer
 
+    // Domain Services
+    private lazy var recordingPolicyService: RecordingPolicyService = {
+        RecordingPolicyServiceImpl()
+    }()
+
     private lazy var startRecordingUseCase: StartRecordingUseCaseProtocol = {
-        StartRecordingUseCase(audioRecorder: audioRecorder)
+        StartRecordingUseCase(
+            audioRecorder: audioRecorder,
+            recordingPolicyService: recordingPolicyService
+        )
     }()
 
     private lazy var startRecordingWithScaleUseCase: StartRecordingWithScaleUseCaseProtocol = {
         StartRecordingWithScaleUseCase(
             scalePlayer: scalePlayer,
             audioRecorder: audioRecorder,
+            recordingPolicyService: recordingPolicyService,
             logger: logger
         )
     }()

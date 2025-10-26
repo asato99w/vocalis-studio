@@ -1,5 +1,6 @@
 import XCTest
 import VocalisDomain
+import SubscriptionDomain
 @testable import VocalisStudio
 
 final class StartRecordingWithScaleUseCaseTests: XCTestCase {
@@ -7,17 +8,33 @@ final class StartRecordingWithScaleUseCaseTests: XCTestCase {
     var sut: StartRecordingWithScaleUseCase!
     var mockScalePlayer: MockScalePlayer!
     var mockAudioRecorder: MockAudioRecorder!
+    var mockRecordingPolicyService: MockRecordingPolicyService!
     var mockLogger: MockLogger!
+    var premiumUser: User!
 
     override func setUp() {
         super.setUp()
         mockScalePlayer = MockScalePlayer()
         mockAudioRecorder = MockAudioRecorder()
+        mockRecordingPolicyService = MockRecordingPolicyService()
         mockLogger = MockLogger()
         sut = StartRecordingWithScaleUseCase(
             scalePlayer: mockScalePlayer,
             audioRecorder: mockAudioRecorder,
+            recordingPolicyService: mockRecordingPolicyService,
             logger: mockLogger
+        )
+
+        // Create a premium user for tests (allows scale recording)
+        premiumUser = User(
+            id: UserId(),
+            subscriptionStatus: SubscriptionStatus(
+                tier: .premium,
+                cohort: .v2_0,
+                isActive: true,
+                expirationDate: Date().addingTimeInterval(30 * 24 * 3600)
+            ),
+            recordingStats: RecordingStats(todayCount: 0)
         )
     }
 
@@ -25,7 +42,9 @@ final class StartRecordingWithScaleUseCaseTests: XCTestCase {
         sut = nil
         mockAudioRecorder = nil
         mockScalePlayer = nil
+        mockRecordingPolicyService = nil
         mockLogger = nil
+        premiumUser = nil
         super.tearDown()
     }
 
@@ -38,7 +57,7 @@ final class StartRecordingWithScaleUseCaseTests: XCTestCase {
         mockAudioRecorder.prepareRecordingResult = expectedURL
 
         // When
-        let session = try await sut.execute(settings: settings)
+        let session = try await sut.execute(user: premiumUser, settings: settings)
 
         // Then
         XCTAssertEqual(session.recordingURL, expectedURL)
@@ -55,7 +74,7 @@ final class StartRecordingWithScaleUseCaseTests: XCTestCase {
         mockAudioRecorder.prepareRecordingResult = URL(fileURLWithPath: "/tmp/test.m4a")
 
         // When
-        _ = try await sut.execute(settings: settings)
+        _ = try await sut.execute(user: premiumUser, settings: settings)
 
         // Then
         // Extract expected notes from scale elements (including chords)
@@ -82,7 +101,7 @@ final class StartRecordingWithScaleUseCaseTests: XCTestCase {
         mockAudioRecorder.prepareRecordingResult = URL(fileURLWithPath: "/tmp/test.m4a")
 
         // When
-        _ = try await sut.execute(settings: settings)
+        _ = try await sut.execute(user: premiumUser, settings: settings)
 
         // Wait a moment for async play to be called
         try await Task.sleep(nanoseconds: 100_000_000) // 100ms
@@ -116,7 +135,7 @@ final class StartRecordingWithScaleUseCaseTests: XCTestCase {
 
         // When/Then
         do {
-            _ = try await sut.execute(settings: settings)
+            _ = try await sut.execute(user: premiumUser, settings: settings)
             XCTFail("Expected error to be thrown")
         } catch {
             // Error thrown as expected
@@ -133,7 +152,7 @@ final class StartRecordingWithScaleUseCaseTests: XCTestCase {
 
         // When/Then
         do {
-            _ = try await sut.execute(settings: settings)
+            _ = try await sut.execute(user: premiumUser, settings: settings)
             XCTFail("Expected error to be thrown")
         } catch {
             // Error thrown as expected
@@ -150,7 +169,7 @@ final class StartRecordingWithScaleUseCaseTests: XCTestCase {
 
         // When/Then
         do {
-            _ = try await sut.execute(settings: settings)
+            _ = try await sut.execute(user: premiumUser, settings: settings)
             XCTFail("Expected error to be thrown")
         } catch {
             // Error thrown as expected
@@ -165,7 +184,7 @@ final class StartRecordingWithScaleUseCaseTests: XCTestCase {
         mockAudioRecorder.prepareRecordingResult = URL(fileURLWithPath: "/tmp/test.m4a")
 
         // When
-        let session = try await sut.execute(settings: settings)
+        let session = try await sut.execute(user: premiumUser, settings: settings)
 
         // Then
         // execute() returns immediately without waiting for playback to complete
@@ -175,5 +194,57 @@ final class StartRecordingWithScaleUseCaseTests: XCTestCase {
         // Wait a bit for async play to be called
         try await Task.sleep(nanoseconds: 50_000_000) // 50ms
         XCTAssertTrue(mockScalePlayer.playCalled)
+    }
+
+    // MARK: - Permission Tests
+
+    func testExecute_FreeUser_DeniedDueToScaleRecording() async {
+        // Given: Free user trying to use scale recording
+        let freeUser = User(
+            id: UserId(),
+            subscriptionStatus: .defaultFree(cohort: .v2_0),
+            recordingStats: RecordingStats(todayCount: 0)
+        )
+        let settings = ScaleSettings.mvpDefault
+        mockRecordingPolicyService.canStartRecordingResult = .denied(.premiumRequired)
+
+        // When/Then
+        do {
+            _ = try await sut.execute(user: freeUser, settings: settings)
+            XCTFail("Expected error to be thrown")
+        } catch let error as RecordingPermissionError {
+            XCTAssertEqual(error, .premiumRequired)
+            XCTAssertTrue(mockRecordingPolicyService.canStartRecordingCalled)
+            XCTAssertFalse(mockAudioRecorder.prepareRecordingCalled)
+        } catch {
+            XCTFail("Wrong error type: \(error)")
+        }
+    }
+
+    func testExecute_UserExceedsDailyLimit_Denied() async {
+        // Given: User who exceeded daily limit
+        let limitedUser = User(
+            id: UserId(),
+            subscriptionStatus: SubscriptionStatus(
+                tier: .premium,
+                cohort: .v2_0,
+                isActive: true
+            ),
+            recordingStats: RecordingStats(todayCount: 10) // Premium limit
+        )
+        let settings = ScaleSettings.mvpDefault
+        mockRecordingPolicyService.canStartRecordingResult = .denied(.dailyLimitExceeded)
+
+        // When/Then
+        do {
+            _ = try await sut.execute(user: limitedUser, settings: settings)
+            XCTFail("Expected error to be thrown")
+        } catch let error as RecordingPermissionError {
+            XCTAssertEqual(error, .dailyLimitExceeded)
+            XCTAssertTrue(mockRecordingPolicyService.canStartRecordingCalled)
+            XCTAssertFalse(mockAudioRecorder.prepareRecordingCalled)
+        } catch {
+            XCTFail("Wrong error type: \(error)")
+        }
     }
 }

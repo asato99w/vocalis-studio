@@ -58,12 +58,117 @@ final class ScaleSettingsTests: XCTestCase {
     func testCodable() throws {
         // Given
         let original = ScaleSettings.mvpDefault
-        
+
         // When
         let encoded = try JSONEncoder().encode(original)
         let decoded = try JSONDecoder().decode(ScaleSettings.self, from: encoded)
-        
+
         // Then
         XCTAssertEqual(decoded, original)
+    }
+
+    // MARK: - Validation Tests
+
+    func testValidate_ValidSettings_Succeeds() throws {
+        // Given: Valid settings
+        let settings = ScaleSettings.mvpDefault
+
+        // When/Then: Should not throw
+        XCTAssertNoThrow(try settings.validate())
+    }
+
+    func testValidate_InvalidStartNote_ThrowsError() throws {
+        // Given: Invalid start note (out of MIDI range)
+        let invalidNote = try MIDINote(0)  // Very low note, edge case
+        let settings = ScaleSettings(
+            startNote: invalidNote,
+            endNote: .middleC,
+            notePattern: .fiveToneScale,
+            tempo: .standard
+        )
+
+        // When/Then: Should throw invalidNote error
+        XCTAssertThrowsError(try settings.validate()) { error in
+            guard let scaleError = error as? ScaleError else {
+                XCTFail("Expected ScaleError, got \(type(of: error))")
+                return
+            }
+            if case .invalidNote = scaleError {
+                // Expected error
+            } else {
+                XCTFail("Expected .invalidNote, got \(scaleError)")
+            }
+        }
+    }
+
+    func testValidate_StartNoteHigherThanEndNote_ThrowsError() throws {
+        // Given: Start note higher than end note
+        let settings = ScaleSettings(
+            startNote: .hiC,
+            endNote: .middleC,
+            notePattern: .fiveToneScale,
+            tempo: .standard
+        )
+
+        // When/Then: Should throw invalidRange error
+        XCTAssertThrowsError(try settings.validate()) { error in
+            guard let scaleError = error as? ScaleError else {
+                XCTFail("Expected ScaleError, got \(type(of: error))")
+                return
+            }
+            if case .invalidRange = scaleError {
+                // Expected error
+            } else {
+                XCTFail("Expected .invalidRange, got \(scaleError)")
+            }
+        }
+    }
+
+    func testValidate_AscendingCountTooSmall_ThrowsError() throws {
+        // Given: ascendingCount less than 1
+        let settings = ScaleSettings(
+            startNote: .middleC,
+            endNote: .hiC,
+            notePattern: .fiveToneScale,
+            tempo: .standard,
+            ascendingCount: 0
+        )
+
+        // When/Then: Should throw invalidAscendingCount error
+        XCTAssertThrowsError(try settings.validate()) { error in
+            guard let scaleError = error as? ScaleError else {
+                XCTFail("Expected ScaleError, got \(type(of: error))")
+                return
+            }
+            if case .invalidAscendingCount = scaleError {
+                // Expected error
+            } else {
+                XCTFail("Expected .invalidAscendingCount, got \(scaleError)")
+            }
+        }
+    }
+
+    func testValidate_AscendingCountTooLarge_ThrowsError() throws {
+        // Given: ascendingCount over 24 (two octaves)
+        let settings = ScaleSettings(
+            startNote: .middleC,
+            endNote: .hiC,
+            notePattern: .fiveToneScale,
+            tempo: .standard,
+            ascendingCount: 25
+        )
+
+        // When/Then: Should throw invalidAscendingCount error
+        XCTAssertThrowsError(try settings.validate()) { error in
+            guard let scaleError = error as? ScaleError else {
+                XCTFail("Expected ScaleError, got \(type(of: error))")
+                return
+            }
+            if case .invalidAscendingCount = scaleError {
+                // Expected error
+            } else {
+                XCTFail("Expected .invalidAscendingCount, got \(scaleError)")
+            }
+        }
     }
 }

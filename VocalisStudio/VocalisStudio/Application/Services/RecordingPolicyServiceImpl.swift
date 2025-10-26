@@ -1,0 +1,57 @@
+import Foundation
+import VocalisDomain
+import SubscriptionDomain
+
+/// Implementation of RecordingPolicyService
+///
+/// This service implements business rules for recording permissions and validation.
+/// It's in the Application layer because it orchestrates domain logic and doesn't
+/// belong to any single entity.
+final class RecordingPolicyServiceImpl: RecordingPolicyService {
+
+    // MARK: - Initialization
+
+    init() {}
+
+    // MARK: - RecordingPolicyService
+
+    func canStartRecording(
+        user: User,
+        settings: ScaleSettings?
+    ) async throws -> RecordingPermission {
+        // Check daily recording limit
+        if user.hasReachedDailyLimit {
+            return .denied(.dailyLimitExceeded)
+        }
+
+        // Check scale recording permission
+        if settings != nil {
+            guard user.canUseScaleRecording else {
+                return .denied(.premiumRequired)
+            }
+        }
+
+        return .allowed
+    }
+
+    func validateDuration(
+        _ duration: Duration,
+        for status: SubscriptionStatus
+    ) throws {
+        // Grandfather users (v1.0 cohort) have unlimited recording duration
+        if status.cohort == .v1_0 {
+            return
+        }
+
+        let limit = RecordingLimit.forTier(status.tier)
+
+        guard limit.isWithinDurationLimit(duration.seconds) else {
+            // maxDuration is guaranteed to be non-nil here because isWithinDurationLimit
+            // returns true for nil (unlimited)
+            let maxDuration = limit.maxDuration ?? TimeInterval.infinity
+            throw RecordingPolicyError.durationLimitExceeded(
+                limit: Duration(seconds: maxDuration)
+            )
+        }
+    }
+}
