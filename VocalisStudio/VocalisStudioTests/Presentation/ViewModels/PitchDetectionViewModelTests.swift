@@ -181,6 +181,11 @@ class PitchDetectionMockPitchDetector: PitchDetectorProtocol {
     var isDetecting: Bool = false
     var spectrum: [Float]?
 
+    private let detectedPitchSubject = PassthroughSubject<DetectedPitch?, Never>()
+    var detectedPitchPublisher: AnyPublisher<DetectedPitch?, Never> {
+        detectedPitchSubject.eraseToAnyPublisher()
+    }
+
     var startRealtimeDetectionCalled = false
     var stopRealtimeDetectionCalled = false
 

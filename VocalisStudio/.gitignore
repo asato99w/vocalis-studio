@@ -98,3 +98,4 @@ iOSInjectionProject/
 VocalisStudioTests/Resources/CSD/audio/*.wav
 VocalisStudioTests/Resources/CSD/midi/*.mid
 VocalisStudioTests/Resources/CSD/csv/*.csv
+TestResults.xcresult
