@@ -8,6 +8,7 @@ public protocol PitchDetectorProtocol {
     var detectedPitch: DetectedPitch? { get }
     var isDetecting: Bool { get }
     var spectrum: [Float]? { get }
+    var detectedPitchPublisher: AnyPublisher<DetectedPitch?, Never> { get }
     func startRealtimeDetection() throws
     func stopRealtimeDetection()
 }

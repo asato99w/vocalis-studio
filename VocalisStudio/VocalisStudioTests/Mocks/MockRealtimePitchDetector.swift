@@ -12,6 +12,11 @@ final class MockRealtimePitchDetector: ObservableObject, PitchDetectorProtocol {
     @Published var isDetecting: Bool = false
     @Published var spectrum: [Float]?
 
+    // Publisher for protocol conformance
+    var detectedPitchPublisher: AnyPublisher<DetectedPitch?, Never> {
+        $detectedPitch.eraseToAnyPublisher()
+    }
+
     var mockDetectedPitchSequence: [DetectedPitch] = []
     private var sequenceIndex = 0
 

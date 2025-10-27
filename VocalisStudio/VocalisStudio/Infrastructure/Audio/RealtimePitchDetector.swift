@@ -12,6 +12,11 @@ public class RealtimePitchDetector: ObservableObject, PitchDetectorProtocol {
     @Published public private(set) var isDetecting: Bool = false
     @Published public private(set) var spectrum: [Float]?
 
+    // Publisher for protocol conformance
+    public var detectedPitchPublisher: AnyPublisher<DetectedPitch?, Never> {
+        $detectedPitch.eraseToAnyPublisher()
+    }
+
     private let audioEngine = AVAudioEngine()
     private var audioBuffer: [Float] = []
     private let bufferSize = 8192  // Phase 2D: Improved frequency resolution (5.39 Hz/bin vs 10.77 Hz/bin)
@@ -20,6 +25,7 @@ public class RealtimePitchDetector: ObservableObject, PitchDetectorProtocol {
     // FFT setup
     private var fftSetup: vDSP_DFT_Setup?
     private let log2n: vDSP_Length
+
 
     public init() {
         log2n = vDSP_Length(log2(Double(bufferSize)))
@@ -186,6 +192,7 @@ public class RealtimePitchDetector: ObservableObject, PitchDetectorProtocol {
 
     /// Process audio buffer and detect pitch
     private var bufferProcessCount = 0
+    private var successfulDetectionCount = 0
 
     private func processAudioBuffer(_ buffer: AVAudioPCMBuffer) {
         bufferProcessCount += 1
@@ -214,42 +221,57 @@ public class RealtimePitchDetector: ObservableObject, PitchDetectorProtocol {
 
         // Detect pitch if we have enough samples
         if audioBuffer.count >= bufferSize {
-            Task { @MainActor [weak self] in
+            let samplesToProcess = Array(audioBuffer.suffix(bufferSize))
+
+            // 🔧 Execute pitch detection on background queue instead of MainActor
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
                 guard let self = self else { return }
-                self.detectPitchFromSamples(Array(self.audioBuffer.suffix(self.bufferSize)))
+                self.detectPitchFromSamples(samplesToProcess)
             }
         }
     }
 
     private var pitchDetectionCount = 0
 
-    /// Detect pitch from audio samples using FFT-based analysis
+    /// Detect pitch from audio samples using FFT-based analysis (runs on background queue)
     private func detectPitchFromSamples(_ samples: [Float]) {
+        let detectionStartTime = Date()
         pitchDetectionCount += 1
+        let count = pitchDetectionCount
 
         // Calculate RMS amplitude
         let rms = sqrt(samples.map { $0 * $0 }.reduce(0, +) / Float(samples.count))
 
-        if pitchDetectionCount == 1 {
+        if count == 1 {
             FileLogger.shared.log(level: "INFO", category: "pitch", message: "detectPitchFromSamples called for the first time, RMS: \(String(format: "%.4f", rms))")
         }
-        if pitchDetectionCount % 100 == 0 {
-            Logger.pitchDetection.debug("detectPitchFromSamples called \(self.pitchDetectionCount) times, RMS: \(String(format: "%.4f", rms))")
+        if count % 100 == 0 {
+            Logger.pitchDetection.debug("detectPitchFromSamples called \(count) times, RMS: \(String(format: "%.4f", rms))")
         }
 
         // Silence threshold
         guard rms > 0.02 else {
-            if pitchDetectionCount <= 10 || pitchDetectionCount % 100 == 0 {
+            if count <= 10 || count % 100 == 0 {
                 FileLogger.shared.log(level: "DEBUG", category: "pitch", message: "⚠️ RMS (\(String(format: "%.4f", rms))) below silence threshold (0.02)")
             }
-            detectedPitch = nil
-            spectrum = nil
+            let beforeTaskSchedule = Date()
+            Task { @MainActor in
+                let taskExecutionTime = Date()
+                let scheduleDelay = taskExecutionTime.timeIntervalSince(beforeTaskSchedule) * 1000
+                if count <= 10 || count % 100 == 0 {
+                    FileLogger.shared.log(level: "DEBUG", category: "pitch_timing", message: "⏱️ Task(nil) schedule delay: \(String(format: "%.1f", scheduleDelay))ms")
+                }
+                self.detectedPitch = nil
+                self.spectrum = nil
+            }
             return
         }
 
         guard let setup = fftSetup else {
-            detectedPitch = nil
-            spectrum = nil
+            Task { @MainActor in
+                self.detectedPitch = nil
+                self.spectrum = nil
+            }
             return
         }
 
@@ -302,13 +324,18 @@ public class RealtimePitchDetector: ObservableObject, PitchDetectorProtocol {
         let maxBin = Int(maxFreq * Double(bufferSize) / sampleRate)
 
         guard minBin < maxBin && maxBin < magnitudes.count else {
-            detectedPitch = nil
-            spectrum = nil
+            Task { @MainActor in
+                self.detectedPitch = nil
+                self.spectrum = nil
+            }
             return
         }
 
         // Publish spectrum data for visualization (100-800 Hz range)
-        spectrum = Array(magnitudes[minBin..<maxBin])
+        let spectrumData = Array(magnitudes[minBin..<maxBin])
+        Task { @MainActor in
+            self.spectrum = spectrumData
+        }
 
         // Create HPS by multiplying harmonics (start from fundamental, then multiply by harmonics)
         // Increased from 5 to 7 to improve low-frequency accuracy and reduce octave errors
@@ -342,7 +369,9 @@ public class RealtimePitchDetector: ObservableObject, PitchDetectorProtocol {
         }
 
         guard maxMagnitude > 0.01 else {
-            detectedPitch = nil
+            Task { @MainActor in
+                self.detectedPitch = nil
+            }
             return
         }
 
@@ -381,15 +410,50 @@ public class RealtimePitchDetector: ObservableObject, PitchDetectorProtocol {
 
         // Only report if confidence is high enough
         guard confidence > 0.4 else {
-            detectedPitch = nil
+            // Log rejected detections for first 20 times
+            if count <= 20 {
+                FileLogger.shared.log(
+                    level: "DEBUG",
+                    category: "pitch_timing",
+                    message: "⏱️ REJECTED #\(count): freq=\(String(format: "%.1f", frequency))Hz, confidence=\(String(format: "%.2f", confidence)) < 0.4"
+                )
+            }
+            Task { @MainActor in
+                self.detectedPitch = nil
+            }
             return
         }
 
         // Create detected pitch
-        detectedPitch = DetectedPitch.fromFrequency(
+        let pitch = DetectedPitch.fromFrequency(
             frequency,
             confidence: confidence
         )
+
+        let fftCompleteTime = Date()
+        let fftDuration = fftCompleteTime.timeIntervalSince(detectionStartTime) * 1000
+
+        successfulDetectionCount += 1
+        let successCount = successfulDetectionCount
+
+        // Log FFT processing time for all successful detections (first 50) or every 10th
+        if successCount <= 50 || successCount % 10 == 0 {
+            FileLogger.shared.log(level: "INFO", category: "pitch_timing", message: "⏱️ SUCCESS #\(successCount) (total attempts: \(count)): FFT=\(String(format: "%.1f", fftDuration))ms, freq=\(String(format: "%.1f", frequency))Hz, conf=\(String(format: "%.2f", confidence))")
+        }
+
+        let beforeTaskSchedule = Date()
+        Task { @MainActor in
+            let taskExecutionTime = Date()
+            let scheduleDelay = taskExecutionTime.timeIntervalSince(beforeTaskSchedule) * 1000
+            let totalDelay = taskExecutionTime.timeIntervalSince(detectionStartTime) * 1000
+
+            // Log timing for first 50 successful updates or every 10th
+            if successCount <= 50 || successCount % 10 == 0 {
+                FileLogger.shared.log(level: "INFO", category: "pitch_timing", message: "⏱️ Task execution #\(successCount): schedule=\(String(format: "%.1f", scheduleDelay))ms, total=\(String(format: "%.1f", totalDelay))ms")
+            }
+
+            self.detectedPitch = pitch
+        }
     }
 
     /// Analyze pitch from audio file (for playback analysis)

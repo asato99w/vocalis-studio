@@ -50,8 +50,13 @@ public class PitchDetectionViewModel: ObservableObject {
     // MARK: - Setup
 
     private func setupPitchDetectorSubscription() {
-        // Pitch detector updates will be polled during monitoring tasks
-        // No publisher subscription needed
+        // Subscribe to pitch detector's publisher to get immediate updates
+        pitchDetector.detectedPitchPublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] pitch in
+                self?.updateDetectedPitch(pitch)
+            }
+            .store(in: &cancellables)
     }
 
     // MARK: - Public Methods
@@ -62,24 +67,52 @@ public class PitchDetectionViewModel: ObservableObject {
         let scaleElements = settings.generateScaleWithKeyChange()
         try await scalePlayer.loadScaleElements(scaleElements, tempo: settings.tempo)
 
+        FileLogger.shared.log(
+            level: "INFO",
+            category: "pitch_monitoring",
+            message: "🔵 Target pitch monitoring started (polling interval: \(targetPitchPollingIntervalNanoseconds / 1_000_000)ms)"
+        )
+
         // Start monitoring task
         progressMonitorTask = Task { [weak self] in
             guard let self = self else { return }
             let pollingInterval = await self.targetPitchPollingIntervalNanoseconds
+            var loopCount = 0
+            var lastDebugLogTime = Date()
+
             while !Task.isCancelled {
+                loopCount += 1
+                let now = Date()
+
+                // 🔍 Log every 10 iterations (1 second) to track loop execution
+                if loopCount % 10 == 0 {
+                    let interval = now.timeIntervalSince(lastDebugLogTime) * 1000
+                    FileLogger.shared.log(
+                        level: "DEBUG",
+                        category: "pitch_monitoring",
+                        message: "🔄 Monitor loop iteration #\(loopCount) (last 10 loops took \(String(format: "%.0f", interval))ms)"
+                    )
+                    lastDebugLogTime = now
+                }
+
+                // Check scale player current element
                 if let currentElement = self.scalePlayer.currentScaleElement {
                     await self.updateTargetPitchFromScaleElement(currentElement)
                 } else {
                     await MainActor.run { self.targetPitch = nil }
                 }
 
-                // Also update detected pitch from pitch detector
-                if let detected = self.pitchDetector.detectedPitch {
-                    self.updateDetectedPitch(detected)
-                }
+                // Note: Detected pitch is now automatically updated via Combine subscription
+                // No manual polling needed here
 
                 try? await Task.sleep(nanoseconds: pollingInterval)
             }
+
+            FileLogger.shared.log(
+                level: "INFO",
+                category: "pitch_monitoring",
+                message: "🛑 Monitor loop terminated after \(loopCount) iterations"
+            )
         }
     }
 
@@ -94,20 +127,16 @@ public class PitchDetectionViewModel: ObservableObject {
     /// Start pitch detection during playback for analysis view
     public func startPlaybackPitchDetection(url: URL) async throws {
         // Start pitch detector
+        // Pitch updates are automatically handled by Combine subscription
         try pitchDetector.startRealtimeDetection()
 
-        // Monitor audio player progress
+        // Monitor audio player to stop detection when playback ends
         pitchDetectionTask = Task { [weak self] in
             guard let self = self else { return }
             let pollingInterval = await self.playbackPitchPollingIntervalNanoseconds
             while !Task.isCancelled {
                 let isPlaying = await MainActor.run { self.audioPlayer.isPlaying }
                 guard isPlaying else { break }
-
-                // Update pitch detection
-                if let detected = self.pitchDetector.detectedPitch {
-                    self.updateDetectedPitch(detected)
-                }
 
                 try? await Task.sleep(nanoseconds: pollingInterval)
             }
@@ -161,7 +190,25 @@ public class PitchDetectionViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Logging Support
+
+    private var pitchUpdateCount = 0
+    private var lastLogTime = Date()
+
     private func updateDetectedPitch(_ pitch: DetectedPitch?) {
+        pitchUpdateCount += 1
+
+        // 🔍 Log every call to this method for first 50 calls to understand frequency
+        if pitchUpdateCount <= 50 {
+            let now = Date()
+            let interval = now.timeIntervalSince(lastLogTime) * 1000
+            FileLogger.shared.log(
+                level: "DEBUG",
+                category: "pitch_update",
+                message: "📞 updateDetectedPitch called #\(pitchUpdateCount) (interval: \(String(format: "%.1f", interval))ms, hasValue: \(pitch != nil))"
+            )
+        }
+
         guard let pitch = pitch else {
             detectedPitch = nil
             pitchAccuracy = .none
@@ -175,8 +222,47 @@ public class PitchDetectionViewModel: ObservableObject {
             return
         }
 
+        // Log at startup and every 500ms during monitoring
+        let now = Date()
+        let timeSinceLastLog = now.timeIntervalSince(lastLogTime)
+        let shouldLog = pitchUpdateCount == 1 || timeSinceLastLog >= 0.5
+
+        // 🔍 Debug why 500ms condition is not met frequently
+        if pitchUpdateCount <= 20 || (pitchUpdateCount % 50 == 0) {
+            FileLogger.shared.log(
+                level: "DEBUG",
+                category: "pitch_update",
+                message: "⏱️ Time check: lastLog=\(String(format: "%.3f", timeSinceLastLog))s, shouldLog=\(shouldLog), count=\(pitchUpdateCount)"
+            )
+        }
+
         // If we have a target pitch, calculate cents difference
         if let target = targetPitch {
+            // Calculate MIDI note numbers from frequency
+            // A4 (440 Hz) = MIDI note 69
+            let targetMIDI = Int(round(12 * log2(target.frequency / 440.0) + 69))
+            let detectedMIDI = Int(round(12 * log2(pitch.frequency / 440.0) + 69))
+
+            // Calculate cents difference for detailed logging
+            let centsError = 1200.0 * log2(pitch.frequency / target.frequency)
+
+            if shouldLog {
+                FileLogger.shared.log(
+                    level: "INFO",
+                    category: "pitch_tracking",
+                    message: String(format: "🎯 UPDATE #%d | Target: %.1f Hz (MIDI %d) → Detected: %.1f Hz (MIDI %d) | Error: %+.1f cents | Confidence: %.2f | Interval: %.0fms",
+                        pitchUpdateCount,
+                        target.frequency,
+                        targetMIDI,
+                        pitch.frequency,
+                        detectedMIDI,
+                        centsError,
+                        pitch.confidence,
+                        now.timeIntervalSince(lastLogTime) * 1000
+                    )
+                )
+                lastLogTime = now
+            }
             let targetFreq = target.frequency
             let detectedFreq = pitch.frequency
 
