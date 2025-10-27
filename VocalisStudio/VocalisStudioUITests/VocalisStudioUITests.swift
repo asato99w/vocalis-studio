@@ -168,4 +168,70 @@ final class VocalisStudioUITests: XCTestCase {
         XCTAssertTrue(selectedLabel.waitForExistence(timeout: 5))
         XCTAssertTrue(selectedLabel.label.contains("Premium Plus"), "Premium Plus should persist after multiple navigations")
     }
+
+    // MARK: - Recording Playback Tests
+
+    @MainActor
+    func testTargetPitchShouldDisappearAfterStoppingPlayback() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        // 1. Navigate to Recording screen
+        let recordingTab = app.tabBars.buttons["Recording"]
+        XCTAssertTrue(recordingTab.waitForExistence(timeout: 5), "Recording tab should exist")
+        recordingTab.tap()
+
+        // 2. Wait for recording screen to load
+        let startButton = app.buttons["StartRecordingButton"]
+        XCTAssertTrue(startButton.waitForExistence(timeout: 5), "Start recording button should exist")
+
+        // 3. Start recording
+        startButton.tap()
+
+        // 4. Wait for countdown (3 seconds) + some recording time (2 seconds)
+        Thread.sleep(forTimeInterval: 5.0)
+
+        // 5. Stop recording
+        let stopButton = app.buttons["StopRecordingButton"]
+        XCTAssertTrue(stopButton.waitForExistence(timeout: 5), "Stop recording button should appear during recording")
+        stopButton.tap()
+
+        // 6. Wait for recording to finish processing
+        Thread.sleep(forTimeInterval: 1.0)
+
+        // 7. Verify Play Last Recording button appears
+        let playButton = app.buttons["PlayLastRecordingButton"]
+        XCTAssertTrue(playButton.waitForExistence(timeout: 5), "Play last recording button should appear after recording")
+
+        // 8. Play the last recording
+        playButton.tap()
+
+        // 9. Wait for playback to start
+        Thread.sleep(forTimeInterval: 0.5)
+
+        // 10. Verify target pitch is displayed during playback
+        let targetPitchNoteName = app.staticTexts["TargetPitchNoteName"]
+        XCTAssertTrue(targetPitchNoteName.waitForExistence(timeout: 3), "Target pitch should be displayed during playback")
+
+        // 11. Stop playback
+        let stopPlaybackButton = app.buttons["StopPlaybackButton"]
+        XCTAssertTrue(stopPlaybackButton.waitForExistence(timeout: 2), "Stop playback button should appear")
+        stopPlaybackButton.tap()
+
+        // 12. Wait for playback to stop
+        Thread.sleep(forTimeInterval: 0.5)
+
+        // 13. 🔴 BUG CHECK: Verify target pitch DISAPPEARS after stopping playback
+        let targetPitchEmpty = app.staticTexts["TargetPitchEmpty"]
+        XCTAssertTrue(
+            targetPitchEmpty.waitForExistence(timeout: 2),
+            "Target pitch should disappear (show '--') after stopping playback. BUG: Target pitch continues to be displayed."
+        )
+
+        // Alternative check: Target pitch note name should NOT exist
+        XCTAssertFalse(
+            targetPitchNoteName.exists,
+            "Target pitch note name should not exist after stopping playback. BUG: Target pitch continues to be displayed."
+        )
+    }
 }
