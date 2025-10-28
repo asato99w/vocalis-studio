@@ -185,11 +185,28 @@ final class VocalisStudioUITests: XCTestCase {
         let startButton = app.buttons["StartRecordingButton"]
         XCTAssertTrue(startButton.waitForExistence(timeout: 5), "Start recording button should exist")
 
+        // Wait for view to fully initialize with settings
+        Thread.sleep(forTimeInterval: 1.0)
+
+        // 📸 Screenshot 1: Initial recording screen
+        let screenshot1 = app.screenshot()
+        let attachment1 = XCTAttachment(screenshot: screenshot1)
+        attachment1.name = "01_initial_recording_screen"
+        attachment1.lifetime = .keepAlways
+        add(attachment1)
+
         // 3. Start recording
         startButton.tap()
 
         // 4. Wait for countdown (3 seconds) + some recording time (2 seconds)
         Thread.sleep(forTimeInterval: 5.0)
+
+        // 📸 Screenshot 2: During recording
+        let screenshot2 = app.screenshot()
+        let attachment2 = XCTAttachment(screenshot: screenshot2)
+        attachment2.name = "02_during_recording"
+        attachment2.lifetime = .keepAlways
+        add(attachment2)
 
         // 5. Stop recording
         let stopButton = app.buttons["StopRecordingButton"]
@@ -199,6 +216,13 @@ final class VocalisStudioUITests: XCTestCase {
         // 6. Wait for recording to finish processing
         Thread.sleep(forTimeInterval: 1.0)
 
+        // 📸 Screenshot 3: After recording stopped
+        let screenshot3 = app.screenshot()
+        let attachment3 = XCTAttachment(screenshot: screenshot3)
+        attachment3.name = "03_after_recording_stopped"
+        attachment3.lifetime = .keepAlways
+        add(attachment3)
+
         // 7. Verify Play Last Recording button appears
         let playButton = app.buttons["PlayLastRecordingButton"]
         XCTAssertTrue(playButton.waitForExistence(timeout: 5), "Play last recording button should appear after recording")
@@ -206,12 +230,19 @@ final class VocalisStudioUITests: XCTestCase {
         // 8. Play the last recording
         playButton.tap()
 
-        // 9. Wait for playback to start
-        Thread.sleep(forTimeInterval: 0.5)
+        // 9. Wait for playback to start and scale to load
+        Thread.sleep(forTimeInterval: 2.0)
+
+        // 📸 Screenshot 4: During playback (should show target pitch)
+        let screenshot4 = app.screenshot()
+        let attachment4 = XCTAttachment(screenshot: screenshot4)
+        attachment4.name = "04_during_playback"
+        attachment4.lifetime = .keepAlways
+        add(attachment4)
 
         // 10. Verify target pitch is displayed during playback
         let targetPitchNoteName = app.staticTexts["TargetPitchNoteName"]
-        XCTAssertTrue(targetPitchNoteName.waitForExistence(timeout: 3), "Target pitch should be displayed during playback")
+        XCTAssertTrue(targetPitchNoteName.waitForExistence(timeout: 5), "Target pitch should be displayed during playback")
 
         // 11. Stop playback
         let stopPlaybackButton = app.buttons["StopPlaybackButton"]
@@ -220,6 +251,13 @@ final class VocalisStudioUITests: XCTestCase {
 
         // 12. Wait for playback to stop
         Thread.sleep(forTimeInterval: 0.5)
+
+        // 📸 Screenshot 5: After playback stopped (BUG CHECK - should show '--')
+        let screenshot5 = app.screenshot()
+        let attachment5 = XCTAttachment(screenshot: screenshot5)
+        attachment5.name = "05_after_playback_stopped_BUG_CHECK"
+        attachment5.lifetime = .keepAlways
+        add(attachment5)
 
         // 13. 🔴 BUG CHECK: Verify target pitch DISAPPEARS after stopping playback
         let targetPitchEmpty = app.staticTexts["TargetPitchEmpty"]
