@@ -391,3 +391,53 @@ cat <ログファイルパス>
 - Presentation層のログがFileLoggerに記録されていなかった
 - Logger.viewModel.info()がファイルに残らないことを知らなかった
 - ログシステムの仕様が明確にドキュメント化されていなかった
+
+## 診断ログのベストプラクティス (2025-10-28 追加)
+
+### ❌ 避けるべきパターン
+
+**1. `print()` 文による診断ログ**
+```swift
+print("[DIAG] playLastRecording called")
+print("[DIAG] lastRecordingURL: \(lastRecordingURL)")
+```
+
+**問題点**:
+- OSLogに検索可能な形で出力されない
+- `log show` や `grep` でフィルタリングできない
+- FileLoggerにも記録されない
+
+**2. `Logger.viewModel.debug()` でのselfキャプチャ忘れ**
+```swift
+// ❌ コンパイルエラー: selfの明示的なキャプチャが必要
+Logger.viewModel.debug("URL: \(lastRecordingURL)")
+```
+
+**エラーメッセージ**:
+```
+error: reference to property 'lastRecordingURL' in closure requires explicit use of 'self' to make capture semantics explicit
+```
+
+### ✅ 推奨パターン
+
+**`Logger.viewModel.debug()` を使用し、selfを明示的にキャプチャ**
+```swift
+Logger.viewModel.debug("🔵 playLastRecording() called")
+Logger.viewModel.debug("🔵 lastRecordingURL: \(String(describing: self.lastRecordingURL))")
+Logger.viewModel.debug("🔵 lastRecordingSettings: \(String(describing: self.lastRecordingSettings))")
+```
+
+**メリット**:
+- OSLogとFileLoggerの両方に出力される
+- `log show --predicate 'category == "viewmodel"'` でフィルタリング可能
+- 絵文字マーカー (🔵) で視認性向上
+- `self` を明示することでSwiftの所有権セマンティクスが明確になる
+
+**確認されたログ出力例** (2025-10-28 17:50のテスト実行):
+```
+# OSLog
+2025-10-28 17:50:34.842387+0900 VocalisStudio[93733]: [com.kazuasato.VocalisStudio:viewmodel] Starting recording with settings: 5-tone scale
+
+# FileLogger
+2025-10-28 17:50:34.852 [INFO] [viewmodel] RecordingViewModel.startRecording() called, settings = present
+```

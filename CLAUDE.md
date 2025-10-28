@@ -287,6 +287,48 @@ stopRecordingUseCase.setRecordingContext(
 4. **Update Tests**: Ensure mock objects reflect interface changes
 5. **Documentation**: Update relevant docs/ files for architectural changes
 
+## Debugging and Log Retrieval - CRITICAL RULES
+
+### ⚠️ MANDATORY: Always Report Log Retrieval Failures
+
+When debugging issues (especially UI tests or runtime bugs), **ALWAYS attempt to retrieve logs first**. If log retrieval fails:
+
+1. ❌ **DO NOT proceed with other work without reporting the failure**
+2. ✅ **MUST report to user immediately**: "ログ取得に失敗しました。原因: [具体的な理由]"
+3. ✅ **MUST wait for user guidance** before attempting alternative approaches
+
+**Common mistakes to avoid**:
+- ❌ Silently giving up on log retrieval and moving to code analysis
+- ❌ Trying multiple log retrieval methods without reporting failures
+- ❌ Assuming logs don't exist without verifying timing and process
+
+### Log Retrieval Best Practices
+
+**For UI Tests** (refer to `claudedocs/LOGGING_SYSTEM_ANALYSIS.md` lines 274-353):
+
+```bash
+# ✅ CORRECT: Retrieve logs immediately after test execution (within 2 minutes)
+# Test runs at 17:25 → Retrieve logs at 17:25-17:27
+
+xcrun simctl spawn <SIMULATOR_UDID> log show \
+  --style syslog \
+  --predicate 'process == "VocalisStudio" OR subsystem == "com.kazuasato.VocalisStudio"' \
+  --last 2m \
+  --debug --info \
+  | grep -E "pattern" | tail -100
+```
+
+**Critical timing requirement**:
+- UIテスト実行直後（2分以内）にログ取得すること
+- 時間が経過すると OSLog からログが消える
+- テスト実行時刻とログ取得時刻を必ず確認すること
+
+**If logs cannot be retrieved**:
+1. Check test execution timestamp
+2. Check current time - if >5 minutes have passed, logs may be lost
+3. Report to user: "テスト実行から[X]分経過しているため、ログが取得できません。テストを再実行してください。"
+4. Do NOT proceed with speculation or code changes without logs
+
 ## Important Files to Reference
 
 - **`docs/TECHNICAL_SPEC.md`**: Detailed TDD/DDD guidelines and coding standards
