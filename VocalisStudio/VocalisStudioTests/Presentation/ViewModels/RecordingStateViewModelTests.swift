@@ -40,7 +40,7 @@ final class RecordingStateViewModelTests: XCTestCase {
             startRecordingWithScaleUseCase: mockStartRecordingWithScaleUseCase,
             stopRecordingUseCase: mockStopRecordingUseCase,
             audioPlayer: mockAudioPlayer,
-            scalePlayer: mockScalePlayer,
+            scalePlaybackCoordinator: ScalePlaybackCoordinator(scalePlayer: mockScalePlayer),
             subscriptionViewModel: mockSubscriptionViewModel,
             usageTracker: mockUsageTrackerWrapper.tracker,
             limitConfig: mockLimitConfig,

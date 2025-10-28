@@ -235,7 +235,7 @@ struct RecordingView_Previews: PreviewProvider {
                     stopRecordingUseCase: PreviewMockStopRecordingUseCase(),
                     audioPlayer: PreviewMockAudioPlayer(),
                     pitchDetector: RealtimePitchDetector(),
-                    scalePlayer: PreviewMockScalePlayer(),
+                    scalePlaybackCoordinator: ScalePlaybackCoordinator(scalePlayer: PreviewMockScalePlayer()),
                     subscriptionViewModel: SubscriptionViewModel(
                         getStatusUseCase: PreviewMockGetStatusUseCase(),
                         purchaseUseCase: PreviewMockPurchaseUseCase(),

@@ -22,6 +22,10 @@ public class DependencyContainer {
         AVAudioEngineScalePlayer()
     }()
 
+    public lazy var scalePlaybackCoordinator: ScalePlaybackCoordinator = {
+        ScalePlaybackCoordinator(scalePlayer: scalePlayer)
+    }()
+
     private lazy var audioRecorder: AudioRecorderProtocol = {
         AVAudioRecorderWrapper()
     }()
@@ -128,7 +132,7 @@ public class DependencyContainer {
             stopRecordingUseCase: stopRecordingUseCase,
             audioPlayer: audioPlayer,
             pitchDetector: pitchDetector,
-            scalePlayer: scalePlayer,
+            scalePlaybackCoordinator: scalePlaybackCoordinator,
             subscriptionViewModel: subscriptionViewModel
         )
     }()

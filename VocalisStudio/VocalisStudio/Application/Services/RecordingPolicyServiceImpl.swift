@@ -24,12 +24,7 @@ final class RecordingPolicyServiceImpl: RecordingPolicyService {
             return .denied(.dailyLimitExceeded)
         }
 
-        // Check scale recording permission
-        if settings != nil {
-            guard user.canUseScaleRecording else {
-                return .denied(.premiumRequired)
-            }
-        }
+        // Scale recording is now available for all tiers, no permission check needed
 
         return .allowed
     }

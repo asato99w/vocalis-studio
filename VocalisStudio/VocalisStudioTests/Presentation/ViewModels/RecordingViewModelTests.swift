@@ -36,7 +36,7 @@ final class RecordingViewModelTests: XCTestCase {
             stopRecordingUseCase: mockStopRecordingUseCase,
             audioPlayer: mockAudioPlayer,
             pitchDetector: mockPitchDetector,
-            scalePlayer: mockScalePlayer,
+            scalePlaybackCoordinator: ScalePlaybackCoordinator(scalePlayer: mockScalePlayer),
             subscriptionViewModel: mockSubscriptionViewModel,
             countdownDuration: 0,
             targetPitchPollingIntervalNanoseconds: 1_000_000,

@@ -34,7 +34,7 @@ public class RecordingStateViewModel: ObservableObject {
     private let startRecordingWithScaleUseCase: StartRecordingWithScaleUseCaseProtocol
     private let stopRecordingUseCase: StopRecordingUseCaseProtocol
     private let audioPlayer: AudioPlayerProtocol
-    private let scalePlayer: ScalePlayerProtocol
+    private let scalePlaybackCoordinator: ScalePlaybackCoordinator
     private let subscriptionViewModel: SubscriptionViewModel
     private let usageTracker: RecordingUsageTracker
     private let limitConfig: RecordingLimitConfigProtocol
@@ -61,7 +61,7 @@ public class RecordingStateViewModel: ObservableObject {
         startRecordingWithScaleUseCase: StartRecordingWithScaleUseCaseProtocol,
         stopRecordingUseCase: StopRecordingUseCaseProtocol,
         audioPlayer: AudioPlayerProtocol,
-        scalePlayer: ScalePlayerProtocol,
+        scalePlaybackCoordinator: ScalePlaybackCoordinator,
         subscriptionViewModel: SubscriptionViewModel,
         usageTracker: RecordingUsageTracker = RecordingUsageTracker(),
         limitConfig: RecordingLimitConfigProtocol = ProductionRecordingLimitConfig(),
@@ -71,7 +71,7 @@ public class RecordingStateViewModel: ObservableObject {
         self.startRecordingWithScaleUseCase = startRecordingWithScaleUseCase
         self.stopRecordingUseCase = stopRecordingUseCase
         self.audioPlayer = audioPlayer
-        self.scalePlayer = scalePlayer
+        self.scalePlaybackCoordinator = scalePlaybackCoordinator
         self.subscriptionViewModel = subscriptionViewModel
         self.usageTracker = usageTracker
         self.limitConfig = limitConfig
@@ -101,15 +101,20 @@ public class RecordingStateViewModel: ObservableObject {
 
     /// Start the recording process with countdown
     public func startRecording(settings: ScaleSettings? = nil) async {
+        print("[DIAG] startRecording START: state=\(recordingState)")
+
         // Don't start if already recording or in countdown
         guard recordingState == .idle else {
+            print("[DIAG] startRecording REJECTED: already in state \(recordingState)")
             Logger.viewModel.warning("Start recording ignored: already in state \(String(describing: self.recordingState))")
             return
         }
 
         // Check recording count limit
         self.dailyRecordingCount = usageTracker.getTodayCount()
+        print("[DIAG] Recording count check: current=\(self.dailyRecordingCount), limit=\(recordingLimit.dailyCount ?? -1)")
         if !recordingLimit.isCountWithinLimit(self.dailyRecordingCount) {
+            print("[DIAG] startRecording REJECTED: count limit reached")
             Logger.viewModel.warning("Recording limit reached: \(self.dailyRecordingCount)")
             errorMessage = "本日の録音回数の上限に達しました (\(currentTier.displayName)プラン)"
             return
@@ -117,33 +122,45 @@ public class RecordingStateViewModel: ObservableObject {
 
         let settingsInfo = settings != nil ? "5-tone scale" : "no scale"
         Logger.viewModel.info("Starting recording with settings: \(settingsInfo)")
+        print("[DIAG] startRecording PASSED checks, settings=\(settingsInfo)")
 
         // Clear any previous error
         errorMessage = nil
 
         // If countdown is 0, skip countdown and start recording immediately
         if countdownDuration == 0 {
+            print("[DIAG] Skipping countdown, executing immediately")
             await executeRecording(settings: settings)
             return
         }
 
         // Start countdown
+        print("[DIAG] Starting countdown: \(countdownDuration) seconds")
         recordingState = .countdown
         countdownValue = countdownDuration
 
         // Create countdown task
         countdownTask = Task { [weak self] in
             guard let self = self else { return }
+            print("[DIAG] Countdown task started")
             // Countdown: countdownDuration, ..., 2, 1
             for value in (1...self.countdownDuration).reversed() {
-                if Task.isCancelled { return }
+                if Task.isCancelled {
+                    print("[DIAG] Countdown task cancelled at \(value)")
+                    return
+                }
                 await MainActor.run { self.countdownValue = value }
+                print("[DIAG] Countdown: \(value)")
                 try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
             }
 
-            if Task.isCancelled { return }
+            if Task.isCancelled {
+                print("[DIAG] Countdown task cancelled before execute")
+                return
+            }
 
             // Countdown complete, start recording
+            print("[DIAG] Countdown complete, calling executeRecording")
             await self.executeRecording(settings: settings)
         }
     }
@@ -219,20 +236,9 @@ public class RecordingStateViewModel: ObservableObject {
         do {
             isPlayingRecording = true
 
-            // If we have scale settings, play muted scale for target pitch tracking
+            // If we have scale settings, start muted scale playback via coordinator
             if let settings = lastRecordingSettings {
-                let scaleElements = settings.generateScaleWithKeyChange()
-                try await scalePlayer.loadScaleElements(scaleElements, tempo: settings.tempo)
-
-                // Start muted scale playback in background
-                Task { [weak self] in
-                    guard let self = self else { return }
-                    do {
-                        try await self.scalePlayer.play(muted: true)
-                    } catch {
-                        // Silently handle muted scale playback errors
-                    }
-                }
+                try await scalePlaybackCoordinator.startMutedPlayback(settings: settings)
             }
 
             // Play the actual recording (blocks until playback completes)
@@ -251,6 +257,7 @@ public class RecordingStateViewModel: ObservableObject {
     /// Stop playing the recording
     public func stopPlayback() async {
         await audioPlayer.stop()
+        await scalePlaybackCoordinator.stopPlayback()
         isPlayingRecording = false
         Logger.viewModel.info("Playback stopped")
     }
@@ -277,35 +284,44 @@ public class RecordingStateViewModel: ObservableObject {
 
     /// Execute the actual recording after countdown
     private func executeRecording(settings: ScaleSettings?) async {
+        print("[DIAG] executeRecording START")
         do {
             // Create user object from current state
             let user = createCurrentUser()
+            print("[DIAG] User created: tier=\(user.subscriptionStatus.tier)")
 
             // Start recording based on settings
             let session: RecordingSession
             if let settings = settings {
+                print("[DIAG] Starting recording WITH scale")
                 session = try await startRecordingWithScaleUseCase.execute(user: user, settings: settings)
                 Logger.viewModel.info("Recording started with scale")
             } else {
+                print("[DIAG] Starting recording WITHOUT scale")
                 session = try await startRecordingUseCase.execute(user: user)
                 Logger.viewModel.info("Recording started without scale")
             }
+            print("[DIAG] Recording session created: \(session.recordingURL.lastPathComponent)")
 
             // Set recording context for StopRecordingUseCase
             stopRecordingUseCase.setRecordingContext(url: session.recordingURL, settings: session.settings)
 
             // Update state
+            print("[DIAG] Setting recordingState to .recording")
             recordingState = .recording
             currentSession = session
             progress = 0.0
             recordingStartTime = Date()
+            print("[DIAG] recordingState is now: \(recordingState)")
 
             // Start duration monitoring
             startDurationMonitoring()
 
             Logger.viewModel.info("Recording in progress")
+            print("[DIAG] executeRecording SUCCESS")
 
         } catch {
+            print("[DIAG] executeRecording ERROR: \(error.localizedDescription)")
             Logger.viewModel.logError(error)
             errorMessage = error.localizedDescription
             recordingState = .idle

@@ -49,7 +49,7 @@ final class RecordingLimitIntegrationTests: XCTestCase {
             stopRecordingUseCase: mockStopUseCase,
             audioPlayer: mockAudioPlayer,
             pitchDetector: mockPitchDetector,
-            scalePlayer: mockScalePlayer,
+            scalePlaybackCoordinator: ScalePlaybackCoordinator(scalePlayer: mockScalePlayer),
             subscriptionViewModel: subscriptionViewModel,
             usageTracker: mockUsageTracker,
             limitConfig: TestRecordingLimitConfig() // Use test config with shorter durations

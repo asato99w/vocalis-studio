@@ -20,7 +20,7 @@ public class ProductionRecordingLimitConfig: RecordingLimitConfigProtocol {
     public func limitForTier(_ tier: SubscriptionTier) -> RecordingLimit {
         switch tier {
         case .free:
-            return RecordingLimit(dailyCount: 5, maxDuration: 30) // 5 recordings/day, 30 seconds max
+            return RecordingLimit(dailyCount: 100, maxDuration: 30) // 100 recordings/day for testing, 30 seconds max
         case .premium:
             return RecordingLimit(dailyCount: nil, maxDuration: 300) // Unlimited recordings, 5 minutes max
         case .premiumPlus:

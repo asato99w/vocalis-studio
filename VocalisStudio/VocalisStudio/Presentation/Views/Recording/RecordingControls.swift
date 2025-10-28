@@ -43,6 +43,7 @@ struct RecordingControls: View {
                 .background(Color.red)
                 .cornerRadius(10)
             }
+            .accessibilityIdentifier("StartRecordingButton")
 
             if hasLastRecording {
                 Button(action: onPlayLast) {
@@ -57,6 +58,7 @@ struct RecordingControls: View {
                     .background(Color.blue)
                     .cornerRadius(8)
                 }
+                .accessibilityIdentifier(isPlayingRecording ? "StopPlaybackButton" : "PlayLastRecordingButton")
             }
         }
     }
@@ -97,5 +99,6 @@ struct RecordingControls: View {
             .background(Color.gray)
             .cornerRadius(10)
         }
+        .accessibilityIdentifier("StopRecordingButton")
     }
 }

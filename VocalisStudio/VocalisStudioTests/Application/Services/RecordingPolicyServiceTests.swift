@@ -53,8 +53,8 @@ final class RecordingPolicyServiceTests: XCTestCase {
         }
     }
 
-    func testCanStartRecording_FreeUser_WithScale_ReturnsDenied() async throws {
-        // Given: Free user attempts scale recording
+    func testCanStartRecording_FreeUser_WithScale_ReturnsAllowed() async throws {
+        // Given: Free user with scale recording (now available for all tiers)
         let user = User(
             id: UserId(),
             subscriptionStatus: .defaultFree(cohort: .v2_0),
@@ -65,12 +65,8 @@ final class RecordingPolicyServiceTests: XCTestCase {
         // When: Check if can start recording with scale
         let permission = try await sut.canStartRecording(user: user, settings: settings)
 
-        // Then: Should be denied with premium required reason
-        if case .denied(let reason) = permission {
-            XCTAssertEqual(reason, .premiumRequired)
-        } else {
-            XCTFail("Expected denied permission, got \(permission)")
-        }
+        // Then: Should be allowed (scale recording available for all tiers)
+        XCTAssertEqual(permission, .allowed)
     }
 
     func testCanStartRecording_PremiumUser_WithScale_WithinDailyLimit_ReturnsAllowed() async throws {
@@ -134,8 +130,8 @@ final class RecordingPolicyServiceTests: XCTestCase {
         XCTAssertEqual(permission, .allowed)
     }
 
-    func testCanStartRecording_ExpiredPremium_WithScale_ReturnsDenied() async throws {
-        // Given: Expired Premium subscription
+    func testCanStartRecording_ExpiredPremium_WithScale_ReturnsAllowed() async throws {
+        // Given: Expired Premium subscription (scale recording now available for all tiers)
         let user = User(
             id: UserId(),
             subscriptionStatus: SubscriptionStatus(
@@ -151,12 +147,8 @@ final class RecordingPolicyServiceTests: XCTestCase {
         // When: Check if can start recording with scale
         let permission = try await sut.canStartRecording(user: user, settings: settings)
 
-        // Then: Should be denied (no active premium)
-        if case .denied(let reason) = permission {
-            XCTAssertEqual(reason, .premiumRequired)
-        } else {
-            XCTFail("Expected denied permission, got \(permission)")
-        }
+        // Then: Should be allowed (scale recording available for all tiers)
+        XCTAssertEqual(permission, .allowed)
     }
 
     // MARK: - validateDuration Tests

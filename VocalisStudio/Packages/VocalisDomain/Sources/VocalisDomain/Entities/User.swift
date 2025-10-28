@@ -72,14 +72,9 @@ public struct User: Identifiable, Equatable, Codable, Sendable {
     }
 
     /// Check if user can use scale recording feature
+    /// Scale recording is now available for all tiers
     public var canUseScaleRecording: Bool {
-        // Grandfather users (v1.0) have access to all features
-        if subscriptionStatus.cohort == .v1_0 {
-            return true
-        }
-
-        // Requires Premium or Premium Plus
-        return subscriptionStatus.hasPaidSubscription && subscriptionStatus.isActive
+        return true
     }
 
     /// Update user with new subscription status

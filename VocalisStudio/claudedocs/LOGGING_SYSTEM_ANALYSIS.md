@@ -245,7 +245,7 @@ public class RecordingViewModel: ObservableObject {
 
 ## テスト時のログ確認方法
 
-### 現状の確認方法
+### 方法1: ユニットテストからのログファイル確認
 
 ```swift
 // テストコード例
@@ -271,7 +271,94 @@ func testSomething() async throws {
 }
 ```
 
-### 実アプリのログ確認方法
+### 方法2: UIテスト実行時のログ確認（✅ 2025-10-28成功）
+
+**これまでの失敗理由**:
+1. **時刻指定の問題** (`--start`/`--end`):
+   - `date` コマンドで取得した時刻とログシステムの時刻がずれていた
+   - 時刻フォーマットが厳密で、少しでも間違うとログが取得できない
+   - テスト実行前後の時刻を正確に記録するのが�煩雑
+
+2. **プロセス名の問題**:
+   - UIテスト実行時はアプリプロセス名が通常実行と異なる場合がある
+   - `VocalisStudio` だけでなく `VocalisStudio-Runner` なども候補になる
+   - プロセスIDが毎回変わるため特定が困難
+
+3. **ログレベルの問題**:
+   - デフォルトでは `info` レベル以下のログが表示されない
+   - `--debug` オプションを明示的に指定しないとデバッグログが取得できない
+   - OSLogの仕様で、`debug` レベルのログはメモリに保持される期間が短い
+
+4. **subsystemの問題**:
+   - `subsystem == "com.kazuasato.VocalisStudio"` だけでは不十分
+   - カテゴリ指定（`category == "viewmodel"`）を追加すると複雑になりすぎてマッチしない
+   - OR条件の書き方が不適切だった（括弧の位置など）
+
+5. **FileLoggerへの誤解**:
+   - `Logger.viewModel.info()` がFileLoggerに記録されると誤解していた
+   - UIテスト実行時にFileLoggerがどこに書き込むか不明瞭だった
+   - シミュレータ内のログファイルパスを特定するのが困難
+
+**成功した方法**:
+```bash
+# シンプルな方法: 最近5分間のログから対象プロセスのみをフィルタ
+xcrun simctl spawn <SIMULATOR_UDID> log show \
+  --style syslog \
+  --predicate 'process == "VocalisStudio" OR subsystem == "com.kazuasato.VocalisStudio"' \
+  --last 5m \
+  --debug --info \
+  | grep -E "\[DIAG\]|RecordingStateViewModel|startRecording|executeRecording" \
+  | tail -100
+```
+
+**具体例** (実際に成功したコマンド):
+```bash
+xcrun simctl spawn 508462B0-4692-4B9B-88F9-73A63F9B91F5 log show \
+  --style syslog \
+  --predicate 'process == "VocalisStudio" OR subsystem == "com.kazuasato.VocalisStudio"' \
+  --last 5m \
+  --debug --info \
+  | grep -E "\[DIAG\]|RecordingStateViewModel|startRecording|executeRecording" \
+  | tail -100
+```
+
+**成功の要因**:
+1. ✅ **`--last 5m` の使用**: 時刻指定の複雑さを完全に回避
+   - `--start`/`--end` を使わず、相対時刻で指定
+   - テスト実行後すぐにコマンドを実行すれば確実にログが取得できる
+
+2. ✅ **OR条件の正しい書き方**: `process == "VocalisStudio" OR subsystem == "com.kazuasato.VocalisStudio"`
+   - プロセス名とsubsystemの両方を条件にすることで取りこぼしを防ぐ
+   - カテゴリ指定を含めない（複雑になりすぎてマッチしない）
+
+3. ✅ **`--debug --info` の明示的指定**: デフォルトでは取得できないデバッグログを確実に取得
+   - `Logger.viewModel.debug()` や `print("[DIAG]...")` が取得できる
+
+4. ✅ **`grep` による後処理**: predicateで絞り込むのではなく、取得後にフィルタ
+   - predicateを複雑にすると失敗しやすい
+   - シンプルなpredicateで全体を取得し、grepで必要な部分を抽出
+
+5. ✅ **`tail -100` で可読性向上**: 膨大なログから最新の関連部分のみ表示
+
+**取得できたログの例**:
+```
+2025-10-28 16:22:45.065987+0900  localhost VocalisStudio[68666]: (VocalisStudio.debug.dylib) [com.kazuasato.VocalisStudio:viewmodel] RecordingStateViewModel initialized
+2025-10-28 16:22:53.786781+0900  localhost VocalisStudio[68666]: (VocalisStudio.debug.dylib) [com.kazuasato.VocalisStudio:viewmodel] [RecordingStateViewModel.swift:325] executeRecording(settings:) - Error: この機能を使用するにはプレミアムプランが必要です
+```
+
+**重要な注意点**:
+- UIテスト実行直後にコマンドを実行すること（ログが残っている間に）
+- `--last 5m` の時間は必要に応じて調整可能（`1m`, `10m`, `1h`など）
+- `grep` のパターンは調査対象に応じて変更
+- シミュレータUDIDは `xcrun simctl list devices` で確認
+
+**デバッグマーカーの活用**:
+コード内に `[DIAG]` などのマーカーをprintに追加しておくと、grepで簡単にフィルタリングできます：
+```swift
+print("[DIAG] startRecording START: state=\(recordingState)")
+```
+
+### 方法3: 実アプリのログ確認
 
 シミュレーター実行時:
 ```bash

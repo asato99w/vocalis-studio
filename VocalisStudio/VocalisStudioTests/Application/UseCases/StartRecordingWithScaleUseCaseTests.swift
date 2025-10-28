@@ -198,26 +198,31 @@ final class StartRecordingWithScaleUseCaseTests: XCTestCase {
 
     // MARK: - Permission Tests
 
-    func testExecute_FreeUser_DeniedDueToScaleRecording() async {
-        // Given: Free user trying to use scale recording
+    func testExecute_FreeUser_WithScaleRecording_Succeeds() async {
+        // Given: Free user with scale recording (now available for all tiers)
         let freeUser = User(
             id: UserId(),
             subscriptionStatus: .defaultFree(cohort: .v2_0),
             recordingStats: RecordingStats(todayCount: 0)
         )
         let settings = ScaleSettings.mvpDefault
-        mockRecordingPolicyService.canStartRecordingResult = .denied(.premiumRequired)
+        let expectedURL = URL(fileURLWithPath: "/tmp/test.m4a")
+        mockRecordingPolicyService.canStartRecordingResult = .allowed
+        mockAudioRecorder.prepareRecordingResult = expectedURL
 
-        // When/Then
+        // When
         do {
-            _ = try await sut.execute(user: freeUser, settings: settings)
-            XCTFail("Expected error to be thrown")
-        } catch let error as RecordingPermissionError {
-            XCTAssertEqual(error, .premiumRequired)
+            let session = try await sut.execute(user: freeUser, settings: settings)
+
+            // Then: Recording should succeed
             XCTAssertTrue(mockRecordingPolicyService.canStartRecordingCalled)
-            XCTAssertFalse(mockAudioRecorder.prepareRecordingCalled)
+            XCTAssertTrue(mockAudioRecorder.prepareRecordingCalled)
+            XCTAssertTrue(mockAudioRecorder.startRecordingCalled)
+            XCTAssertTrue(mockScalePlayer.playCalled)
+            XCTAssertEqual(session.recordingURL, expectedURL)
+            XCTAssertEqual(session.settings, settings)
         } catch {
-            XCTFail("Wrong error type: \(error)")
+            XCTFail("Unexpected error: \(error)")
         }
     }
 

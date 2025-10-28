@@ -41,6 +41,7 @@ public struct HomeView: View {
                         )) {
                             MenuButton(title: "home.record_button".localized, icon: "mic.fill")
                         }
+                        .accessibilityIdentifier("HomeRecordButton")
 
                         NavigationLink(destination: RecordingListView(
                             viewModel: RecordingListViewModel(

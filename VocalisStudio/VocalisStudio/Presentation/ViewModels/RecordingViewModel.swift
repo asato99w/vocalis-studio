@@ -57,7 +57,7 @@ public class RecordingViewModel: ObservableObject {
         stopRecordingUseCase: StopRecordingUseCaseProtocol,
         audioPlayer: AudioPlayerProtocol,
         pitchDetector: any PitchDetectorProtocol & ObservableObject,
-        scalePlayer: ScalePlayerProtocol,
+        scalePlaybackCoordinator: ScalePlaybackCoordinator,
         subscriptionViewModel: SubscriptionViewModel,
         usageTracker: RecordingUsageTracker = RecordingUsageTracker(),
         limitConfig: RecordingLimitConfigProtocol = ProductionRecordingLimitConfig(),
@@ -74,7 +74,7 @@ public class RecordingViewModel: ObservableObject {
             startRecordingWithScaleUseCase: startRecordingWithScaleUseCase,
             stopRecordingUseCase: stopRecordingUseCase,
             audioPlayer: audioPlayer,
-            scalePlayer: scalePlayer,
+            scalePlaybackCoordinator: scalePlaybackCoordinator,
             subscriptionViewModel: subscriptionViewModel,
             usageTracker: usageTracker,
             limitConfig: limitConfig,
@@ -83,7 +83,7 @@ public class RecordingViewModel: ObservableObject {
 
         self.pitchDetectionVM = PitchDetectionViewModel(
             pitchDetector: pitchDetector,
-            scalePlayer: scalePlayer,
+            scalePlaybackCoordinator: scalePlaybackCoordinator,
             audioPlayer: audioPlayer,
             targetPitchPollingIntervalNanoseconds: targetPitchPollingIntervalNanoseconds,
             playbackPitchPollingIntervalNanoseconds: playbackPitchPollingIntervalNanoseconds

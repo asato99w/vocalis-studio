@@ -189,6 +189,7 @@ struct PitchIndicator: View {
                         .font(.callout)
                         .fontWeight(.bold)
                         .foregroundColor(.blue)
+                        .accessibilityIdentifier("TargetPitchNoteName")
 
                     Text(String(format: "%.1f Hz", target.frequency))
                         .font(.caption)
@@ -198,6 +199,7 @@ struct PitchIndicator: View {
                 Text("--")
                     .font(.callout)
                     .foregroundColor(.secondary)
+                    .accessibilityIdentifier("TargetPitchEmpty")
             }
 
             Spacer()

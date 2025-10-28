@@ -19,6 +19,7 @@ final class MockScalePlayer: ScalePlayerProtocol {
 
     var _isPlaying = false
     var _currentNoteIndex = 0
+    var playMuted: Bool?  // Capture muted parameter from play(muted:)
 
     var isPlaying: Bool {
         _isPlaying
@@ -75,6 +76,7 @@ final class MockScalePlayer: ScalePlayerProtocol {
     func play(muted: Bool) async throws {
         playCalled = true
         playCallTime = Date()
+        playMuted = muted  // Capture muted parameter
         _isPlaying = true
 
         if playShouldFail {
@@ -100,6 +102,7 @@ final class MockScalePlayer: ScalePlayerProtocol {
         loadScaleCallTime = nil
         playCallTime = nil
         stopCallTime = nil
+        playMuted = nil
         _isPlaying = false
         _currentNoteIndex = 0
     }

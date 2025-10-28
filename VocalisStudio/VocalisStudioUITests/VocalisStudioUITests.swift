@@ -176,10 +176,10 @@ final class VocalisStudioUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        // 1. Navigate to Recording screen
-        let recordingTab = app.tabBars.buttons["Recording"]
-        XCTAssertTrue(recordingTab.waitForExistence(timeout: 5), "Recording tab should exist")
-        recordingTab.tap()
+        // 1. Navigate to Recording screen from Home
+        let homeRecordButton = app.buttons["HomeRecordButton"]
+        XCTAssertTrue(homeRecordButton.waitForExistence(timeout: 5), "Home record button should exist")
+        homeRecordButton.tap()
 
         // 2. Wait for recording screen to load
         let startButton = app.buttons["StartRecordingButton"]

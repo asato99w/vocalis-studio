@@ -15,7 +15,7 @@ public class PitchDetectionViewModel: ObservableObject {
     // MARK: - Dependencies
 
     private let pitchDetector: PitchDetectorProtocol
-    private let scalePlayer: ScalePlayerProtocol
+    private let scalePlaybackCoordinator: ScalePlaybackCoordinator
     private let audioPlayer: AudioPlayerProtocol
 
     // MARK: - Private Properties
@@ -33,13 +33,13 @@ public class PitchDetectionViewModel: ObservableObject {
 
     public init(
         pitchDetector: PitchDetectorProtocol,
-        scalePlayer: ScalePlayerProtocol,
+        scalePlaybackCoordinator: ScalePlaybackCoordinator,
         audioPlayer: AudioPlayerProtocol,
         targetPitchPollingIntervalNanoseconds: UInt64 = 100_000_000,
         playbackPitchPollingIntervalNanoseconds: UInt64 = 50_000_000
     ) {
         self.pitchDetector = pitchDetector
-        self.scalePlayer = scalePlayer
+        self.scalePlaybackCoordinator = scalePlaybackCoordinator
         self.audioPlayer = audioPlayer
         self.targetPitchPollingIntervalNanoseconds = targetPitchPollingIntervalNanoseconds
         self.playbackPitchPollingIntervalNanoseconds = playbackPitchPollingIntervalNanoseconds
@@ -63,9 +63,8 @@ public class PitchDetectionViewModel: ObservableObject {
 
     /// Start monitoring target pitch during recording with scale playback
     public func startTargetPitchMonitoring(settings: ScaleSettings) async throws {
-        // Load scale into player
-        let scaleElements = settings.generateScaleWithKeyChange()
-        try await scalePlayer.loadScaleElements(scaleElements, tempo: settings.tempo)
+        // Start muted scale playback via coordinator
+        try await scalePlaybackCoordinator.startMutedPlayback(settings: settings)
 
         FileLogger.shared.log(
             level: "INFO",
@@ -84,20 +83,16 @@ public class PitchDetectionViewModel: ObservableObject {
                 loopCount += 1
                 let now = Date()
 
-                // 🔍 Log every 10 iterations (1 second) to track loop execution
-                if loopCount % 10 == 0 {
-                    let interval = now.timeIntervalSince(lastDebugLogTime) * 1000
-                    FileLogger.shared.log(
-                        level: "DEBUG",
-                        category: "pitch_monitoring",
-                        message: "🔄 Monitor loop iteration #\(loopCount) (last 10 loops took \(String(format: "%.0f", interval))ms)"
-                    )
-                    lastDebugLogTime = now
-                }
+                // 🔍 Log every loop iteration with detailed state
+                let interval = now.timeIntervalSince(lastDebugLogTime) * 1000
+                print("[DIAG] Loop #\(loopCount) START: isCancelled=\(Task.isCancelled), interval=\(String(format: "%.0f", interval))ms")
+                lastDebugLogTime = now
 
-                // Check scale player current element
-                if let currentElement = self.scalePlayer.currentScaleElement {
+                // Check scale player current element via coordinator
+                if let currentElement = self.scalePlaybackCoordinator.currentScaleElement {
+                    print("[DIAG] Loop #\(loopCount) Before updateTargetPitch: targetPitch=\(String(describing: targetPitch))")
                     await self.updateTargetPitchFromScaleElement(currentElement)
+                    print("[DIAG] Loop #\(loopCount) After updateTargetPitch: targetPitch=\(String(describing: targetPitch))")
                 } else {
                     await MainActor.run { self.targetPitch = nil }
                 }
@@ -108,20 +103,23 @@ public class PitchDetectionViewModel: ObservableObject {
                 try? await Task.sleep(nanoseconds: pollingInterval)
             }
 
-            FileLogger.shared.log(
-                level: "INFO",
-                category: "pitch_monitoring",
-                message: "🛑 Monitor loop terminated after \(loopCount) iterations"
-            )
+            print("[DIAG] Loop EXITED: final targetPitch=\(String(describing: targetPitch)), iterations=\(loopCount)")
         }
     }
 
     /// Stop target pitch monitoring
     public func stopTargetPitchMonitoring() async {
+        print("[DIAG] stopTargetPitchMonitoring START: targetPitch=\(String(describing: targetPitch)), taskExists=\(progressMonitorTask != nil)")
+
         progressMonitorTask?.cancel()
-        _ = await progressMonitorTask?.value  // Wait for task completion to prevent race condition
+        print("[DIAG] Task.cancel() called")
+
+        _ = await progressMonitorTask?.value
+        print("[DIAG] Task.value returned: targetPitch=\(String(describing: targetPitch))")
+
         progressMonitorTask = nil
         targetPitch = nil
+        print("[DIAG] stopTargetPitchMonitoring END: targetPitch set to nil")
     }
 
     /// Start pitch detection during playback for analysis view
