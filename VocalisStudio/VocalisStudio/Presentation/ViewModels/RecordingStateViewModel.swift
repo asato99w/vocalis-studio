@@ -249,6 +249,9 @@ public class RecordingStateViewModel: ObservableObject {
             // Play the actual recording (blocks until playback completes)
             try await audioPlayer.play(url: url)
 
+            // Playback completed naturally - stop scale playback
+            await scalePlaybackCoordinator.stopPlayback()
+
             isPlayingRecording = false
             Logger.viewModel.info("Playback completed")
 

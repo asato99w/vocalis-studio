@@ -15,6 +15,9 @@ public class ScalePlaybackCoordinator {
     /// Start muted playback for target pitch monitoring
     /// - Parameter settings: Scale configuration
     public func startMutedPlayback(settings: ScaleSettings) async throws {
+        // Stop any existing playback first to avoid conflicts
+        await scalePlayer.stop()
+
         currentSettings = settings
         let scaleElements = settings.generateScaleWithKeyChange()
         try await scalePlayer.loadScaleElements(scaleElements, tempo: settings.tempo)

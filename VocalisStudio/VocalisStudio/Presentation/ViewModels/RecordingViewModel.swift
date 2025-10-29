@@ -216,14 +216,17 @@ public class RecordingViewModel: ObservableObject {
 
         if let url = lastRecordingURL, let settings = lastRecordingSettings {
             Logger.viewModel.debug("🔵 Both URL and settings exist, starting pitch monitoring")
+            FileLogger.shared.log(level: "INFO", category: "viewmodel", message: "🔵 About to call startTargetPitchMonitoring")
             do {
                 // Start target pitch monitoring for scale element tracking
                 try await pitchDetectionVM.startTargetPitchMonitoring(settings: settings)
+                FileLogger.shared.log(level: "INFO", category: "viewmodel", message: "🔵 startTargetPitchMonitoring completed successfully")
                 Logger.viewModel.debug("🔵 Target pitch monitoring started successfully")
                 // Start playback pitch detection for user's pitch analysis
                 try await pitchDetectionVM.startPlaybackPitchDetection(url: url)
                 Logger.viewModel.debug("🔵 Playback pitch detection started successfully")
             } catch {
+                FileLogger.shared.log(level: "ERROR", category: "viewmodel", message: "🔵 CATCH BLOCK: Error in pitch detection setup: \(error.localizedDescription)")
                 Logger.viewModel.error("🔵 Error in pitch detection setup: \(error.localizedDescription)")
                 Logger.viewModel.logError(error)
             }
@@ -234,6 +237,11 @@ public class RecordingViewModel: ObservableObject {
         }
 
         await recordingStateVM.playLastRecording()
+
+        // Playback completed (either naturally or by error) - cleanup pitch detection
+        Logger.viewModel.debug("🔵 Playback completed, cleaning up pitch detection")
+        await pitchDetectionVM.stopTargetPitchMonitoring()
+        pitchDetectionVM.stopPlaybackPitchDetection()
     }
 
     /// Stop playing the recording
