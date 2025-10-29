@@ -1,5 +1,6 @@
 import SwiftUI
 import VocalisDomain
+import OSLog
 
 /// Recording control buttons (start, stop, cancel, play last)
 struct RecordingControls: View {
@@ -10,6 +11,9 @@ struct RecordingControls: View {
     let onStop: () -> Void
     let onCancel: () -> Void
     let onPlayLast: () -> Void
+
+    // Logger for diagnostic purposes
+    private static let logger = Logger(subsystem: "com.kazuasato.VocalisStudio", category: "RecordingControls")
 
     var body: some View {
         VStack(spacing: 10) {
@@ -30,7 +34,10 @@ struct RecordingControls: View {
 
     private var idleControls: some View {
         VStack(spacing: 8) {
-            Button(action: onStart) {
+            Button(action: {
+                Self.logger.error("UI_TEST_MARK: StartRecordingButton action called")
+                onStart()
+            }) {
                 HStack {
                     Image(systemName: "mic.fill")
                     Text("recording.start_button".localized)
