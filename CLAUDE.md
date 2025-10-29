@@ -6,6 +6,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **IMPORTANT: Always respond in Japanese (日本語) for all communications with the user.**
 
+## Problem-Solving Philosophy
+
+**CRITICAL: Never give up on solving the requested problem unless it is truly impossible.**
+
+When encountering difficulties during task execution:
+
+1. **Persist with Systematic Investigation**: Continue investigating and trying different approaches
+2. **Document and Reference**: Update relevant documentation (`claudedocs/`) with findings and reference existing docs
+3. **Avoid Easy Alternatives**: Do NOT offer alternative approaches that avoid the core problem unless the problem is demonstrably unsolvable
+4. **Example - UITest Failures**:
+   - ❌ WRONG: "UIテストが失敗しています。代わりにViewModelテストで確認しましょうか?" (Offering to skip UI tests)
+   - ✅ RIGHT: "UIテストが失敗しています。調査報告書を確認し、前回成功した方法を試します" (Continuing investigation)
+
+**Remember**: The user requested a specific solution. Deliver that solution through persistent, systematic problem-solving.
+
 ## Project Overview
 
 Vocalis Studio is an iOS voice training app written in Swift that helps users improve their singing skills. The app provides scale playback with simultaneous recording capabilities. The project follows Clean Architecture + Domain-Driven Design (DDD) + Test-Driven Development (TDD) principles.

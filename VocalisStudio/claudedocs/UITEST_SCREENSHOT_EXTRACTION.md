@@ -353,6 +353,131 @@ add(attachment)
 - [xcresulttool man page](https://keith.github.io/xcode-man-pages/xcresulttool.1.html)
 - [XCUITest Best Practices](https://developer.apple.com/documentation/xctest/user_interface_tests)
 
+## ⚠️ Xcode 16での変更点（2025-10-29 追加）
+
+### 新しい抽出コマンド（Xcode 16+）
+
+Xcode 16では、より簡単にアタッチメントを一括抽出できる新しいコマンドが追加されました。
+
+#### ✅ 推奨: `xcrun xcresulttool export attachments`
+
+```bash
+# すべてのアタッチメント（スクリーンショット、ビデオ、ログなど）を一括抽出
+XCRESULT_PATH="/path/to/Test-Result.xcresult"
+mkdir -p /tmp/screenshots
+xcrun xcresulttool export attachments --path "$XCRESULT_PATH" --output-path /tmp/screenshots
+```
+
+**重要**: フラグは`--output-path`であり、`--output`ではない（`--output`を使うとエラーになる）
+
+**出力例**:
+```
+Exported 19 attachments for: VocalisStudioUITests/testTargetPitchShouldDisappearAfterStoppingPlayback():
+File: 4FC9ADF5-00B7-4A33-AB11-BB2BDFBF3B6B.png, suggested name: "04_during_playback_0_66BBF1ED-D2EC-45A4-984A-519674501D8C.png"
+File: 15FF732E-8D40-4F8B-A85B-4D36167C298B.png, suggested name: "03_after_recording_stopped_0_9AB3619E-4C82-4DB5-8501-5F084F8D0074.png"
+...
+
+Generated manifest file with attachment details: /tmp/screenshots/manifest.json
+```
+
+**利点**:
+- 一括抽出で簡単
+- `manifest.json`が自動生成され、元のファイル名とUUIDのマッピングが分かる
+- SQLiteクエリ不要
+
+#### manifest.jsonの活用
+
+```bash
+# manifest.jsonからスクリーンショット一覧を確認
+cat /tmp/screenshots/manifest.json | jq -r '.[] | .attachments[] | select(.suggestedHumanReadableName | contains(".png")) | .suggestedHumanReadableName'
+```
+
+**出力例**:
+```json
+{
+  "exportedFileName": "4FC9ADF5-00B7-4A33-AB11-BB2BDFBF3B6B.png",
+  "suggestedHumanReadableName": "04_during_playback_0_66BBF1ED-D2EC-45A4-984A-519674501D8C.png",
+  "timestamp": 1761696250.727
+}
+```
+
+### ❌ Xcode 16で動作しなくなった方法
+
+#### 1. SQLiteデータベースの直接クエリ
+
+**問題点**: Xcode 16では`Attachments`テーブルが存在しない
+
+```bash
+# ❌ Xcode 16では失敗
+sqlite3 "$XCRESULT_PATH/database.sqlite3" \
+  "SELECT * FROM Attachments WHERE uniformTypeIdentifier = 'public.png';"
+```
+
+**エラー**:
+```
+Error: in prepare, no such table: Attachments
+```
+
+**理由**: Xcode 16で`.xcresult`バンドルのデータベーススキーマが変更され、`Attachments`テーブルが削除された
+
+**解決策**: 新しい`xcrun xcresulttool export attachments`コマンドを使用
+
+#### 2. 個別ファイルエクスポートによる手動抽出
+
+Xcode 16以前の方法も動作するが、新しいコマンドを使う方が簡単:
+
+```bash
+# ⚠️ 動作するが非推奨（Xcode 16以降）
+xcrun xcresulttool export --legacy --type file \
+  --path "$XCRESULT_PATH" \
+  --id "0~3Ru-WZ-RZ..." \
+  --output-path /tmp/screenshot.png
+```
+
+### 推奨ワークフロー（Xcode 16+）
+
+```bash
+#!/bin/bash
+# extract_screenshots_xcode16.sh - Xcode 16対応版
+
+set -e
+
+XCRESULT_PATH="$1"
+OUTPUT_DIR="${2:-./screenshots}"
+
+if [ -z "$XCRESULT_PATH" ]; then
+    echo "Usage: $0 <path_to_xcresult> [output_dir]"
+    exit 1
+fi
+
+# 出力ディレクトリ作成
+mkdir -p "$OUTPUT_DIR"
+
+# すべてのアタッチメントを一括抽出
+echo "📸 Extracting attachments from: $XCRESULT_PATH"
+xcrun xcresulttool export attachments --path "$XCRESULT_PATH" --output-path "$OUTPUT_DIR"
+
+# スクリーンショットのみリスト表示
+echo ""
+echo "✅ Extracted screenshots:"
+ls -lh "$OUTPUT_DIR"/*.png 2>/dev/null || echo "No PNG files found"
+
+# manifest.jsonの確認
+if [ -f "$OUTPUT_DIR/manifest.json" ]; then
+    echo ""
+    echo "📋 Manifest file created: $OUTPUT_DIR/manifest.json"
+fi
+```
+
+**使用例**:
+```bash
+chmod +x extract_screenshots_xcode16.sh
+./extract_screenshots_xcode16.sh ~/Library/Developer/Xcode/DerivedData/.../Test-Result.xcresult ./screenshots
+```
+
 ## 履歴
 
+- 2025-10-29: Xcode 16の新しい`export attachments`コマンドについて追記
+- 2025-10-29: SQLiteデータベーススキーマ変更（Attachmentsテーブル削除）について追記
+- 2025-10-29: `--output`フラグではなく`--output-path`が正しいことを明記
 - 2025-10-28: 初版作成（VocalisStudioプロジェクトでの実装経験に基づく）

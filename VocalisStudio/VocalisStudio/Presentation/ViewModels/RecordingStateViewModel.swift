@@ -223,13 +223,18 @@ public class RecordingStateViewModel: ObservableObject {
 
     /// Play the last recording
     public func playLastRecording() async {
+        Logger.viewModel.debug("🔵 playLastRecording() called in RecordingStateViewModel")
+
         guard let url = lastRecordingURL else {
             Logger.viewModel.warning("Play recording failed: no recording available")
             errorMessage = "No recording available"
             return
         }
 
-        guard !isPlayingRecording else { return }
+        guard !isPlayingRecording else {
+            Logger.viewModel.warning("⚠️ playLastRecording() blocked: isPlayingRecording = true")
+            return
+        }
 
         Logger.viewModel.info("Starting playback: \(url.lastPathComponent)")
 

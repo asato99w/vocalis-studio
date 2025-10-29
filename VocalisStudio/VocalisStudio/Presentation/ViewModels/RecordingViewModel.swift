@@ -210,15 +210,27 @@ public class RecordingViewModel: ObservableObject {
     public func playLastRecording() async {
         // If we have settings, start pitch detection BEFORE playback starts
         // This ensures pitch detection is ready when audio starts playing
+        Logger.viewModel.debug("🔵 playLastRecording() called")
+        Logger.viewModel.debug("🔵 lastRecordingURL: \(String(describing: self.lastRecordingURL))")
+        Logger.viewModel.debug("🔵 lastRecordingSettings: \(String(describing: self.lastRecordingSettings))")
+
         if let url = lastRecordingURL, let settings = lastRecordingSettings {
+            Logger.viewModel.debug("🔵 Both URL and settings exist, starting pitch monitoring")
             do {
                 // Start target pitch monitoring for scale element tracking
                 try await pitchDetectionVM.startTargetPitchMonitoring(settings: settings)
+                Logger.viewModel.debug("🔵 Target pitch monitoring started successfully")
                 // Start playback pitch detection for user's pitch analysis
                 try await pitchDetectionVM.startPlaybackPitchDetection(url: url)
+                Logger.viewModel.debug("🔵 Playback pitch detection started successfully")
             } catch {
+                Logger.viewModel.error("🔵 Error in pitch detection setup: \(error.localizedDescription)")
                 Logger.viewModel.logError(error)
             }
+        } else {
+            Logger.viewModel.debug("🔵 Missing URL or settings - cannot start pitch monitoring")
+            Logger.viewModel.debug("🔵 URL nil? \(self.lastRecordingURL == nil)")
+            Logger.viewModel.debug("🔵 Settings nil? \(self.lastRecordingSettings == nil)")
         }
 
         await recordingStateVM.playLastRecording()
