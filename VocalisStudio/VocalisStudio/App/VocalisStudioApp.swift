@@ -12,6 +12,13 @@ public struct VocalisStudioApp: App {
         Logger.viewModel.info("File logging enabled")
         Logger.viewModel.info("Log file: \(logPath)")
         FileLogger.shared.log(level: "INFO", category: "system", message: "VocalisStudio started")
+
+        // Reset recording count for UI tests
+        if CommandLine.arguments.contains("-UITestResetRecordingCount") {
+            Logger.viewModel.info("UI Test mode detected: Resetting recording count")
+            RecordingUsageTracker().resetForTesting()
+            Logger.viewModel.info("Recording count reset complete")
+        }
         #endif
     }
 

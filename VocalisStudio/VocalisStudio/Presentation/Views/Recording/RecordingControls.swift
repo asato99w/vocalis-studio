@@ -53,7 +53,11 @@ struct RecordingControls: View {
             .accessibilityIdentifier("StartRecordingButton")
 
             if hasLastRecording {
-                Button(action: onPlayLast) {
+                Button(action: {
+                    Self.logger.error("UI_TEST_MARK: PlayLastRecordingButton/StopPlaybackButton action called, isPlayingRecording=\(isPlayingRecording)")
+                    Self.logger.logToFile(level: "ERROR", message: "UI_TEST_MARK: PlayLastRecordingButton/StopPlaybackButton action called, isPlayingRecording=\(isPlayingRecording)")
+                    onPlayLast()
+                }) {
                     HStack {
                         Image(systemName: isPlayingRecording ? "stop.fill" : "play.fill")
                         Text(isPlayingRecording ? "recording.stop_playback_button".localized : "recording.play_last_button".localized)

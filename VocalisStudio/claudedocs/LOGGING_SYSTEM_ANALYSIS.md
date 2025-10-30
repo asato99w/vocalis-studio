@@ -1,7 +1,22 @@
 # ロギングシステムの現状分析と改善提案
 
 **作成日**: 2025-10-26
+**最終更新**: 2025-10-30
 **調査理由**: ピッチ検出バグのデバッグ時に、ログが取得できない問題を調査
+
+## ⚠️ 重要: UIテスト後の調査にはFileLoggerを第一選択とする
+
+**結論**: これまでの取得失敗の主因（時刻窓ずれ／UDID誤り／起動前提コマンド）はそのまま有効。**UIテスト後の確実な追跡にはFileLoggerを第一選択にする**。
+
+**新事実 (2025-10-30)**:
+- `Logger.viewModel.info/debug/error()` は**OSLogのみ**（FileLoggerには書かれない）
+- FileLoggerに確実に残すには `Logger.viewModel.logToFile()` または `FileLogger.shared.log()` を使う
+- コンテナIDは再インストールで変わるため、最新ログを動的に探す処理が必須
+
+**推奨順序の更新**:
+1. **FileLogger (`logToFile`) を既定** - UIテスト後の解析で確実
+2. **OSLogは補助** - リアルタイムデバッグやシステム連携向け
+3. **重要イベントは二重書き込み** - `Logger.info()` + `Logger.logToFile()` 併用
 
 ## 現状のロギングアーキテクチャ
 
@@ -22,6 +37,15 @@ VocalisStudioには3つのロギング機構が存在します：
 **使用方法**:
 ```swift
 FileLogger.shared.log(level: "INFO", category: "viewmodel", message: "Recording started")
+```
+
+**⚠️ コンテナID変動対策**: 再インストール後は新しいContainer UUIDが作成されるため、最新ログを動的に検索:
+```bash
+# 最新ログファイルを検索（推奨）
+UDID="508462B0-4692-4B9B-88F9-73A63F9B91F5"
+find ~/Library/Developer/CoreSimulator/Devices/$UDID/data/Containers/Data/Application \
+  -name "vocalis_*.log" -type f -exec stat -f "%m %N" {} + 2>/dev/null \
+  | sort -rn | head -1 | cut -d' ' -f2-
 ```
 
 #### B. Logger+Extensions (Presentation層)

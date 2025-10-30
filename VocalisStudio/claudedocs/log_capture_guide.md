@@ -1,12 +1,21 @@
 # iOS Simulator UITest Log Capture Guide
 
 **検証日**: 2025-10-29
+**最終更新**: 2025-10-30
 **検証環境**: Xcode 16, iOS Simulator 18.5, macOS Sonoma 14.6
 **ステータス**: ✅ 完全動作確認済み
 
+## ⚠️ 重要: UIテスト後の調査にはFileLoggerを第一選択とする
+
+**推奨順序**:
+1. **FileLogger** (`Logger.viewModel.logToFile()`) - UIテスト後の解析で確実
+2. **OSLog** (このガイド) - リアルタイムデバッグやシステム連携向け
+
+**理由**: `Logger.info/debug/error()`はOSLogのみでFileLoggerには書かれない。UIテスト後の確実な追跡にはFileLoggerを使用。
+
 ## 概要
 
-このガイドは、iOS SimulatorでのUITest実行時に、アプリケーションログを確実に取得するための実証済み手順を記載しています。
+このガイドは、iOS SimulatorでのUITest実行時に、OSLogベースのログを確実に取得するための実証済み手順を記載しています。
 
 **重要な発見**: `print()`や`NSLog()`ではログアーカイブに記録されません。iOS Unified Logging System（OSLog）を使用する必要があります。
 
@@ -177,19 +186,30 @@ drwxr-xr-x   3 user  wheel    96B Oct 29 16:13 00
 収集したアーカイブから、シミュレータの起動不要で抽出:
 
 ```bash
-/usr/bin/log show --archive /tmp/sim_fixed_timing.logarchive \
+/usr/bin/log show --archive /tmp/sim_collect.logarchive \
   --style syslog --info --debug \
-  --start "$START" --end "$END" \
-  --predicate 'subsystem == "com.kazuasato.VocalisStudio" OR eventMessage CONTAINS "UI_TEST_MARK"' \
-  2>&1 | tee /tmp/vs_fixed_timing.log
+  --last 30m \
+  --predicate '(subsystem == "com.kazuasato.VocalisStudio") OR (process CONTAINS[c] "Vocalis") OR (senderImagePath CONTAINS[c] "VocalisStudio") OR (category CONTAINS[c] "RecordingControls") OR (eventMessage CONTAINS[c] "UI_TEST_MARK")' \
+  2>&1 | tee /tmp/oslog_extracted.log
 ```
 
 **パラメータ説明**:
 - `--archive`: オフライン抽出（シミュレータ起動不要）
 - `--style syslog`: 読みやすいタイムスタンプ付き形式
 - `--info --debug`: infoとdebugレベルも含める
-- `--start/--end`: UTC時刻で期間指定
-- `--predicate`: フィルタ条件（サブシステム一致 OR マーカー含む）
+- `--last 30m`: **相対時刻で期間指定（推奨）** - UTC/ローカル時刻のずれを回避
+- `--predicate`: **広めの述語でフィルタ** - subsystem単独だとdebug.dylibからのログを取りこぼす可能性あり
+
+**⚠️ 時刻指定の重要な注意点**:
+- `--start/--end`にUTC時刻を渡すとローカル時刻として解釈されるため、タイムゾーンずれ（日本なら9時間）が発生
+- `--last 30m`のような相対時刻指定が確実で推奨
+- 絶対時刻指定が必要な場合はローカル時刻（JST）で指定する
+
+**⚠️ 述語の重要な注意点**:
+- `subsystem == "com.kazuasato.VocalisStudio"`だけでは不十分
+- 実際のログは`(VocalisStudio.debug.dylib)`からも出力されるため`process`や`senderImagePath`での検索が必要
+- `process CONTAINS[c] "Vocalis"`や`senderImagePath CONTAINS[c] "VocalisStudio"`を追加
+- カテゴリやメッセージ本文での検索も併用する
 
 **成功時の実例**:
 
@@ -303,9 +323,7 @@ xcrun simctl spawn "$UDID" log config \
 xcrun simctl spawn "$UDID" log config --status --subsystem "$BUNDLE"
 
 echo ""
-echo "=== 3) Record start time and execute test ==="
-START=$(date -u +"%Y-%m-%d %H:%M:%S")
-echo "Start time (UTC): $START"
+echo "=== 3) Execute test (synchronously) ==="
 
 # Execute test synchronously (no || true)
 xcodebuild \
@@ -320,11 +338,8 @@ xcodebuild \
   test 2>&1 | tee "$XCODE_OUTPUT"
 
 TEST_EXIT_CODE=$?
-
-END=$(date -u +"%Y-%m-%d %H:%M:%S")
 echo ""
 echo "Test finished with exit code: $TEST_EXIT_CODE"
-echo "End time (UTC): $END"
 
 echo ""
 echo "=== 4) Now collecting logs AFTER test completion ==="
@@ -332,8 +347,8 @@ echo "=== 4) Now collecting logs AFTER test completion ==="
 xcrun simctl boot "$UDID" 2>/dev/null || echo "Already booted"
 sleep 2
 
-echo "Collecting logs from $START to $END..."
-xcrun simctl spawn "$UDID" log collect --output "$ARCHIVE" --last 10m 2>&1
+echo "Collecting logs (last 30 minutes)..."
+xcrun simctl spawn "$UDID" log collect --output "$ARCHIVE" --last 30m 2>&1
 
 if [ -d "$ARCHIVE" ]; then
   echo "✅ Archive created successfully"
@@ -347,8 +362,8 @@ fi
 echo ""
 echo "=== 5) Extract logs offline ==="
 /usr/bin/log show --archive "$ARCHIVE" --style syslog --info --debug \
-  --start "$START" --end "$END" \
-  --predicate 'subsystem == "'"$BUNDLE"'" OR eventMessage CONTAINS "UI_TEST_MARK"' \
+  --last 30m \
+  --predicate '(subsystem == "'"$BUNDLE"'") OR (process CONTAINS[c] "Vocalis") OR (senderImagePath CONTAINS[c] "VocalisStudio") OR (category CONTAINS[c] "RecordingControls") OR (eventMessage CONTAINS[c] "UI_TEST_MARK")' \
   2>&1 | tee "$EXTRACTED_LOG"
 
 echo ""
@@ -587,7 +602,7 @@ xcrun simctl spawn "$UDID" log config --subsystem "$BUNDLE" --reset
 
 - ❌ シミュレータ起動中の`simctl spawn ... log show`（オフライン抽出で代替）
 - ❌ `print()` / `NSLog()`（アーカイブに記録されず）
-- ❌ `--start/--end`を省いた相対抽出（正確な期間指定の方が確実）
+- ❌ **`--start/--end`によるUTC時刻指定**（タイムゾーンずれで失敗しやすい、`--last 30m`推奨）
 - ❌ `-cloned-destination-behavior never`（Xcode 16では利用不可）
 
 ---
@@ -602,5 +617,9 @@ xcrun simctl spawn "$UDID" log config --subsystem "$BUNDLE" --reset
 3. **同期実行を保証する**（`|| true`を付けない）
 4. **テスト完了後にログ収集する**（タイミングが重要）
 5. **オフライン抽出を活用する**（シミュレータ起動不要）
+6. **相対時刻指定を使用する**（`--last 30m`、`--start/--end`はタイムゾーンずれの危険性あり）
+7. **広めの述語でフィルタする**（`subsystem`単独では不十分、`process`や`senderImagePath`も追加）
 
 これにより、CLI環境での完全自動化されたログ取得システムが実現できます。
+
+**2025-10-30更新**: UTC時刻指定の問題とsubsystem単独フィルタの不十分さを解決し、より確実なログ取得方法を確立しました。

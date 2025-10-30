@@ -2,6 +2,7 @@ import SwiftUI
 import SubscriptionDomain
 import VocalisDomain
 import SubscriptionDomain
+import OSLog
 
 /// Main recording screen view with settings panel and real-time visualization
 public struct RecordingView: View {
@@ -212,10 +213,16 @@ public struct RecordingView: View {
     }
 
     private func togglePlayback() {
+        Logger.viewModel.error("UI_TEST_MARK: togglePlayback() called, isPlayingRecording=\(viewModel.isPlayingRecording)")
+        Logger.viewModel.logToFile(level: "ERROR", message: "UI_TEST_MARK: togglePlayback() called, isPlayingRecording=\(viewModel.isPlayingRecording)")
         Task {
             if viewModel.isPlayingRecording {
+                Logger.viewModel.error("UI_TEST_MARK: Calling stopPlayback()")
+                Logger.viewModel.logToFile(level: "ERROR", message: "UI_TEST_MARK: Calling stopPlayback()")
                 await viewModel.stopPlayback()
             } else {
+                Logger.viewModel.error("UI_TEST_MARK: Calling playLastRecording()")
+                Logger.viewModel.logToFile(level: "ERROR", message: "UI_TEST_MARK: Calling playLastRecording()")
                 await viewModel.playLastRecording()
             }
         }

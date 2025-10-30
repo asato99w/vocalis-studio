@@ -20,7 +20,7 @@ public class RecordingStateViewModel: ObservableObject {
     @Published public private(set) var countdownValue: Int = 3
     @Published public private(set) var lastRecordingURL: URL?
     @Published public private(set) var lastRecordingSettings: ScaleSettings?
-    @Published public private(set) var isPlayingRecording: Bool = false
+    @Published internal var isPlayingRecording: Bool = false
 
     // MARK: - Subscription Properties
 
@@ -33,8 +33,8 @@ public class RecordingStateViewModel: ObservableObject {
     private let startRecordingUseCase: StartRecordingUseCaseProtocol
     private let startRecordingWithScaleUseCase: StartRecordingWithScaleUseCaseProtocol
     private let stopRecordingUseCase: StopRecordingUseCaseProtocol
-    private let audioPlayer: AudioPlayerProtocol
-    private let scalePlaybackCoordinator: ScalePlaybackCoordinator
+    internal let audioPlayer: AudioPlayerProtocol
+    internal let scalePlaybackCoordinator: ScalePlaybackCoordinator
     private let subscriptionViewModel: SubscriptionViewModel
     private let usageTracker: RecordingUsageTracker
     private let limitConfig: RecordingLimitConfigProtocol

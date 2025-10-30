@@ -319,8 +319,24 @@ When debugging issues (especially UI tests or runtime bugs), **ALWAYS attempt to
 
 ### Log Retrieval Best Practices
 
-**For UI Tests** (refer to `claudedocs/LOGGING_SYSTEM_ANALYSIS.md` lines 274-353):
+**⚠️ 最重要**: UIテスト後の調査には**FileLoggerを第一選択**とする
 
+**推奨順序**:
+1. **FileLogger** (`Logger.viewModel.logToFile()`) - UIテスト後の解析で確実
+2. **OSLog** (下記コマンド) - リアルタイムデバッグやシステム連携向け
+
+**理由**: `Logger.info/debug/error()`は**OSLogのみ**でFileLoggerには書かれない
+
+**FileLogger取得（推奨）**:
+```bash
+# 最新ログファイルを動的に検索（コンテナID変動対策）
+UDID="508462B0-4692-4B9B-88F9-73A63F9B91F5"
+find ~/Library/Developer/CoreSimulator/Devices/$UDID/data/Containers/Data/Application \
+  -name "vocalis_*.log" -type f -exec stat -f "%m %N" {} + 2>/dev/null \
+  | sort -rn | head -1 | cut -d' ' -f2-
+```
+
+**OSLog取得（補助）**:
 ```bash
 # ✅ CORRECT: Retrieve logs immediately after test execution (within 2 minutes)
 # Test runs at 17:25 → Retrieve logs at 17:25-17:27

@@ -63,8 +63,8 @@ public class PitchDetectionViewModel: ObservableObject {
 
     /// Start monitoring target pitch during recording with scale playback
     public func startTargetPitchMonitoring(settings: ScaleSettings) async throws {
-        // Start muted scale playback via coordinator
-        try await scalePlaybackCoordinator.startMutedPlayback(settings: settings)
+        // NOTE: Scale playback should already be started by caller (RecordingViewModel)
+        // This method only starts the monitoring task to poll current scale element
 
         FileLogger.shared.log(
             level: "INFO",
