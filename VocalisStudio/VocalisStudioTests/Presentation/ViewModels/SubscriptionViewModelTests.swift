@@ -71,29 +71,21 @@ final class SubscriptionViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.currentStatus)
     }
 
-    func testLoadStatusSetsLoadingStateDuringExecution() {
-        // Given: Expectation for loading state
-        let expectation = expectation(description: "Loading state observed")
-        var loadingStates: [Bool] = []
-
-        viewModel.$isLoading
-            .sink { isLoading in
-                loadingStates.append(isLoading)
-                if loadingStates.count >= 2 {
-                    expectation.fulfill()
-                }
-            }
-            .store(in: &cancellables)
-
-        // When: Load status
-        Task {
+    func testLoadStatusSetsLoadingStateDuringExecution() async {
+        // When: Start loading (don't await completion yet)
+        let loadTask = Task {
             await viewModel.loadStatus()
         }
 
-        // Then: Loading should be true initially, then false
-        wait(for: [expectation], timeout: 2.0)
-        XCTAssertTrue(loadingStates.contains(true))
-        XCTAssertEqual(loadingStates.last, false)
+        // Then: Should be loading during execution
+        try? await Task.sleep(nanoseconds: 10_000_000) // 10ms
+        XCTAssertTrue(viewModel.isLoading, "Should be loading during execution")
+
+        // Wait for completion
+        await loadTask.value
+
+        // Then: Should not be loading after completion
+        XCTAssertFalse(viewModel.isLoading, "Should not be loading after completion")
     }
 
     // MARK: - Purchase Tests
@@ -137,29 +129,21 @@ final class SubscriptionViewModelTests: XCTestCase {
         XCTAssertFalse(viewModel.isLoading)
     }
 
-    func testPurchaseSetsLoadingStateDuringExecution() {
-        // Given: Expectation for loading state
-        let expectation = expectation(description: "Loading state observed")
-        var loadingStates: [Bool] = []
-
-        viewModel.$isLoading
-            .sink { isLoading in
-                loadingStates.append(isLoading)
-                if loadingStates.count >= 2 {
-                    expectation.fulfill()
-                }
-            }
-            .store(in: &cancellables)
-
-        // When: Purchase
-        Task {
+    func testPurchaseSetsLoadingStateDuringExecution() async {
+        // When: Start purchase (don't await completion yet)
+        let purchaseTask = Task {
             await viewModel.purchase(tier: .premium)
         }
 
-        // Then: Loading should be true initially, then false
-        wait(for: [expectation], timeout: 2.0)
-        XCTAssertTrue(loadingStates.contains(true))
-        XCTAssertEqual(loadingStates.last, false)
+        // Then: Should be loading during execution
+        try? await Task.sleep(nanoseconds: 10_000_000) // 10ms
+        XCTAssertTrue(viewModel.isLoading, "Should be loading during execution")
+
+        // Wait for completion
+        await purchaseTask.value
+
+        // Then: Should not be loading after completion
+        XCTAssertFalse(viewModel.isLoading, "Should not be loading after completion")
     }
 
     // MARK: - Restore Tests
