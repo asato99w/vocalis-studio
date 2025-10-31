@@ -238,7 +238,9 @@ final class VocalisStudioUITests: XCTestCase {
         playButton.tap()
 
         // 9. Wait for playback to start and scale to load
-        Thread.sleep(forTimeInterval: 2.0)
+        // Reduced from 2.0 to 0.5 seconds to avoid playback finishing before we can stop it
+        // (recordings are only ~2s long, so 2s wait + 2s waitForExistence can exceed playback duration)
+        Thread.sleep(forTimeInterval: 0.5)
 
         // 📸 Screenshot 4: During playback (should show target pitch)
         let screenshot4 = app.screenshot()
@@ -251,10 +253,17 @@ final class VocalisStudioUITests: XCTestCase {
         let targetPitchNoteName = app.staticTexts["TargetPitchNoteName"]
         XCTAssertTrue(targetPitchNoteName.waitForExistence(timeout: 5), "Target pitch should be displayed during playback")
 
-        // 11. Stop playback
+        // 11. Stop playback (immediately tap without waitForExistence to avoid timing issue)
         let stopPlaybackButton = app.buttons["StopPlaybackButton"]
+        // Verify button exists first
         XCTAssertTrue(stopPlaybackButton.waitForExistence(timeout: 2), "Stop playback button should appear")
-        stopPlaybackButton.tap()
+        // Immediately tap without additional waiting to avoid playback finishing naturally
+        // Note: Short recordings (~2s) can finish during waitForExistence, making button disappear before tap
+        if stopPlaybackButton.exists {
+            stopPlaybackButton.tap()
+        } else {
+            XCTFail("StopPlaybackButton disappeared between waitForExistence and tap - playback likely finished naturally")
+        }
 
         // 12. Wait for playback to stop
         Thread.sleep(forTimeInterval: 0.5)

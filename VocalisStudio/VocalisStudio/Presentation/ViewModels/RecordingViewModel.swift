@@ -119,8 +119,7 @@ public class RecordingViewModel: ObservableObject {
         recordingStateVM.$lastRecordingSettings
             .assign(to: &$lastRecordingSettings)
 
-        recordingStateVM.$isPlayingRecording
-            .assign(to: &$isPlayingRecording)
+        // isPlayingRecording is managed directly in RecordingViewModel for immediate UI updates
 
         recordingStateVM.$currentTier
             .assign(to: &$currentTier)
@@ -242,10 +241,10 @@ public class RecordingViewModel: ObservableObject {
 
         do {
             Logger.viewModel.logToFile(level: "DEBUG", message: "🔵 Entered do block")
-            // Set playing state
-            recordingStateVM.isPlayingRecording = true
-            Logger.viewModel.info("🔵 isPlayingRecording = true")
-            Logger.viewModel.logToFile(level: "INFO", message: "🔵 isPlayingRecording = true")
+            // Note: isPlayingRecording is already set by RecordingView.togglePlayback() before calling this method
+            // This ensures immediate UI update without async delay
+            Logger.viewModel.info("🔵 playLastRecording() started (isPlayingRecording should already be true)")
+            Logger.viewModel.logToFile(level: "INFO", message: "🔵 playLastRecording() started")
 
             // Step 1: Start muted scale playback FIRST (non-blocking)
             Logger.viewModel.info("🔵 Step 1: Starting muted scale playback in background")
@@ -295,7 +294,8 @@ public class RecordingViewModel: ObservableObject {
             await pitchDetectionVM.stopTargetPitchMonitoring()
             pitchDetectionVM.stopPlaybackPitchDetection()
 
-            // Clear playing state
+            // Clear playing state directly in RecordingViewModel for immediate UI update
+            isPlayingRecording = false
             recordingStateVM.isPlayingRecording = false
             Logger.viewModel.info("🔵 isPlayingRecording = false (normal completion)")
 
@@ -311,7 +311,8 @@ public class RecordingViewModel: ObservableObject {
             await pitchDetectionVM.stopTargetPitchMonitoring()
             pitchDetectionVM.stopPlaybackPitchDetection()
 
-            // Clear playing state
+            // Clear playing state directly in RecordingViewModel for immediate UI update
+            isPlayingRecording = false
             recordingStateVM.isPlayingRecording = false
             Logger.viewModel.info("🔵 isPlayingRecording = false (error cleanup)")
         }
@@ -320,21 +321,34 @@ public class RecordingViewModel: ObservableObject {
     /// Stop playing the recording
     public func stopPlayback() async {
         Logger.viewModel.debug("🔵 stopPlayback() called - cleaning up all playback components")
+        Logger.viewModel.logToFile(level: "INFO", message: "🔴 stopPlayback() called - cleaning up all playback components")
 
         // Stop audio playback first
         await recordingStateVM.audioPlayer.stop()
+        Logger.viewModel.logToFile(level: "DEBUG", message: "🔴 Audio player stopped")
 
         // Stop scale playback
         await recordingStateVM.scalePlaybackCoordinator.stopPlayback()
+        Logger.viewModel.logToFile(level: "DEBUG", message: "🔴 Scale playback stopped")
 
         // Stop pitch detection
         await pitchDetectionVM.stopTargetPitchMonitoring()
-        pitchDetectionVM.stopPlaybackPitchDetection()
+        Logger.viewModel.logToFile(level: "DEBUG", message: "🔴 stopTargetPitchMonitoring() completed")
 
-        // Clear playing state
+        pitchDetectionVM.stopPlaybackPitchDetection()
+        Logger.viewModel.logToFile(level: "DEBUG", message: "🔴 stopPlaybackPitchDetection() completed")
+
+        // Reset pitch detection state (clears targetPitch display)
+        pitchDetectionVM.reset()
+        Logger.viewModel.logToFile(level: "DEBUG", message: "🔴 pitch detection reset (targetPitch cleared)")
+
+        // Clear playing state directly in RecordingViewModel for immediate UI update
+        isPlayingRecording = false
         recordingStateVM.isPlayingRecording = false
         Logger.viewModel.info("🔵 isPlayingRecording = false (manual stop)")
+        Logger.viewModel.logToFile(level: "INFO", message: "🔴 isPlayingRecording = false (manual stop)")
 
         Logger.viewModel.debug("🔵 stopPlayback() completed")
+        Logger.viewModel.logToFile(level: "INFO", message: "🔴 stopPlayback() completed")
     }
 }
