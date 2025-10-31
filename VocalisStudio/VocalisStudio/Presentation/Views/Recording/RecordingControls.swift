@@ -53,23 +53,45 @@ struct RecordingControls: View {
             .accessibilityIdentifier("StartRecordingButton")
 
             if hasLastRecording {
-                Button(action: {
-                    Self.logger.error("UI_TEST_MARK: PlayLastRecordingButton/StopPlaybackButton action called, isPlayingRecording=\(isPlayingRecording)")
-                    Self.logger.logToFile(level: "ERROR", message: "UI_TEST_MARK: PlayLastRecordingButton/StopPlaybackButton action called, isPlayingRecording=\(isPlayingRecording)")
-                    onPlayLast()
-                }) {
-                    HStack {
-                        Image(systemName: isPlayingRecording ? "stop.fill" : "play.fill")
-                        Text(isPlayingRecording ? "recording.stop_playback_button".localized : "recording.play_last_button".localized)
+                if isPlayingRecording {
+                    // Separate button for stopping playback with fixed ID
+                    Button(action: {
+                        Self.logger.error("UI_TEST_MARK: StopPlaybackButton action called")
+                        Self.logger.logToFile(level: "ERROR", message: "UI_TEST_MARK: StopPlaybackButton action called")
+                        onPlayLast()
+                    }) {
+                        HStack {
+                            Image(systemName: "stop.fill")
+                            Text("recording.stop_playback_button".localized)
+                        }
+                        .font(.caption)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(Color.blue)
+                        .cornerRadius(8)
                     }
-                    .font(.caption)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
-                    .background(Color.blue)
-                    .cornerRadius(8)
+                    .accessibilityIdentifier("StopPlaybackButton")
+                } else {
+                    // Separate button for playing last recording with fixed ID
+                    Button(action: {
+                        Self.logger.error("UI_TEST_MARK: PlayLastRecordingButton action called")
+                        Self.logger.logToFile(level: "ERROR", message: "UI_TEST_MARK: PlayLastRecordingButton action called")
+                        onPlayLast()
+                    }) {
+                        HStack {
+                            Image(systemName: "play.fill")
+                            Text("recording.play_last_button".localized)
+                        }
+                        .font(.caption)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(Color.blue)
+                        .cornerRadius(8)
+                    }
+                    .accessibilityIdentifier("PlayLastRecordingButton")
                 }
-                .accessibilityIdentifier(isPlayingRecording ? "StopPlaybackButton" : "PlayLastRecordingButton")
             }
         }
     }

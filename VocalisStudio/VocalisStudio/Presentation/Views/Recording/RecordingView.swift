@@ -194,20 +194,20 @@ public struct RecordingView: View {
     // MARK: - Action Handlers
 
     private func startRecording() {
-        Task {
+        Task { @MainActor in
             let settings = settingsViewModel.generateScaleSettings()
             await viewModel.startRecording(settings: settings)
         }
     }
 
     private func stopRecording() {
-        Task {
+        Task { @MainActor in
             await viewModel.stopRecording()
         }
     }
 
     private func cancelCountdown() {
-        Task {
+        Task { @MainActor in
             await viewModel.cancelCountdown()
         }
     }
@@ -215,14 +215,25 @@ public struct RecordingView: View {
     private func togglePlayback() {
         Logger.viewModel.error("UI_TEST_MARK: togglePlayback() called, isPlayingRecording=\(viewModel.isPlayingRecording)")
         Logger.viewModel.logToFile(level: "ERROR", message: "UI_TEST_MARK: togglePlayback() called, isPlayingRecording=\(viewModel.isPlayingRecording)")
-        Task {
-            if viewModel.isPlayingRecording {
-                Logger.viewModel.error("UI_TEST_MARK: Calling stopPlayback()")
-                Logger.viewModel.logToFile(level: "ERROR", message: "UI_TEST_MARK: Calling stopPlayback()")
+
+        // Synchronous state update for immediate UI response
+        if viewModel.isPlayingRecording {
+            Logger.viewModel.error("UI_TEST_MARK: Calling stopPlayback()")
+            Logger.viewModel.logToFile(level: "ERROR", message: "UI_TEST_MARK: Calling stopPlayback()")
+            Task {
                 await viewModel.stopPlayback()
-            } else {
-                Logger.viewModel.error("UI_TEST_MARK: Calling playLastRecording()")
-                Logger.viewModel.logToFile(level: "ERROR", message: "UI_TEST_MARK: Calling playLastRecording()")
+            }
+        } else {
+            Logger.viewModel.error("UI_TEST_MARK: Calling playLastRecording()")
+            Logger.viewModel.logToFile(level: "ERROR", message: "UI_TEST_MARK: Calling playLastRecording()")
+
+            // Pre-set playing state BEFORE async operation for immediate UI update
+            Logger.viewModel.error("UI_TEST_MARK: Setting isPlayingRecording = true BEFORE Task")
+            Logger.viewModel.logToFile(level: "ERROR", message: "UI_TEST_MARK: Setting isPlayingRecording = true BEFORE Task")
+            viewModel.isPlayingRecording = true
+            Logger.viewModel.error("UI_TEST_MARK: isPlayingRecording set to \(viewModel.isPlayingRecording)")
+            Logger.viewModel.logToFile(level: "ERROR", message: "UI_TEST_MARK: isPlayingRecording set to true")
+            Task {
                 await viewModel.playLastRecording()
             }
         }

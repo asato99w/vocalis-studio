@@ -109,17 +109,25 @@ public class PitchDetectionViewModel: ObservableObject {
 
     /// Stop target pitch monitoring
     public func stopTargetPitchMonitoring() async {
-        print("[DIAG] stopTargetPitchMonitoring START: targetPitch=\(String(describing: targetPitch)), taskExists=\(progressMonitorTask != nil)")
+        FileLogger.shared.log(
+            level: "INFO",
+            category: "pitch_monitoring",
+            message: "🔴 stopTargetPitchMonitoring START: targetPitch=\(String(describing: targetPitch)), taskExists=\(progressMonitorTask != nil)"
+        )
 
         progressMonitorTask?.cancel()
-        print("[DIAG] Task.cancel() called")
+        FileLogger.shared.log(level: "DEBUG", category: "pitch_monitoring", message: "🔴 Task.cancel() called")
 
         _ = await progressMonitorTask?.value
-        print("[DIAG] Task.value returned: targetPitch=\(String(describing: targetPitch))")
+        FileLogger.shared.log(
+            level: "DEBUG",
+            category: "pitch_monitoring",
+            message: "🔴 Task.value returned: targetPitch=\(String(describing: targetPitch))"
+        )
 
         progressMonitorTask = nil
         targetPitch = nil
-        print("[DIAG] stopTargetPitchMonitoring END: targetPitch set to nil")
+        FileLogger.shared.log(level: "INFO", category: "pitch_monitoring", message: "🔴 stopTargetPitchMonitoring END: targetPitch set to nil")
     }
 
     /// Start pitch detection during playback for analysis view
