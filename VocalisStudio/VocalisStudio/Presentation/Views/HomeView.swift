@@ -58,6 +58,7 @@ public struct HomeView: View {
                         NavigationLink(destination: SettingsView()) {
                             MenuButton(title: "home.settings_button".localized, icon: "gearshape")
                         }
+                        .accessibilityIdentifier("HomeSettingsButton")
                     }
                     .padding(.horizontal, 40)
 

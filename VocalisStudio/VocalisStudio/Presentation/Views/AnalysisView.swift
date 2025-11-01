@@ -185,6 +185,8 @@ struct RecordingInfoPanel: View {
         .padding(10)
         .background(Color(.systemGray6))
         .cornerRadius(8)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("RecordingInfoPanel")
     }
 
     private func formatDate(_ date: Date) -> String {
@@ -264,16 +266,19 @@ struct PlaybackControl: View {
                     Image(systemName: "backward.fill")
                         .font(.callout)
                 }
+                .accessibilityIdentifier("AnalysisSeekBackButton")
 
                 Button(action: onPlayPause) {
                     Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
                         .font(.system(size: 40))
                 }
+                .accessibilityIdentifier("AnalysisPlayPauseButton")
 
                 Button(action: { onSeek(min(duration, currentTime + 5)) }) {
                     Image(systemName: "forward.fill")
                         .font(.callout)
                 }
+                .accessibilityIdentifier("AnalysisSeekForwardButton")
             }
 
             // Progress bar
@@ -282,6 +287,7 @@ struct PlaybackControl: View {
                     get: { currentTime },
                     set: { onSeek($0) }
                 ), in: 0...duration)
+                .accessibilityIdentifier("AnalysisProgressSlider")
 
                 HStack {
                     Text(formatTime(currentTime))
