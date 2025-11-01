@@ -23,6 +23,7 @@ struct RecordingSettingsPanel: View {
                         Text("recording.scale_off".localized).tag(ScaleType.off)
                     }
                     .pickerStyle(.segmented)
+                    .accessibilityIdentifier("ScaleTypePicker")
                 }
 
                 // Start pitch
@@ -101,6 +102,7 @@ struct RecordingSettingsCompact: View {
                     Text("recording.scale_off".localized).tag(ScaleType.off)
                 }
                 .pickerStyle(.segmented)
+                .accessibilityIdentifier("ScaleTypePicker")
             }
 
             if viewModel.isSettingsEnabled {
