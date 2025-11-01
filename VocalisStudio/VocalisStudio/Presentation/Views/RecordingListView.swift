@@ -134,6 +134,7 @@ private struct RecordingRow: View {
                     .font(.title3)
             }
             .buttonStyle(PlainButtonStyle())
+            .accessibilityIdentifier("AnalysisNavigationLink_\(recording.id.value.uuidString)")
 
             // Delete button
             Button(action: { showDeleteConfirmation = true }) {
@@ -142,6 +143,7 @@ private struct RecordingRow: View {
                     .font(.title3)
             }
             .buttonStyle(PlainButtonStyle())
+            .accessibilityIdentifier("DeleteRecordingButton_\(recording.id.value.uuidString)")
         }
         .padding(.vertical, 8)
         .confirmationDialog(
@@ -152,7 +154,10 @@ private struct RecordingRow: View {
             Button("delete".localized, role: .destructive) {
                 onDelete()
             }
+            .accessibilityIdentifier("DeleteConfirmButton")
+
             Button("cancel".localized, role: .cancel) {}
+                .accessibilityIdentifier("DeleteCancelButton")
         } message: {
             Text("list.delete_confirmation_message".localized)
         }

@@ -53,6 +53,7 @@ public struct HomeView: View {
                         )) {
                             MenuButton(title: "home.list_button".localized, icon: "list.bullet")
                         }
+                        .accessibilityIdentifier("HomeListButton")
 
                         NavigationLink(destination: SettingsView()) {
                             MenuButton(title: "home.settings_button".localized, icon: "gearshape")

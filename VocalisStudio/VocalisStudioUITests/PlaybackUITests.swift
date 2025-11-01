@@ -1,63 +1,88 @@
 //
-//  VocalisStudioUITests.swift
+//  PlaybackUITests.swift
 //  VocalisStudioUITests
 //
-//  Created by KAZU ASATO on 2025/09/28.
-//
-//  NOTE: These XCUITest-based tests are deprecated and replaced with ViewInspector-based tests
-//  in VocalisStudioTests/Presentation/Views/Debug/DebugMenuViewTests.swift
-//
-//  ViewInspector advantages:
-//  - Direct access to ViewModel state (no UI element searching)
-//  - 10-100x faster execution (0.2-0.3s vs 2-5s)
-//  - More reliable (no dependency on accessibility identifiers)
-//  - Better testability (can verify internal state changes)
+//  UI tests for playback functionality
 //
 
 import XCTest
 
-final class VocalisStudioUITests: XCTestCase {
+final class PlaybackUITests: XCTestCase {
 
     override func setUpWithError() throws {
-        // Put setup code here. This method is called before the invocation of each test method in the class.
-
-        // In UI tests it is usually best to stop immediately when a failure occurs.
         continueAfterFailure = false
-
-        // In UI tests it's important to set the initial state - such as interface orientation - required for your tests before they run. The setUp method is a good place to do this.
     }
 
-    /// Helper to launch app with recording count reset for UI tests
-    func launchAppWithResetRecordingCount() -> XCUIApplication {
-        let app = XCUIApplication()
-        app.launchArguments = ["-UITestResetRecordingCount"]
-        app.launch()
-        return app
-    }
-
-    override func tearDownWithError() throws {
-        // Put teardown code here. This method is called after the invocation of each test method in the class.
-    }
-
+    /// Test 4: Full playback completion (natural playback end)
+    /// Expected: ~8 seconds execution time
     @MainActor
-    func testExample() throws {
-        // UI tests must launch the application that they test.
-        let app = XCUIApplication()
-        app.launch()
+    func testPlaybackFullCompletion() throws {
+        let app = launchAppWithResetRecordingCount()
 
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
+        // 1. Create a short recording first
+        let homeRecordButton = app.buttons["HomeRecordButton"]
+        XCTAssertTrue(homeRecordButton.waitForExistence(timeout: 5), "Home record button should exist")
+        homeRecordButton.tap()
+
+        let startButton = app.buttons["StartRecordingButton"]
+        XCTAssertTrue(startButton.waitForExistence(timeout: 5), "Start recording button should exist")
+        startButton.tap()
+
+        // Wait for countdown and record for only 1 second (very short recording)
+        Thread.sleep(forTimeInterval: 4.0)
+
+        let stopButton = app.buttons["StopRecordingButton"]
+        XCTAssertTrue(stopButton.waitForExistence(timeout: 2), "Stop recording button should appear")
+        stopButton.tap()
+
+        // Wait for recording to finish and be saved
+        Thread.sleep(forTimeInterval: 2.0)
+
+        // 2. Verify Play Last Recording button appears
+        let playButton = app.buttons["PlayLastRecordingButton"]
+        XCTAssertTrue(playButton.waitForExistence(timeout: 5), "Play last recording button should appear after recording")
+
+        // Screenshot: Before playback
+        let screenshot1 = app.screenshot()
+        let attachment1 = XCTAttachment(screenshot: screenshot1)
+        attachment1.name = "playback_01_before_play"
+        attachment1.lifetime = .keepAlways
+        add(attachment1)
+
+        // 3. Start playback
+        playButton.tap()
+
+        // Wait a moment for playback to start
+        Thread.sleep(forTimeInterval: 0.5)
+
+        // 4. Verify Stop Playback button appears (playback is in progress)
+        let stopPlaybackButton = app.buttons["StopPlaybackButton"]
+        XCTAssertTrue(stopPlaybackButton.waitForExistence(timeout: 3), "Stop playback button should appear during playback")
+
+        // Screenshot: During playback
+        let screenshot2 = app.screenshot()
+        let attachment2 = XCTAttachment(screenshot: screenshot2)
+        attachment2.name = "playback_02_during_playback"
+        attachment2.lifetime = .keepAlways
+        add(attachment2)
+
+        // 5. Wait for playback to complete naturally (recording was ~1 second)
+        // Give enough time for the short recording to finish playing
+        Thread.sleep(forTimeInterval: 3.0)
+
+        // 6. Verify Play button reappears after playback completion
+        XCTAssertTrue(playButton.waitForExistence(timeout: 3), "Play last recording button should reappear after playback completes")
+
+        // Screenshot: After playback completion
+        let screenshot3 = app.screenshot()
+        let attachment3 = XCTAttachment(screenshot: screenshot3)
+        attachment3.name = "playback_03_after_completion"
+        attachment3.lifetime = .keepAlways
+        add(attachment3)
     }
 
-    @MainActor
-    func testLaunchPerformance() throws {
-        // This measures how long it takes to launch your application.
-        measure(metrics: [XCTApplicationLaunchMetric()]) {
-            XCUIApplication().launch()
-        }
-    }
-
-    // MARK: - Recording Playback Tests
-
+    /// Test: Target pitch should disappear after stopping playback
+    /// Verifies that target pitch indicator is cleared when playback is manually stopped
     @MainActor
     func testTargetPitchShouldDisappearAfterStoppingPlayback() throws {
         let app = launchAppWithResetRecordingCount()
