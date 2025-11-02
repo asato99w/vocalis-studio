@@ -7,6 +7,28 @@
 
 import XCTest
 
+/// Playback UI tests
+///
+/// ⚠️ IMPORTANT: This test class contains pitch detection tests that require
+/// speaker → microphone audio feedback loop in iOS Simulator. Due to AVAudioSession
+/// limitations, these tests CANNOT run in parallel with other tests.
+///
+/// **Run these tests individually, not in parallel execution mode.**
+///
+/// Parallel execution issue:
+/// - When 5 simulator clones run simultaneously, AVAudioSession conflicts occur
+/// - Speaker output → Microphone input feedback loop fails
+/// - Pitch detection tests fail even though the implementation is correct
+///
+/// Verified working:
+/// - Single test execution: ✅ PASS
+/// - Parallel execution (5 clones): ❌ FAIL (expected)
+///
+/// Usage:
+/// ```bash
+/// # Run this test class individually
+/// xcodebuild test -only-testing:VocalisStudioUITests/PlaybackUITests
+/// ```
 final class PlaybackUITests: XCTestCase {
 
     override func setUpWithError() throws {
@@ -15,7 +37,6 @@ final class PlaybackUITests: XCTestCase {
 
     /// Test 4: Full playback completion (natural playback end)
     /// Expected: ~8 seconds execution time
-    @MainActor
     func testPlaybackFullCompletion() throws {
         let app = launchAppWithResetRecordingCount()
 
@@ -84,7 +105,6 @@ final class PlaybackUITests: XCTestCase {
 
     /// Test: Target pitch should disappear after stopping playback
     /// Verifies that target pitch indicator is cleared when playback is manually stopped
-    @MainActor
     func testTargetPitchShouldDisappearAfterStoppingPlayback() throws {
         let app = launchAppWithResetRecordingCount()
 
@@ -197,10 +217,19 @@ final class PlaybackUITests: XCTestCase {
         )
     }
 
-    /// Phase 1 Test: Pitch detection during scale-enabled recording
-    /// Verifies that SOME pitch is detected when scale is playing (not checking accuracy yet)
+    /// Phase 1 Test: Pitch detection during scale-enabled recording in iOS Simulator
+    ///
+    /// Test Environment Considerations:
+    /// - iOS Simulator: AVAudioRecorder and AVAudioEngine compete for mic input
+    /// - This causes reduced RMS values (~0.008) even when audio is present
+    /// - Test uses lowered RMS threshold (0.005) configured in DependencyContainer
+    /// - Production code uses default threshold (0.02) for real device conditions
+    ///
+    /// Test Objective:
+    /// Verifies that pitch detection can work in simulator's constrained environment
+    /// when appropriate threshold is configured. Does not check pitch accuracy.
+    ///
     /// Expected: This test should FAIL (RED) if pitch detection is broken
-    @MainActor
     func testScaleRecordingShouldDetectPitch() throws {
         let app = launchAppWithResetRecordingCount()
 

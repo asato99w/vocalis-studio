@@ -26,8 +26,14 @@ public class RealtimePitchDetector: ObservableObject, PitchDetectorProtocol {
     private var fftSetup: vDSP_DFT_Setup?
     private let log2n: vDSP_Length
 
+    // RMS silence threshold - configurable for different environments
+    // Default 0.02 is for normal conditions (real device)
+    // Lower values (e.g., 0.005) can be used in iOS Simulator where
+    // AVAudioRecorder/AVAudioEngine competition causes reduced RMS
+    private let rmsSilenceThreshold: Float
 
-    public init() {
+    public init(rmsSilenceThreshold: Float = 0.02) {
+        self.rmsSilenceThreshold = rmsSilenceThreshold
         log2n = vDSP_Length(log2(Double(bufferSize)))
         fftSetup = vDSP_DFT_zop_CreateSetup(nil, vDSP_Length(bufferSize), vDSP_DFT_Direction.FORWARD)
     }
@@ -243,10 +249,10 @@ public class RealtimePitchDetector: ObservableObject, PitchDetectorProtocol {
             Logger.pitchDetection.debug("detectPitchFromSamples called \(count) times, RMS: \(String(format: "%.4f", rms))")
         }
 
-        // Silence threshold
-        guard rms > 0.02 else {
+        // Silence threshold check using configurable threshold
+        guard rms > rmsSilenceThreshold else {
             if count <= 10 || count % 100 == 0 {
-                FileLogger.shared.log(level: "DEBUG", category: "pitch", message: "⚠️ RMS (\(String(format: "%.4f", rms))) below silence threshold (0.02)")
+                FileLogger.shared.log(level: "DEBUG", category: "pitch", message: "⚠️ RMS (\(String(format: "%.4f", rms))) below silence threshold (\(String(format: "%.3f", rmsSilenceThreshold)))")
             }
             let beforeTaskSchedule = Date()
             Task { @MainActor in
