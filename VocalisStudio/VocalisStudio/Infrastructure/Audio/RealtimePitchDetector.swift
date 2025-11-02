@@ -132,22 +132,16 @@ public class RealtimePitchDetector: ObservableObject, PitchDetectorProtocol {
             return
         }
 
-        // Configure audio session for simultaneous playback and recording
-        Logger.pitchDetection.debug("Configuring AVAudioSession...")
-        let audioSession = AVAudioSession.sharedInstance()
-        do {
-            try audioSession.setCategory(.playAndRecord, mode: .measurement, options: [.defaultToSpeaker, .allowBluetooth])
-            Logger.pitchDetection.debug("✅ Audio session category set successfully")
-        } catch {
-            Logger.pitchDetection.error("❌ Failed to set audio session category: \(error.localizedDescription)")
-            throw error
-        }
+        // Audio session should already be configured by AudioSessionManager
+        // Don't reconfigure to avoid conflicts with recording and playback
+        FileLogger.shared.log(level: "INFO", category: "pitch", message: "Using existing audio session configuration (managed by AudioSessionManager)")
 
+        // Ensure audio session is active (safe to call multiple times)
         do {
-            try audioSession.setActive(true)
-            Logger.pitchDetection.debug("✅ Audio session activated successfully")
+            try AudioSessionManager.shared.activateIfNeeded()
+            FileLogger.shared.log(level: "INFO", category: "pitch", message: "✅ Audio session activated")
         } catch {
-            Logger.pitchDetection.error("❌ Failed to activate audio session: \(error.localizedDescription)")
+            FileLogger.shared.log(level: "ERROR", category: "pitch", message: "❌ Failed to activate audio session: \(error.localizedDescription)")
             throw error
         }
 
