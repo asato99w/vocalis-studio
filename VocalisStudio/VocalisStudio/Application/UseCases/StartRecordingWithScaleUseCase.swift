@@ -48,7 +48,7 @@ public class StartRecordingWithScaleUseCase: StartRecordingWithScaleUseCaseProto
         let recordingURL = try await audioRecorder.prepareRecording()
         logger.info("Recording prepared: \(recordingURL.lastPathComponent)", category: "recording")
 
-        // 3. Load scale elements into player (with chord support)
+        // 3. Load scale elements into player
         try await scalePlayer.loadScaleElements(scaleElements, tempo: settings.tempo)
         logger.debug("Scale elements loaded", category: "scalePlayer")
 
@@ -56,16 +56,15 @@ public class StartRecordingWithScaleUseCase: StartRecordingWithScaleUseCaseProto
         try await audioRecorder.startRecording()
         logger.info("Recording started", category: "recording")
 
-        // 5. Start scale playback (async - will complete when scale finishes)
-        // We start the playback task but don't wait for it to complete
-        // Recording and playback happen simultaneously
+        // 5. Start audible scale playback immediately (non-blocking)
+        // This ensures audio output reaches microphone for pitch detection
         let playbackTask = Task {
-            try await scalePlayer.play()
+            try await scalePlayer.play(muted: false)
         }
         logger.info("Scale playback started", category: "scalePlayer")
 
-        // Give playback a moment to start to ensure recording captures it
-        try await Task.sleep(nanoseconds: 10_000_000) // 10ms
+        // Give playback a moment to start
+        try await Task.sleep(nanoseconds: 100_000_000) // 0.1 second
 
         // Check if playback failed to start
         if playbackTask.isCancelled {

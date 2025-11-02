@@ -185,23 +185,10 @@ public class RecordingViewModel: ObservableObject {
                 Logger.viewModel.info("✅ Realtime pitch detection started (after countdown)")
                 Logger.viewModel.logToFile(level: "INFO", message: "✅ Realtime pitch detection started (after countdown)")
 
-                // Start scale playback in background (non-blocking)
-                // NOTE: This may duplicate with Use Case's scale playback, but Coordinator handles it
-                Task {
-                    do {
-                        try await recordingStateVM.scalePlaybackCoordinator.startPlayback(settings: settings)
-                        Logger.viewModel.info("✅ Audible scale playback started")
-                        Logger.viewModel.logToFile(level: "INFO", message: "✅ Audible scale playback started")
-                    } catch {
-                        Logger.viewModel.error("❌ Scale playback error: \(error.localizedDescription)")
-                        Logger.viewModel.logToFile(level: "ERROR", message: "❌ Scale playback error: \(error.localizedDescription)")
-                    }
-                }
+                // NOTE: Audible scale playback is already started by UseCase
+                // No need to start it again via Coordinator
 
-                // Give scale playback a moment to start
-                try await Task.sleep(nanoseconds: 100_000_000) // 0.1 second
-
-                // Start target pitch monitoring (which polls the coordinator's current scale element)
+                // Start target pitch monitoring (which polls the UseCase's scale player current element)
                 try await pitchDetectionVM.startTargetPitchMonitoring(settings: settings)
                 Logger.viewModel.info("✅ Target pitch monitoring started")
                 Logger.viewModel.logToFile(level: "INFO", message: "✅ Target pitch monitoring started")
