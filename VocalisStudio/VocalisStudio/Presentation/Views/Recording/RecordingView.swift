@@ -10,6 +10,7 @@ public struct RecordingView: View {
     @StateObject private var settingsViewModel = RecordingSettingsViewModel()
     @StateObject private var localization = LocalizationManager.shared
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
+    @Environment(\.uiTestAnimationsDisabled) var uiTestAnimationsDisabled
     @State private var isSettingsPanelVisible: Bool = true
 
     public init(viewModel: RecordingViewModel) {
@@ -55,8 +56,12 @@ public struct RecordingView: View {
         .onChange(of: viewModel.recordingState) { newState in
             // Auto-hide settings panel when recording starts
             if newState == .recording {
-                withAnimation {
+                if uiTestAnimationsDisabled {
                     isSettingsPanelVisible = false
+                } else {
+                    withAnimation {
+                        isSettingsPanelVisible = false
+                    }
                 }
             }
         }
@@ -113,8 +118,12 @@ public struct RecordingView: View {
                 // Toggle button for settings panel
                 HStack {
                     Button(action: {
-                        withAnimation {
+                        if uiTestAnimationsDisabled {
                             isSettingsPanelVisible.toggle()
+                        } else {
+                            withAnimation {
+                                isSettingsPanelVisible.toggle()
+                            }
                         }
                     }) {
                         HStack(spacing: 4) {
@@ -168,8 +177,12 @@ public struct RecordingView: View {
     private var settingsToggleButton: some View {
         HStack {
             Button(action: {
-                withAnimation {
+                if uiTestAnimationsDisabled {
                     isSettingsPanelVisible.toggle()
+                } else {
+                    withAnimation {
+                        isSettingsPanelVisible.toggle()
+                    }
                 }
             }) {
                 HStack(spacing: 4) {

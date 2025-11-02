@@ -28,15 +28,18 @@ final class NavigationUITests: XCTestCase {
         XCTAssertTrue(startButton.waitForExistence(timeout: 5), "Start recording button should exist")
         startButton.tap()
 
-        // Wait for countdown and short recording (~2 seconds)
-        Thread.sleep(forTimeInterval: 5.0)
-
+        // Wait for recording to start by checking StopButton appearance
         let stopButton = app.buttons["StopRecordingButton"]
-        XCTAssertTrue(stopButton.waitForExistence(timeout: 2), "Stop recording button should appear")
+        XCTAssertTrue(stopButton.waitForExistence(timeout: 10), "Stop recording button should appear")
+
+        // Continue recording for a moment to ensure valid audio data
+        Thread.sleep(forTimeInterval: 1.0)
+
         stopButton.tap()
 
-        // Wait for recording to be saved
-        Thread.sleep(forTimeInterval: 2.0)
+        // Wait for recording to be saved by checking PlayButton appearance
+        let playButton = app.buttons["PlayLastRecordingButton"]
+        XCTAssertTrue(playButton.waitForExistence(timeout: 5), "Play button should appear after save")
 
         // 2. Navigate back to Home and create second recording
         app.navigationBars.buttons.element(boundBy: 0).tap()
@@ -46,14 +49,17 @@ final class NavigationUITests: XCTestCase {
         XCTAssertTrue(startButton.waitForExistence(timeout: 5), "Start recording button should exist for second recording")
         startButton.tap()
 
-        // Wait for countdown and short recording (~2 seconds)
-        Thread.sleep(forTimeInterval: 5.0)
+        // Wait for recording to start by checking StopButton appearance
+        XCTAssertTrue(stopButton.waitForExistence(timeout: 10), "Stop recording button should appear for second recording")
 
-        XCTAssertTrue(stopButton.waitForExistence(timeout: 2), "Stop recording button should appear for second recording")
+        // Continue recording for a moment to ensure valid audio data
+        Thread.sleep(forTimeInterval: 1.0)
+
         stopButton.tap()
 
-        // Wait for second recording to be saved
-        Thread.sleep(forTimeInterval: 2.0)
+        // Wait for second recording to be saved by checking PlayButton appearance
+        let playButton2 = app.buttons["PlayLastRecordingButton"]
+        XCTAssertTrue(playButton2.waitForExistence(timeout: 5), "Play button should appear after second save")
 
         // 3. Navigate to Recording List
         app.navigationBars.buttons.element(boundBy: 0).tap()

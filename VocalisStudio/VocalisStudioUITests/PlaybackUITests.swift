@@ -28,21 +28,19 @@ final class PlaybackUITests: XCTestCase {
         XCTAssertTrue(startButton.waitForExistence(timeout: 5), "Start recording button should exist")
         startButton.tap()
 
-        // Wait for countdown (3s) + recording initialization (~3s) + longer recording time (5 seconds)
-        // Note: Recording needs to be long enough to allow playback verification without finishing early
-        // Need 5+ seconds of actual recording time to safely verify playback state
-        Thread.sleep(forTimeInterval: 11.0)
-
+        // Wait for recording to start by checking StopButton appearance
         let stopButton = app.buttons["StopRecordingButton"]
-        XCTAssertTrue(stopButton.waitForExistence(timeout: 2), "Stop recording button should appear")
+        XCTAssertTrue(stopButton.waitForExistence(timeout: 10), "Stop recording button should appear")
+
+        // Continue recording for longer to allow playback verification
+        // Need 5+ seconds of actual recording time to safely verify playback state
+        Thread.sleep(forTimeInterval: 5.0)
+
         stopButton.tap()
 
-        // Wait for recording to finish and be saved
-        Thread.sleep(forTimeInterval: 2.0)
-
-        // 2. Verify Play Last Recording button appears
+        // Wait for recording to finish and be saved by checking PlayButton appearance
         let playButton = app.buttons["PlayLastRecordingButton"]
-        XCTAssertTrue(playButton.waitForExistence(timeout: 5), "Play last recording button should appear after recording")
+        XCTAssertTrue(playButton.waitForExistence(timeout: 5), "Play button should appear after save")
 
         // Screenshot: Before playback
         let screenshot1 = app.screenshot()
@@ -112,10 +110,13 @@ final class PlaybackUITests: XCTestCase {
         // 3. Start recording
         startButton.tap()
 
-        // 4. Wait for countdown (3 seconds) + recording initialization (~3 seconds) + longer recording time (5 seconds)
-        // Note: Recording needs to be long enough to allow playback verification without finishing early
+        // 4. Wait for recording to start by checking StopButton appearance
+        let stopButton = app.buttons["StopRecordingButton"]
+        XCTAssertTrue(stopButton.waitForExistence(timeout: 10), "Stop recording button should appear during recording")
+
+        // Continue recording for longer to allow playback verification
         // Need 5+ seconds of actual recording time to safely verify playback state
-        Thread.sleep(forTimeInterval: 11.0)
+        Thread.sleep(forTimeInterval: 5.0)
 
         // 📸 Screenshot 2: During recording
         let screenshot2 = app.screenshot()
@@ -125,12 +126,11 @@ final class PlaybackUITests: XCTestCase {
         add(attachment2)
 
         // 5. Stop recording
-        let stopButton = app.buttons["StopRecordingButton"]
-        XCTAssertTrue(stopButton.waitForExistence(timeout: 2), "Stop recording button should appear during recording")
         stopButton.tap()
 
-        // 6. Wait for recording to finish processing
-        Thread.sleep(forTimeInterval: 1.0)
+        // 6. Wait for recording to finish processing by checking PlayButton appearance
+        let playButton = app.buttons["PlayLastRecordingButton"]
+        XCTAssertTrue(playButton.waitForExistence(timeout: 5), "Play button should appear after save")
 
         // 📸 Screenshot 3: After recording stopped
         let screenshot3 = app.screenshot()
@@ -138,10 +138,6 @@ final class PlaybackUITests: XCTestCase {
         attachment3.name = "03_after_recording_stopped"
         attachment3.lifetime = .keepAlways
         add(attachment3)
-
-        // 7. Verify Play Last Recording button appears
-        let playButton = app.buttons["PlayLastRecordingButton"]
-        XCTAssertTrue(playButton.waitForExistence(timeout: 5), "Play last recording button should appear after recording")
 
         // 8. Play the last recording
         playButton.tap()

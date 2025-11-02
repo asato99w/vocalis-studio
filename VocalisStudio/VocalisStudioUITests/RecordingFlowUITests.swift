@@ -38,16 +38,13 @@ final class RecordingFlowUITests: XCTestCase {
         // 3. Start recording
         startButton.tap()
 
-        // 4. Wait for countdown (3 seconds) and recording initialization
-        // Note: Recording with scale requires additional time for:
-        // - Countdown: 3 seconds
-        // - Recording session creation: ~3 seconds (file preparation, audio session setup)
-        // Total: ~6 seconds before recordingState becomes .recording
-        Thread.sleep(forTimeInterval: 6.5)
-
-        // 5. Verify stop recording button appears (recording is in progress)
+        // 4. Wait for recording to start by checking StopButton appearance
+        // No Thread.sleep needed - waitForExistence will wait for countdown + initialization
         let stopButton = app.buttons["StopRecordingButton"]
-        XCTAssertTrue(stopButton.waitForExistence(timeout: 2), "Stop recording button should appear during recording")
+        XCTAssertTrue(stopButton.waitForExistence(timeout: 10), "Stop recording button should appear during recording")
+
+        // Continue recording for a moment to ensure valid audio data
+        Thread.sleep(forTimeInterval: 1.0)
 
         // Screenshot: Recording in progress
         let screenshot2 = app.screenshot()
@@ -59,15 +56,13 @@ final class RecordingFlowUITests: XCTestCase {
         // 6. Stop recording
         stopButton.tap()
 
-        // Wait for recording to finish and be saved
-        Thread.sleep(forTimeInterval: 2.0)
+        // Wait for recording to finish and be saved by checking PlayButton appearance
+        // No Thread.sleep needed - waitForExistence will wait for save completion
+        let playButton = app.buttons["PlayLastRecordingButton"]
+        XCTAssertTrue(playButton.waitForExistence(timeout: 5), "Play last recording button should appear after recording, confirming save was successful")
 
         // 7. Verify we're back to initial state (start button should appear again)
         XCTAssertTrue(startButton.waitForExistence(timeout: 5), "Start recording button should reappear after stopping recording")
-
-        // Verify recording was saved by checking Play Last Recording button appears
-        let playButton = app.buttons["PlayLastRecordingButton"]
-        XCTAssertTrue(playButton.waitForExistence(timeout: 5), "Play last recording button should appear after recording, confirming save was successful")
 
         // Screenshot: After recording completion
         let screenshot3 = app.screenshot()

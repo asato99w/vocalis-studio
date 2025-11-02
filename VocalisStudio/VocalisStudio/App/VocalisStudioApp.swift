@@ -5,6 +5,12 @@ import OSLog
 @available(iOS 15.0, macOS 11.0, *)
 @main
 public struct VocalisStudioApp: App {
+    #if DEBUG
+    private let animationsDisabled = CommandLine.arguments.contains("-UITestDisableAnimations")
+    #else
+    private let animationsDisabled = false
+    #endif
+
     public init() {
         // Initialize file logging system (DEBUG builds only)
         #if DEBUG
@@ -34,6 +40,11 @@ public struct VocalisStudioApp: App {
 
             Logger.viewModel.info("Recording count reset complete")
         }
+
+        // Log animation disabling for UI tests
+        if animationsDisabled {
+            Logger.viewModel.info("UI Test mode: Animations disabled")
+        }
         #endif
     }
 
@@ -41,6 +52,7 @@ public struct VocalisStudioApp: App {
         WindowGroup {
             HomeView()
                 .environmentObject(DependencyContainer.shared.subscriptionViewModel)
+                .environment(\.uiTestAnimationsDisabled, animationsDisabled)
         }
     }
 }

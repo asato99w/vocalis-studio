@@ -28,18 +28,18 @@ final class RecordingListUITests: XCTestCase {
         XCTAssertTrue(startButton.waitForExistence(timeout: 5), "Start recording button should exist")
         startButton.tap()
 
-        // Wait for countdown (3s) + recording initialization (~3s) + some recording time (1s)
-        // Total: ~7 seconds before stop
-        Thread.sleep(forTimeInterval: 7.0)
-
+        // Wait for recording to start by checking StopButton appearance
+        // No Thread.sleep needed - waitForExistence will wait for countdown + initialization
         let stopButton = app.buttons["StopRecordingButton"]
-        XCTAssertTrue(stopButton.waitForExistence(timeout: 2), "Stop recording button should appear")
+        XCTAssertTrue(stopButton.waitForExistence(timeout: 10), "Stop recording button should appear")
+
+        // Continue recording for a moment to ensure valid audio data
+        Thread.sleep(forTimeInterval: 1.0)
+
         stopButton.tap()
 
-        // Wait for recording to finish and be saved (increased from 1.0 to 2.0 seconds)
-        Thread.sleep(forTimeInterval: 2.0)
-
-        // Verify recording was saved by checking Play Last Recording button appears
+        // Wait for recording to finish and be saved by checking PlayButton appearance
+        // No Thread.sleep needed - waitForExistence will wait for save completion
         let playButton = app.buttons["PlayLastRecordingButton"]
         XCTAssertTrue(playButton.waitForExistence(timeout: 5), "Play last recording button should appear after recording")
 
@@ -113,18 +113,18 @@ final class RecordingListUITests: XCTestCase {
         XCTAssertTrue(startButton.waitForExistence(timeout: 5), "Start recording button should exist")
         startButton.tap()
 
-        // Wait for countdown (3s) + recording initialization (~3s) + some recording time (1s)
-        // Total: ~7 seconds before stop
-        Thread.sleep(forTimeInterval: 7.0)
-
+        // Wait for recording to start by checking StopButton appearance
+        // No Thread.sleep needed - waitForExistence will wait for countdown + initialization
         let stopButton = app.buttons["StopRecordingButton"]
-        XCTAssertTrue(stopButton.waitForExistence(timeout: 2), "Stop recording button should appear")
+        XCTAssertTrue(stopButton.waitForExistence(timeout: 10), "Stop recording button should appear")
+
+        // Continue recording for a moment to ensure valid audio data
+        Thread.sleep(forTimeInterval: 1.0)
+
         stopButton.tap()
 
-        // Wait for recording to finish and be saved
-        Thread.sleep(forTimeInterval: 2.0)
-
-        // Verify recording was saved by checking Play Last Recording button appears
+        // Wait for recording to finish and be saved by checking PlayButton appearance
+        // No Thread.sleep needed - waitForExistence will wait for save completion
         let playButton = app.buttons["PlayLastRecordingButton"]
         XCTAssertTrue(playButton.waitForExistence(timeout: 5), "Play last recording button should appear after recording")
 

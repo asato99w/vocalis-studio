@@ -38,7 +38,7 @@ final class SettingsUITests: XCTestCase {
         let showSettingsButton = app.buttons["設定を表示"]
         if showSettingsButton.waitForExistence(timeout: 2) {
             showSettingsButton.tap()
-            Thread.sleep(forTimeInterval: 2.0) // Wait for panel expansion animation
+            // No animation wait needed - animations disabled in UI test mode
         }
 
         // 3. Find scale type picker
@@ -94,8 +94,10 @@ final class SettingsUITests: XCTestCase {
         XCTAssertTrue(stopButton.exists, "Stop button should be available")
         stopButton.tap()
 
-        // Wait for recording to be saved (increased timeout to ensure save completes)
-        Thread.sleep(forTimeInterval: 3.0)
+        // Wait for recording to be saved by checking PlayButton appearance
+        // No Thread.sleep needed - waitForExistence will wait for save completion
+        let playButton = app.buttons["PlayLastRecordingButton"]
+        XCTAssertTrue(playButton.waitForExistence(timeout: 5), "Play button should appear after save")
 
         // Screenshot: After recording with scale OFF
         let screenshot4 = app.screenshot()
@@ -130,7 +132,7 @@ final class SettingsUITests: XCTestCase {
         // 7. Show settings panel again if it was hidden after recording
         if showSettingsButton.waitForExistence(timeout: 2) {
             showSettingsButton.tap()
-            Thread.sleep(forTimeInterval: 2.0) // Wait for panel expansion
+            // No animation wait needed - animations disabled in UI test mode
         }
 
         // 8. Change scale back to "5トーン" (5-tone)
@@ -175,8 +177,10 @@ final class SettingsUITests: XCTestCase {
         XCTAssertTrue(stopButton.exists, "Stop button should be available for second recording")
         stopButton.tap()
 
-        // Wait for recording to be saved (increased timeout to ensure save completes)
-        Thread.sleep(forTimeInterval: 3.0)
+        // Wait for recording to be saved by checking PlayButton appearance
+        // No Thread.sleep needed - waitForExistence will wait for save completion
+        let playButton2 = app.buttons["PlayLastRecordingButton"]
+        XCTAssertTrue(playButton2.waitForExistence(timeout: 5), "Play button should appear after second save")
 
         // Screenshot: After recording with scale ON
         let screenshot6 = app.screenshot()
