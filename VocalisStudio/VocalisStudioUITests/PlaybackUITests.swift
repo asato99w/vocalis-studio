@@ -28,8 +28,10 @@ final class PlaybackUITests: XCTestCase {
         XCTAssertTrue(startButton.waitForExistence(timeout: 5), "Start recording button should exist")
         startButton.tap()
 
-        // Wait for countdown and record for only 1 second (very short recording)
-        Thread.sleep(forTimeInterval: 4.0)
+        // Wait for countdown (3s) + recording initialization (~3s) + longer recording time (5 seconds)
+        // Note: Recording needs to be long enough to allow playback verification without finishing early
+        // Need 5+ seconds of actual recording time to safely verify playback state
+        Thread.sleep(forTimeInterval: 11.0)
 
         let stopButton = app.buttons["StopRecordingButton"]
         XCTAssertTrue(stopButton.waitForExistence(timeout: 2), "Stop recording button should appear")
@@ -52,12 +54,13 @@ final class PlaybackUITests: XCTestCase {
         // 3. Start playback
         playButton.tap()
 
-        // Wait a moment for playback to start
-        Thread.sleep(forTimeInterval: 0.5)
+        // Wait for playback to start and scale playback to initialize
+        // Note: Playback with scale requires initialization time
+        Thread.sleep(forTimeInterval: 2.0)
 
         // 4. Verify Stop Playback button appears (playback is in progress)
         let stopPlaybackButton = app.buttons["StopPlaybackButton"]
-        XCTAssertTrue(stopPlaybackButton.waitForExistence(timeout: 3), "Stop playback button should appear during playback")
+        XCTAssertTrue(stopPlaybackButton.waitForExistence(timeout: 2), "Stop playback button should appear during playback")
 
         // Screenshot: During playback
         let screenshot2 = app.screenshot()
@@ -109,8 +112,10 @@ final class PlaybackUITests: XCTestCase {
         // 3. Start recording
         startButton.tap()
 
-        // 4. Wait for countdown (3 seconds) + some recording time (2 seconds)
-        Thread.sleep(forTimeInterval: 5.0)
+        // 4. Wait for countdown (3 seconds) + recording initialization (~3 seconds) + longer recording time (5 seconds)
+        // Note: Recording needs to be long enough to allow playback verification without finishing early
+        // Need 5+ seconds of actual recording time to safely verify playback state
+        Thread.sleep(forTimeInterval: 11.0)
 
         // 📸 Screenshot 2: During recording
         let screenshot2 = app.screenshot()
@@ -121,7 +126,7 @@ final class PlaybackUITests: XCTestCase {
 
         // 5. Stop recording
         let stopButton = app.buttons["StopRecordingButton"]
-        XCTAssertTrue(stopButton.waitForExistence(timeout: 5), "Stop recording button should appear during recording")
+        XCTAssertTrue(stopButton.waitForExistence(timeout: 2), "Stop recording button should appear during recording")
         stopButton.tap()
 
         // 6. Wait for recording to finish processing
@@ -141,10 +146,13 @@ final class PlaybackUITests: XCTestCase {
         // 8. Play the last recording
         playButton.tap()
 
-        // 9. Wait for playback to start and scale to load
-        // Reduced from 2.0 to 0.5 seconds to avoid playback finishing before we can stop it
-        // (recordings are only ~2s long, so 2s wait + 2s waitForExistence can exceed playback duration)
-        Thread.sleep(forTimeInterval: 0.5)
+        // 9. Wait for playback to start, scale to load, and target pitch monitoring to begin
+        // Note: Playback with scale requires:
+        // - Audio player initialization
+        // - Muted scale playback startup
+        // - Target pitch monitoring startup
+        // Need enough time for these to complete, but not so long that playback finishes
+        Thread.sleep(forTimeInterval: 2.0)
 
         // 📸 Screenshot 4: During playback (should show target pitch)
         let screenshot4 = app.screenshot()
@@ -155,7 +163,7 @@ final class PlaybackUITests: XCTestCase {
 
         // 10. Verify target pitch is displayed during playback
         let targetPitchNoteName = app.staticTexts["TargetPitchNoteName"]
-        XCTAssertTrue(targetPitchNoteName.waitForExistence(timeout: 5), "Target pitch should be displayed during playback")
+        XCTAssertTrue(targetPitchNoteName.waitForExistence(timeout: 3), "Target pitch should be displayed during playback")
 
         // 11. Stop playback (immediately tap without waitForExistence to avoid timing issue)
         let stopPlaybackButton = app.buttons["StopPlaybackButton"]

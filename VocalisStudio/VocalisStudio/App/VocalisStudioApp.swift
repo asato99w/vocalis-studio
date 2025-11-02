@@ -13,10 +13,25 @@ public struct VocalisStudioApp: App {
         Logger.viewModel.info("Log file: \(logPath)")
         FileLogger.shared.log(level: "INFO", category: "system", message: "VocalisStudio started")
 
-        // Reset recording count for UI tests
+        // Reset recording count and delete all recordings for UI tests
         if CommandLine.arguments.contains("-UITestResetRecordingCount") {
-            Logger.viewModel.info("UI Test mode detected: Resetting recording count")
+            Logger.viewModel.info("UI Test mode detected: Resetting recording count and deleting all recordings")
             RecordingUsageTracker().resetForTesting()
+
+            // Delete all existing recordings
+            Task {
+                do {
+                    let allRecordings = try await DependencyContainer.shared.recordingRepository.findAll()
+                    Logger.viewModel.info("Found \(allRecordings.count) recordings to delete")
+                    for recording in allRecordings {
+                        try await DependencyContainer.shared.recordingRepository.delete(recording.id)
+                    }
+                    Logger.viewModel.info("All recordings deleted successfully")
+                } catch {
+                    Logger.viewModel.error("Failed to delete recordings: \(error)")
+                }
+            }
+
             Logger.viewModel.info("Recording count reset complete")
         }
         #endif

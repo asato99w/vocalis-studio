@@ -196,6 +196,10 @@ public struct RecordingView: View {
     private func startRecording() {
         Task { @MainActor in
             let settings = settingsViewModel.generateScaleSettings()
+            let scaleTypeStr = String(describing: settingsViewModel.scaleType)
+            print("[RecordingView] startRecording() - settings: \(settings != nil ? "present ✅" : "nil ⚠️"), scaleType: \(scaleTypeStr)")
+            Logger.viewModel.info("RecordingView.startRecording() - settings: \(settings != nil ? "present" : "nil"), scaleType: \(scaleTypeStr)")
+            Logger.viewModel.logToFile(level: "INFO", message: "RecordingView.startRecording() - settings: \(settings != nil ? "present" : "nil"), scaleType: \(scaleTypeStr)")
             await viewModel.startRecording(settings: settings)
         }
     }

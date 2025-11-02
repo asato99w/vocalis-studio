@@ -158,47 +158,60 @@ public class RecordingViewModel: ObservableObject {
 
     /// Start the recording process with countdown
     public func startRecording(settings: ScaleSettings? = nil) async {
-        // FileLoggerに直接書き込んで動作確認
-        FileLogger.shared.log(level: "INFO", category: "viewmodel", message: "RecordingViewModel.startRecording() called, settings = \(settings != nil ? "present" : "nil")")
+        print("[RecordingVM] startRecording() called, settings = \(settings != nil ? "present ✅" : "nil ⚠️")")
+        Logger.viewModel.info("RecordingViewModel.startRecording() called, settings = \(settings != nil ? "present" : "nil")")
+        Logger.viewModel.logToFile(level: "INFO", message: "RecordingViewModel.startRecording() called, settings = \(settings != nil ? "present" : "nil")")
 
         // Start recording through state VM
         await recordingStateVM.startRecording(settings: settings)
-        FileLogger.shared.log(level: "DEBUG", category: "viewmodel", message: "Recording started through state VM")
 
-        // If settings provided, start pitch detection monitoring
-        // Note: We start monitoring regardless of current state because:
-        // 1. With countdown=0, recording starts immediately but state may not be updated yet
-        // 2. With countdown>0, we start monitoring during countdown so it's ready when recording begins
+        // Wait for countdown to complete before starting scale playback and pitch monitoring
+        // This allows scale and pitch monitoring to start immediately after countdown,
+        // without waiting for recording session creation to complete
         if let settings = settings {
-            FileLogger.shared.log(level: "INFO", category: "viewmodel", message: "Settings present, starting scale playback and pitch detection...")
-            do {
-                // First, start scale playback in background (non-blocking)
-                Task {
-                    do {
-                        try await recordingStateVM.scalePlaybackCoordinator.startMutedPlayback(settings: settings)
-                        FileLogger.shared.log(level: "INFO", category: "viewmodel", message: "✅ Scale playback started for recording")
-                    } catch {
-                        FileLogger.shared.log(level: "ERROR", category: "viewmodel", message: "❌ Scale playback error: \(error.localizedDescription)")
-                    }
+            Logger.viewModel.info("✅ Settings present - will start scale playback after countdown")
+            Logger.viewModel.logToFile(level: "INFO", message: "✅ Settings present - will start scale playback after countdown")
+            // Wait for countdown to complete
+            while !recordingStateVM.isCountdownComplete {
+                // If user cancelled countdown, exit
+                if recordingState == .idle {
+                    Logger.viewModel.warning("Recording cancelled during countdown")
+                    Logger.viewModel.logToFile(level: "WARNING", message: "Recording cancelled during countdown")
+                    return
                 }
+                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 second
+            }
 
-                // Give scale playback a moment to start
-                try await Task.sleep(nanoseconds: 100_000_000) // 0.1 second
+            Logger.viewModel.info("Countdown complete, initiating scale playback and pitch monitoring...")
+            Logger.viewModel.logToFile(level: "INFO", message: "Countdown complete, initiating scale playback and pitch monitoring...")
 
-                // Then start monitoring (which polls the coordinator's current scale element)
+            do {
+                // Start audible scale playback (not muted)
+                try await recordingStateVM.scalePlaybackCoordinator.startPlayback(settings: settings)
+                Logger.viewModel.info("✅ Audible scale playback started")
+                Logger.viewModel.logToFile(level: "INFO", message: "✅ Audible scale playback started")
+
+                // Start target pitch monitoring
                 try await pitchDetectionVM.startTargetPitchMonitoring(settings: settings)
-                FileLogger.shared.log(level: "DEBUG", category: "viewmodel", message: "✅ Target pitch monitoring started")
+                Logger.viewModel.info("✅ Target pitch monitoring started")
+                Logger.viewModel.logToFile(level: "INFO", message: "✅ Target pitch monitoring started")
 
+                // Start realtime pitch detection
                 try pitchDetector.startRealtimeDetection()
-                FileLogger.shared.log(level: "INFO", category: "viewmodel", message: "✅ Realtime pitch detection started")
+                Logger.viewModel.info("✅ Realtime pitch detection started")
+                Logger.viewModel.logToFile(level: "INFO", message: "✅ Realtime pitch detection started")
             } catch {
-                FileLogger.shared.log(level: "ERROR", category: "viewmodel", message: "❌ Error starting pitch detection: \(error.localizedDescription)")
+                Logger.viewModel.error("❌ Error starting playback/monitoring: \(error.localizedDescription)")
+                Logger.viewModel.logToFile(level: "ERROR", message: "❌ Error starting playback/monitoring: \(error.localizedDescription)")
                 errorMessage = error.localizedDescription
             }
         } else {
-            FileLogger.shared.log(level: "WARNING", category: "viewmodel", message: "⚠️ No settings provided, pitch detection NOT started")
+            Logger.viewModel.warning("⚠️ Settings is nil - scale playback and pitch monitoring will NOT start")
+            Logger.viewModel.logToFile(level: "WARNING", message: "⚠️ Settings is nil - scale playback and pitch monitoring will NOT start")
         }
-        FileLogger.shared.log(level: "INFO", category: "viewmodel", message: "RecordingViewModel.startRecording() completed")
+
+        Logger.viewModel.info("RecordingViewModel.startRecording() completed")
+        Logger.viewModel.logToFile(level: "INFO", message: "RecordingViewModel.startRecording() completed")
     }
 
     /// Cancel the countdown before recording starts
@@ -211,6 +224,9 @@ public class RecordingViewModel: ObservableObject {
         // Stop pitch detection first
         await pitchDetectionVM.stopTargetPitchMonitoring()
         pitchDetector.stopRealtimeDetection()
+
+        // Stop scale playback
+        await recordingStateVM.scalePlaybackCoordinator.stopPlayback()
 
         // Then stop recording
         await recordingStateVM.stopRecording()

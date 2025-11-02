@@ -67,11 +67,6 @@ final class SettingsUITests: XCTestCase {
         // Verify scale changed to Off
         XCTAssertTrue(offButton.isSelected, "Off should be selected after tap")
 
-        // Verify target pitch is not displayed when scale is OFF
-        let targetPitchEmpty = app.staticTexts["TargetPitchEmpty"]
-        XCTAssertTrue(targetPitchEmpty.exists, "Target pitch display should exist")
-        XCTAssertEqual(targetPitchEmpty.label, "--", "Target pitch should be empty (--) when scale is OFF")
-
         // Screenshot: Scale changed to Off
         let screenshot3 = app.screenshot()
         let attachment3 = XCTAttachment(screenshot: screenshot3)
@@ -84,15 +79,23 @@ final class SettingsUITests: XCTestCase {
         XCTAssertTrue(startButton.waitForExistence(timeout: 5), "Start button should exist")
         startButton.tap()
 
-        // Wait for countdown and short recording
-        Thread.sleep(forTimeInterval: 5.0)
+        // Wait for countdown to complete (3 seconds)
+        Thread.sleep(forTimeInterval: 3.5)
+
+        // During recording, verify target pitch remains "--" (no scale, no target)
+        let targetPitchEmpty = app.staticTexts["TargetPitchEmpty"]
+        XCTAssertTrue(targetPitchEmpty.waitForExistence(timeout: 2), "Target pitch display should exist during recording")
+        XCTAssertEqual(targetPitchEmpty.label, "--", "Target pitch should remain '--' when scale is OFF during recording")
+
+        // Continue recording for a moment
+        Thread.sleep(forTimeInterval: 1.5)
 
         let stopButton = app.buttons["StopRecordingButton"]
-        XCTAssertTrue(stopButton.waitForExistence(timeout: 2), "Stop button should appear")
+        XCTAssertTrue(stopButton.exists, "Stop button should be available")
         stopButton.tap()
 
-        // Wait for recording to be saved
-        Thread.sleep(forTimeInterval: 2.0)
+        // Wait for recording to be saved (increased timeout to ensure save completes)
+        Thread.sleep(forTimeInterval: 3.0)
 
         // Screenshot: After recording with scale OFF
         let screenshot4 = app.screenshot()
@@ -100,6 +103,29 @@ final class SettingsUITests: XCTestCase {
         attachment4.name = "scale_04_recorded_without_scale"
         attachment4.lifetime = .keepAlways
         add(attachment4)
+
+        // Verify first recording was saved by checking recording list
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        Thread.sleep(forTimeInterval: 0.5)
+
+        let listButton1 = app.buttons["HomeListButton"]
+        XCTAssertTrue(listButton1.waitForExistence(timeout: 5), "Home list button should exist")
+        listButton1.tap()
+        Thread.sleep(forTimeInterval: 5.0)  // Increased wait time for list to load
+
+        // Verify at least 1 recording exists (from scale OFF recording)
+        let deleteButtons1 = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "DeleteRecordingButton_"))
+        XCTAssertGreaterThanOrEqual(deleteButtons1.count, 1, "At least 1 recording should exist after first recording")
+
+        // Navigate back to home screen to start second recording
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        Thread.sleep(forTimeInterval: 0.5)
+
+        // Navigate to Recording screen for second recording
+        let homeRecordButton2 = app.buttons["HomeRecordButton"]
+        XCTAssertTrue(homeRecordButton2.waitForExistence(timeout: 5), "Home record button should exist for second recording")
+        homeRecordButton2.tap()
+        Thread.sleep(forTimeInterval: 1.0)
 
         // 7. Show settings panel again if it was hidden after recording
         if showSettingsButton.waitForExistence(timeout: 2) {
@@ -128,14 +154,29 @@ final class SettingsUITests: XCTestCase {
         XCTAssertTrue(startButton.exists, "Start button should exist for second recording")
         startButton.tap()
 
-        // Wait for countdown and short recording
-        Thread.sleep(forTimeInterval: 5.0)
+        // Wait for countdown to complete (3 seconds) + extra time for scale/pitch monitoring to start
+        Thread.sleep(forTimeInterval: 5.0)  // Increased from 3.5s to 5.0s for debugging
 
-        XCTAssertTrue(stopButton.waitForExistence(timeout: 2), "Stop button should appear for second recording")
+        // During recording, verify target pitch is displayed (not "--")
+        // Scale playback should have started, showing actual pitch targets
+        // When targetPitch is set, the UI uses "TargetPitchNoteName" accessibility identifier
+        let targetPitchNoteName = app.staticTexts["TargetPitchNoteName"]
+        XCTAssertTrue(targetPitchNoteName.waitForExistence(timeout: 2), "Target pitch note name should exist during recording with scale ON")
+
+        // Target pitch should show actual note (e.g., "C3", "D3") when scale is ON
+        // Verify the label is not empty and looks like a note name
+        let noteLabel = targetPitchNoteName.label
+        XCTAssertFalse(noteLabel.isEmpty, "Target pitch note name should not be empty when scale is ON")
+        XCTAssertTrue(noteLabel.count >= 2, "Target pitch should display actual notes (e.g., 'C3', 'D3') when scale is ON during recording")
+
+        // Continue recording for a moment
+        Thread.sleep(forTimeInterval: 1.5)
+
+        XCTAssertTrue(stopButton.exists, "Stop button should be available for second recording")
         stopButton.tap()
 
-        // Wait for recording to be saved
-        Thread.sleep(forTimeInterval: 2.0)
+        // Wait for recording to be saved (increased timeout to ensure save completes)
+        Thread.sleep(forTimeInterval: 3.0)
 
         // Screenshot: After recording with scale ON
         let screenshot6 = app.screenshot()

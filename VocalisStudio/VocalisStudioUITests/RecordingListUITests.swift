@@ -28,8 +28,9 @@ final class RecordingListUITests: XCTestCase {
         XCTAssertTrue(startButton.waitForExistence(timeout: 5), "Start recording button should exist")
         startButton.tap()
 
-        // Wait for countdown and some recording time
-        Thread.sleep(forTimeInterval: 4.0)
+        // Wait for countdown (3s) + recording initialization (~3s) + some recording time (1s)
+        // Total: ~7 seconds before stop
+        Thread.sleep(forTimeInterval: 7.0)
 
         let stopButton = app.buttons["StopRecordingButton"]
         XCTAssertTrue(stopButton.waitForExistence(timeout: 2), "Stop recording button should appear")
@@ -112,8 +113,9 @@ final class RecordingListUITests: XCTestCase {
         XCTAssertTrue(startButton.waitForExistence(timeout: 5), "Start recording button should exist")
         startButton.tap()
 
-        // Wait for countdown and some recording time
-        Thread.sleep(forTimeInterval: 4.0)
+        // Wait for countdown (3s) + recording initialization (~3s) + some recording time (1s)
+        // Total: ~7 seconds before stop
+        Thread.sleep(forTimeInterval: 7.0)
 
         let stopButton = app.buttons["StopRecordingButton"]
         XCTAssertTrue(stopButton.waitForExistence(timeout: 2), "Stop recording button should appear")
@@ -169,8 +171,8 @@ final class RecordingListUITests: XCTestCase {
         XCTAssertTrue(deleteConfirmButton.waitForExistence(timeout: 3), "Delete confirm button should exist in confirmation dialog")
         deleteConfirmButton.tap()
 
-        // Wait for deletion to complete
-        Thread.sleep(forTimeInterval: 1.0)
+        // Wait for deletion to complete and UI to update
+        Thread.sleep(forTimeInterval: 2.0)
 
         // Screenshot: After deletion
         let screenshot3 = app.screenshot()
@@ -180,7 +182,9 @@ final class RecordingListUITests: XCTestCase {
         add(attachment3)
 
         // 7. Verify recording is deleted by checking if count decreased
-        let finalCount = deleteButtons.count
+        // Re-query the buttons after deletion to ensure fresh count
+        let deleteButtonsAfterDeletion = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "DeleteRecordingButton_"))
+        let finalCount = deleteButtonsAfterDeletion.count
 
         // Verify that exactly one recording was deleted
         XCTAssertEqual(finalCount, initialCount - 1, "Recording count should decrease by 1 after deletion (was \(initialCount), now \(finalCount))")

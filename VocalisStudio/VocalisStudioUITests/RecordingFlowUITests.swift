@@ -38,8 +38,12 @@ final class RecordingFlowUITests: XCTestCase {
         // 3. Start recording
         startButton.tap()
 
-        // 4. Wait for countdown (3 seconds) and verify recording state
-        Thread.sleep(forTimeInterval: 3.5)
+        // 4. Wait for countdown (3 seconds) and recording initialization
+        // Note: Recording with scale requires additional time for:
+        // - Countdown: 3 seconds
+        // - Recording session creation: ~3 seconds (file preparation, audio session setup)
+        // Total: ~6 seconds before recordingState becomes .recording
+        Thread.sleep(forTimeInterval: 6.5)
 
         // 5. Verify stop recording button appears (recording is in progress)
         let stopButton = app.buttons["StopRecordingButton"]

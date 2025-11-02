@@ -1,6 +1,7 @@
 import Foundation
 import VocalisDomain
 import AVFoundation
+import OSLog
 
 /// Scale player implementation using AVAudioEngine and AVAudioUnitSampler
 /// Now supports ScaleElement for chord playback
@@ -32,16 +33,35 @@ public class AVAudioEngineScalePlayer: ScalePlayerProtocol {
     }
 
     public var currentScaleElement: ScaleElement? {
-        guard _isPlaying else { return nil }
-        guard _currentNoteIndex >= 0 else { return nil }
+        Logger.scalePlayer.info("[currentScaleElement] Called: _isPlaying=\(self._isPlaying), _currentNoteIndex=\(self._currentNoteIndex), scaleElements.count=\(self.scaleElements.count)")
+
+        guard _isPlaying else {
+            Logger.scalePlayer.info("[currentScaleElement] Return nil: _isPlaying is false")
+            return nil
+        }
+        guard _currentNoteIndex >= 0 else {
+            Logger.scalePlayer.info("[currentScaleElement] Return nil: _currentNoteIndex < 0")
+            return nil
+        }
 
         if !scaleElements.isEmpty {
-            guard _currentNoteIndex < scaleElements.count else { return nil }
-            return scaleElements[_currentNoteIndex]
+            guard _currentNoteIndex < scaleElements.count else {
+                Logger.scalePlayer.info("[currentScaleElement] Return nil: _currentNoteIndex >= scaleElements.count")
+                return nil
+            }
+            let element = scaleElements[_currentNoteIndex]
+            Logger.scalePlayer.info("[currentScaleElement] Return element at index \(self._currentNoteIndex)")
+            return element
         } else if !scale.isEmpty {
-            guard _currentNoteIndex < scale.count else { return nil }
-            return .scaleNote(scale[_currentNoteIndex])
+            guard _currentNoteIndex < scale.count else {
+                Logger.scalePlayer.info("[currentScaleElement] Return nil: _currentNoteIndex >= scale.count")
+                return nil
+            }
+            let element = ScaleElement.scaleNote(scale[_currentNoteIndex])
+            Logger.scalePlayer.info("[currentScaleElement] Return legacy element at index \(self._currentNoteIndex)")
+            return element
         }
+        Logger.scalePlayer.info("[currentScaleElement] Return nil: both scaleElements and scale are empty")
         return nil
     }
 
@@ -136,45 +156,58 @@ public class AVAudioEngineScalePlayer: ScalePlayerProtocol {
     /// Play scale elements with chord support (new format)
     private func playScaleElements() async throws {
         _isPlaying = true
+        Logger.scalePlayer.info("[playScaleElements] Set _isPlaying=true, scaleElements.count=\(self.scaleElements.count)")
 
         do {
             // Ensure audio session is active before starting engine
             try AudioSessionManager.shared.activateIfNeeded()
 
             try engine.start()
+            Logger.scalePlayer.info("[playScaleElements] Engine started successfully")
 
             playbackTask = Task { [weak self] in
-                guard let self = self else { return }
-                for (index, element) in scaleElements.enumerated() {
-                    try Task.checkCancellation()
-                    self._currentNoteIndex = index
-
-                    switch element {
-                    case .chordShort(let notes):
-                        // Play chord for 0.3s
-                        try await self.playChord(notes, duration: 0.3)
-
-                    case .chordLong(let notes):
-                        // Play chord for 1.0s
-                        try await self.playChord(notes, duration: 1.0)
-
-                    case .scaleNote(let note):
-                        // Play single note with tempo duration
-                        try await self.playNote(note, duration: self.tempo!.secondsPerNote)
-
-                    case .silence(let duration):
-                        // Silent gap
-                        try await Task.sleep(nanoseconds: UInt64(duration * 1_000_000_000))
-                    }
+                guard let self = self else {
+                    Logger.scalePlayer.info("[playScaleElements] Task: self is nil")
+                    return
                 }
+                Logger.scalePlayer.info("[playScaleElements] Task: Started, scaleElements.count=\(scaleElements.count)")
+                do {
+                    for (index, element) in scaleElements.enumerated() {
+                        try Task.checkCancellation()
+                        Logger.scalePlayer.info("[playScaleElements] Task: Setting _currentNoteIndex=\(index)")
+                        self._currentNoteIndex = index
 
-                // Playback completed
-                self._currentNoteIndex = scaleElements.count
-                self._isPlaying = false
-                self.engine.stop()
+                        switch element {
+                        case .chordShort(let notes):
+                            // Play chord for 0.3s
+                            try await self.playChord(notes, duration: 0.3)
+
+                        case .chordLong(let notes):
+                            // Play chord for 1.0s
+                            try await self.playChord(notes, duration: 1.0)
+
+                        case .scaleNote(let note):
+                            // Play single note with tempo duration
+                            try await self.playNote(note, duration: self.tempo!.secondsPerNote)
+
+                        case .silence(let duration):
+                            // Silent gap
+                            try await Task.sleep(nanoseconds: UInt64(duration * 1_000_000_000))
+                        }
+                    }
+
+                    // Playback completed
+                    self._currentNoteIndex = scaleElements.count
+                    self._isPlaying = false
+                    self.engine.stop()
+                } catch {
+                    // Task cancelled or other error
+                    self._isPlaying = false
+                    self.engine.stop()
+                }
             }
 
-            try await playbackTask?.value
+            // Don't wait for playback to complete - return immediately
         } catch is CancellationError {
             _isPlaying = false
         } catch {
@@ -195,29 +228,35 @@ public class AVAudioEngineScalePlayer: ScalePlayerProtocol {
 
             playbackTask = Task { [weak self] in
                 guard let self = self else { return }
-                for (index, note) in scale.enumerated() {
-                    try Task.checkCancellation()
-                    self._currentNoteIndex = index
+                do {
+                    for (index, note) in scale.enumerated() {
+                        try Task.checkCancellation()
+                        self._currentNoteIndex = index
 
-                    // Play note (legato: stop previous note just before next one plays)
-                    self.sampler.startNote(note.value, withVelocity: 64, onChannel: 0)
+                        // Play note (legato: stop previous note just before next one plays)
+                        self.sampler.startNote(note.value, withVelocity: 64, onChannel: 0)
 
-                    // Most of the note duration
-                    try await Task.sleep(nanoseconds: UInt64(self.tempo!.secondsPerNote * 0.9 * 1_000_000_000))
+                        // Most of the note duration
+                        try await Task.sleep(nanoseconds: UInt64(self.tempo!.secondsPerNote * 0.9 * 1_000_000_000))
 
-                    self.sampler.stopNote(note.value, onChannel: 0)
+                        self.sampler.stopNote(note.value, onChannel: 0)
 
-                    // Small gap between notes
-                    try await Task.sleep(nanoseconds: UInt64(self.tempo!.secondsPerNote * 0.1 * 1_000_000_000))
+                        // Small gap between notes
+                        try await Task.sleep(nanoseconds: UInt64(self.tempo!.secondsPerNote * 0.1 * 1_000_000_000))
+                    }
+
+                    // Playback completed
+                    self._currentNoteIndex = scale.count
+                    self._isPlaying = false
+                    self.engine.stop()
+                } catch {
+                    // Task cancelled or other error
+                    self._isPlaying = false
+                    self.engine.stop()
                 }
-
-                // Playback completed
-                self._currentNoteIndex = scale.count
-                self._isPlaying = false
-                self.engine.stop()
             }
 
-            try await playbackTask?.value
+            // Don't wait for playback to complete - return immediately
         } catch is CancellationError {
             _isPlaying = false
         } catch {

@@ -85,16 +85,17 @@ public class PitchDetectionViewModel: ObservableObject {
 
                 // 🔍 Log every loop iteration with detailed state
                 let interval = now.timeIntervalSince(lastDebugLogTime) * 1000
-                print("[DIAG] Loop #\(loopCount) START: isCancelled=\(Task.isCancelled), interval=\(String(format: "%.0f", interval))ms")
+                FileLogger.shared.log(level: "INFO", category: "pitch_monitoring", message: "[DIAG] Loop #\(loopCount) START: isCancelled=\(Task.isCancelled), interval=\(String(format: "%.0f", interval))ms")
                 lastDebugLogTime = now
 
                 // Check scale player current element via coordinator
                 if let currentElement = self.scalePlaybackCoordinator.currentScaleElement {
-                    print("[DIAG] Loop #\(loopCount) Before updateTargetPitch: targetPitch=\(String(describing: targetPitch))")
+                    FileLogger.shared.log(level: "INFO", category: "pitch_monitoring", message: "[DIAG] Loop #\(loopCount) Before updateTargetPitch: targetPitch=\(String(describing: targetPitch))")
                     await self.updateTargetPitchFromScaleElement(currentElement)
-                    print("[DIAG] Loop #\(loopCount) After updateTargetPitch: targetPitch=\(String(describing: targetPitch))")
+                    FileLogger.shared.log(level: "INFO", category: "pitch_monitoring", message: "[DIAG] Loop #\(loopCount) After updateTargetPitch: targetPitch=\(String(describing: targetPitch))")
                 } else {
                     await MainActor.run { self.targetPitch = nil }
+                    FileLogger.shared.log(level: "INFO", category: "pitch_monitoring", message: "[DIAG] Loop #\(loopCount) currentScaleElement is nil")
                 }
 
                 // Note: Detected pitch is now automatically updated via Combine subscription
@@ -103,7 +104,7 @@ public class PitchDetectionViewModel: ObservableObject {
                 try? await Task.sleep(nanoseconds: pollingInterval)
             }
 
-            print("[DIAG] Loop EXITED: final targetPitch=\(String(describing: targetPitch)), iterations=\(loopCount)")
+            FileLogger.shared.log(level: "INFO", category: "pitch_monitoring", message: "[DIAG] Loop EXITED: final targetPitch=\(String(describing: targetPitch)), iterations=\(loopCount)")
         }
     }
 

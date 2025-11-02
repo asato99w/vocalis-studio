@@ -6,14 +6,14 @@ public struct Recording: Equatable, Identifiable, Codable {
     public let fileURL: URL
     public let createdAt: Date
     public let duration: Duration
-    public let scaleSettings: ScaleSettings
+    public let scaleSettings: ScaleSettings?  // Optional: nil when recording without scale
 
     public init(
         id: RecordingId = RecordingId(),
         fileURL: URL,
         createdAt: Date = Date(),
         duration: Duration,
-        scaleSettings: ScaleSettings
+        scaleSettings: ScaleSettings?  // Optional: nil when recording without scale
     ) {
         self.id = id
         self.fileURL = fileURL

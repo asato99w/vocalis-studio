@@ -39,13 +39,14 @@ public class StopRecordingUseCase: StopRecordingUseCaseProtocol {
         // Stop the audio recorder
         let duration = try await audioRecorder.stopRecording()
 
-        // Save recording to repository if we have context with scale settings
-        if let url = currentRecordingURL, let settings = currentSettings {
+        // Save recording to repository if we have URL context
+        // Note: settings can be nil (when recording without scale)
+        if let url = currentRecordingURL {
             let recording = Recording(
                 fileURL: url,
                 createdAt: Date(),
                 duration: Duration(seconds: duration),
-                scaleSettings: settings
+                scaleSettings: currentSettings  // Can be nil for scale-off recordings
             )
             try await recordingRepository.save(recording)
         }

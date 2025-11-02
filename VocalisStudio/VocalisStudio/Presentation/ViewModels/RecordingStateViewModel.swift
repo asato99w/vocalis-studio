@@ -21,6 +21,7 @@ public class RecordingStateViewModel: ObservableObject {
     @Published public private(set) var lastRecordingURL: URL?
     @Published public private(set) var lastRecordingSettings: ScaleSettings?
     @Published internal var isPlayingRecording: Bool = false
+    @Published public private(set) var isCountdownComplete: Bool = false
 
     // MARK: - Subscription Properties
 
@@ -159,8 +160,10 @@ public class RecordingStateViewModel: ObservableObject {
                 return
             }
 
-            // Countdown complete, start recording
-            print("[DIAG] Countdown complete, calling executeRecording")
+            // Countdown complete, set flag before executing recording
+            print("[DIAG] Countdown complete, setting isCountdownComplete=true")
+            await MainActor.run { self.isCountdownComplete = true }
+            print("[DIAG] Calling executeRecording")
             await self.executeRecording(settings: settings)
         }
     }
@@ -173,6 +176,7 @@ public class RecordingStateViewModel: ObservableObject {
         countdownTask = nil
         recordingState = .idle
         countdownValue = countdownDuration
+        isCountdownComplete = false
     }
 
     /// Stop the current recording
@@ -206,6 +210,7 @@ public class RecordingStateViewModel: ObservableObject {
             recordingState = .idle
             currentSession = nil
             progress = 0.0
+            isCountdownComplete = false
 
             // Save the recording URL and settings for playback
             lastRecordingURL = recordingURL
@@ -218,6 +223,7 @@ public class RecordingStateViewModel: ObservableObject {
             recordingState = .idle
             currentSession = nil
             progress = 0.0
+            isCountdownComplete = false
         }
     }
 
