@@ -226,6 +226,7 @@ struct PitchIndicator: View {
                         .font(.callout)
                         .fontWeight(.bold)
                         .foregroundColor(.primary)
+                        .accessibilityIdentifier("DetectedPitchNoteName")
 
                     Text(String(format: "%.1f Hz", detected.frequency))
                         .font(.caption)
@@ -247,6 +248,7 @@ struct PitchIndicator: View {
                 Text((isActive || isPlayingRecording) ? "..." : "--")
                     .font(.callout)
                     .foregroundColor(.secondary)
+                    .accessibilityIdentifier("DetectedPitchEmpty")
             }
 
             Spacer()

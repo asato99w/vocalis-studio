@@ -196,4 +196,78 @@ final class PlaybackUITests: XCTestCase {
             "Target pitch note name should not exist after stopping playback. BUG: Target pitch continues to be displayed."
         )
     }
+
+    /// Phase 1 Test: Pitch detection during scale-enabled recording
+    /// Verifies that SOME pitch is detected when scale is playing (not checking accuracy yet)
+    /// Expected: This test should FAIL (RED) if pitch detection is broken
+    @MainActor
+    func testScaleRecordingShouldDetectPitch() throws {
+        let app = launchAppWithResetRecordingCount()
+
+        // 1. Navigate to Recording screen from Home
+        let homeRecordButton = app.buttons["HomeRecordButton"]
+        XCTAssertTrue(homeRecordButton.waitForExistence(timeout: 5), "Home record button should exist")
+        homeRecordButton.tap()
+
+        // 2. Wait for recording screen to load
+        let startButton = app.buttons["StartRecordingButton"]
+        XCTAssertTrue(startButton.waitForExistence(timeout: 5), "Start recording button should exist")
+
+        // Wait for view to fully initialize
+        Thread.sleep(forTimeInterval: 1.0)
+
+        // 📸 Screenshot 1: Initial recording screen
+        let screenshot1 = app.screenshot()
+        let attachment1 = XCTAttachment(screenshot: screenshot1)
+        attachment1.name = "pitch_detection_01_initial"
+        attachment1.lifetime = .keepAlways
+        add(attachment1)
+
+        // 3. Start recording (scale is enabled by default)
+        startButton.tap()
+
+        // 4. Wait for recording to start
+        let stopButton = app.buttons["StopRecordingButton"]
+        XCTAssertTrue(stopButton.waitForExistence(timeout: 10), "Stop recording button should appear during recording")
+
+        // 5. Wait for scale playback and pitch detection to stabilize
+        // Note: This sleep will be optimized later using state-based waiting
+        Thread.sleep(forTimeInterval: 3.0)
+
+        // 📸 Screenshot 2: During recording with scale playback
+        let screenshot2 = app.screenshot()
+        let attachment2 = XCTAttachment(screenshot: screenshot2)
+        attachment2.name = "pitch_detection_02_during_recording"
+        attachment2.lifetime = .keepAlways
+        add(attachment2)
+
+        // 6. Verify that SOME pitch is detected
+        // When scale is playing through speaker → microphone input → pitch detection should work
+        let detectedPitchNoteName = app.staticTexts["DetectedPitchNoteName"]
+        let detectedPitchEmpty = app.staticTexts["DetectedPitchEmpty"]
+
+        XCTAssertTrue(
+            detectedPitchNoteName.waitForExistence(timeout: 2),
+            "🔴 RED: Detected pitch should show note name during scale playback. If this fails, pitch detection is broken."
+        )
+
+        XCTAssertFalse(
+            detectedPitchEmpty.exists,
+            "🔴 RED: Detected pitch should NOT show '--' or '...' when scale is playing. If this fails, pitch detection is not working."
+        )
+
+        // 7. Stop recording
+        stopButton.tap()
+
+        // Wait for recording to finish processing
+        let playButton = app.buttons["PlayLastRecordingButton"]
+        XCTAssertTrue(playButton.waitForExistence(timeout: 5), "Play button should appear after save")
+
+        // 📸 Screenshot 3: After recording stopped
+        let screenshot3 = app.screenshot()
+        let attachment3 = XCTAttachment(screenshot: screenshot3)
+        attachment3.name = "pitch_detection_03_after_recording"
+        attachment3.lifetime = .keepAlways
+        add(attachment3)
+    }
 }

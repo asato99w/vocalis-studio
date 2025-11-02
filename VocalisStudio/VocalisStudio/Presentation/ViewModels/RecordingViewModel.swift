@@ -162,52 +162,57 @@ public class RecordingViewModel: ObservableObject {
         Logger.viewModel.info("RecordingViewModel.startRecording() called, settings = \(settings != nil ? "present" : "nil")")
         Logger.viewModel.logToFile(level: "INFO", message: "RecordingViewModel.startRecording() called, settings = \(settings != nil ? "present" : "nil")")
 
-        // Start recording through state VM
+        // Start recording through state VM (this starts countdown → executeRecording → scale playback)
         await recordingStateVM.startRecording(settings: settings)
 
-        // Wait for countdown to complete before starting scale playback and pitch monitoring
-        // This allows scale and pitch monitoring to start immediately after countdown,
-        // without waiting for recording session creation to complete
+        // If settings provided, start pitch detection AFTER countdown completes
+        // Note: Scale playback is handled by StartRecordingWithScaleUseCase inside executeRecording()
         if let settings = settings {
-            Logger.viewModel.info("✅ Settings present - will start scale playback after countdown")
-            Logger.viewModel.logToFile(level: "INFO", message: "✅ Settings present - will start scale playback after countdown")
-            // Wait for countdown to complete
+            Logger.viewModel.info("✅ Settings present - waiting for countdown completion")
+            Logger.viewModel.logToFile(level: "INFO", message: "✅ Settings present - waiting for countdown completion")
+
+            // Wait for countdown to complete before starting pitch detection
+            // This ensures scale playback (started in Use Case) is active when we start pitch detection
             while !recordingStateVM.isCountdownComplete {
-                // If user cancelled countdown, exit
-                if recordingState == .idle {
-                    Logger.viewModel.warning("Recording cancelled during countdown")
-                    Logger.viewModel.logToFile(level: "WARNING", message: "Recording cancelled during countdown")
-                    return
-                }
                 try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 second
             }
-
-            Logger.viewModel.info("Countdown complete, initiating scale playback and pitch monitoring...")
-            Logger.viewModel.logToFile(level: "INFO", message: "Countdown complete, initiating scale playback and pitch monitoring...")
+            Logger.viewModel.info("✅ Countdown complete - starting pitch detection")
+            Logger.viewModel.logToFile(level: "INFO", message: "✅ Countdown complete - starting pitch detection")
 
             do {
-                // Start audible scale playback (not muted)
-                try await recordingStateVM.scalePlaybackCoordinator.startPlayback(settings: settings)
-                Logger.viewModel.info("✅ Audible scale playback started")
-                Logger.viewModel.logToFile(level: "INFO", message: "✅ Audible scale playback started")
+                // Start pitch detector AFTER countdown
+                try pitchDetector.startRealtimeDetection()
+                Logger.viewModel.info("✅ Realtime pitch detection started (after countdown)")
+                Logger.viewModel.logToFile(level: "INFO", message: "✅ Realtime pitch detection started (after countdown)")
 
-                // Start target pitch monitoring
+                // Start scale playback in background (non-blocking)
+                // NOTE: This may duplicate with Use Case's scale playback, but Coordinator handles it
+                Task {
+                    do {
+                        try await recordingStateVM.scalePlaybackCoordinator.startPlayback(settings: settings)
+                        Logger.viewModel.info("✅ Audible scale playback started")
+                        Logger.viewModel.logToFile(level: "INFO", message: "✅ Audible scale playback started")
+                    } catch {
+                        Logger.viewModel.error("❌ Scale playback error: \(error.localizedDescription)")
+                        Logger.viewModel.logToFile(level: "ERROR", message: "❌ Scale playback error: \(error.localizedDescription)")
+                    }
+                }
+
+                // Give scale playback a moment to start
+                try await Task.sleep(nanoseconds: 100_000_000) // 0.1 second
+
+                // Start target pitch monitoring (which polls the coordinator's current scale element)
                 try await pitchDetectionVM.startTargetPitchMonitoring(settings: settings)
                 Logger.viewModel.info("✅ Target pitch monitoring started")
                 Logger.viewModel.logToFile(level: "INFO", message: "✅ Target pitch monitoring started")
-
-                // Start realtime pitch detection
-                try pitchDetector.startRealtimeDetection()
-                Logger.viewModel.info("✅ Realtime pitch detection started")
-                Logger.viewModel.logToFile(level: "INFO", message: "✅ Realtime pitch detection started")
             } catch {
-                Logger.viewModel.error("❌ Error starting playback/monitoring: \(error.localizedDescription)")
-                Logger.viewModel.logToFile(level: "ERROR", message: "❌ Error starting playback/monitoring: \(error.localizedDescription)")
+                Logger.viewModel.error("❌ Error starting pitch detection: \(error.localizedDescription)")
+                Logger.viewModel.logToFile(level: "ERROR", message: "❌ Error starting pitch detection: \(error.localizedDescription)")
                 errorMessage = error.localizedDescription
             }
         } else {
-            Logger.viewModel.warning("⚠️ Settings is nil - scale playback and pitch monitoring will NOT start")
-            Logger.viewModel.logToFile(level: "WARNING", message: "⚠️ Settings is nil - scale playback and pitch monitoring will NOT start")
+            Logger.viewModel.warning("⚠️ Settings is nil - pitch detection will NOT start")
+            Logger.viewModel.logToFile(level: "WARNING", message: "⚠️ Settings is nil - pitch detection will NOT start")
         }
 
         Logger.viewModel.info("RecordingViewModel.startRecording() completed")
