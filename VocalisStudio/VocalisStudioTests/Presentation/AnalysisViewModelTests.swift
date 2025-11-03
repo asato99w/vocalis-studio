@@ -13,6 +13,7 @@ final class AnalysisViewModelTests: XCTestCase {
         super.setUp()
         mockAudioPlayer = MockAudioPlayer()
         mockUseCase = MockAnalyzeRecordingUseCase()
+        mockUseCase.progressCallbacks = []  // Reset progress callbacks
         testRecording = createTestRecording()
         sut = AnalysisViewModel(
             recording: testRecording,
@@ -72,8 +73,8 @@ final class AnalysisViewModelTests: XCTestCase {
 
     @MainActor
     func testInitialState_IsLoading() {
-        // Then: Initial state should be loading
-        XCTAssertEqual(sut.state, .loading)
+        // Then: Initial state should be loading with 0% progress
+        XCTAssertEqual(sut.state, .loading(progress: 0.0))
         XCTAssertFalse(sut.isPlaying)
         XCTAssertEqual(sut.currentTime, 0.0)
     }
@@ -124,6 +125,56 @@ final class AnalysisViewModelTests: XCTestCase {
         // Then: Use case should be called
         XCTAssertEqual(mockUseCase.executeCallCount, 1)
         XCTAssertEqual(mockUseCase.lastRecording?.id, testRecording.id)
+    }
+
+    @MainActor
+    func testStartAnalysis_ReportsProgressUpdates() async {
+        // Given: Successful analysis
+        mockUseCase.resultToReturn = createTestAnalysisResult()
+
+        // When: Starting analysis
+        await sut.startAnalysis()
+
+        // Then: Progress should have been reported
+        XCTAssertEqual(mockUseCase.progressCallbacks.count, 3, "Should report 0%, 50%, and 100% progress")
+        XCTAssertEqual(mockUseCase.progressCallbacks[0], 0.0, accuracy: 0.01)
+        XCTAssertEqual(mockUseCase.progressCallbacks[1], 0.5, accuracy: 0.01)
+        XCTAssertEqual(mockUseCase.progressCallbacks[2], 1.0, accuracy: 0.01)
+    }
+
+    @MainActor
+    func testStartAnalysis_UpdatesStateWithProgress() async {
+        // Given: Successful analysis
+        mockUseCase.resultToReturn = createTestAnalysisResult()
+
+        // Track state changes
+        var stateChanges: [AnalysisState] = []
+        let cancellable = sut.$state
+            .sink { state in
+                stateChanges.append(state)
+            }
+
+        // When: Starting analysis
+        await sut.startAnalysis()
+
+        // Then: State should transition through loading states and end in ready
+        XCTAssertGreaterThanOrEqual(stateChanges.count, 2, "Should have at least initial and final state")
+
+        // Initial state
+        if case .loading(let progress) = stateChanges[0] {
+            XCTAssertEqual(progress, 0.0, accuracy: 0.01)
+        } else {
+            XCTFail("Initial state should be loading with 0% progress")
+        }
+
+        // Final state should be ready
+        if case .ready = stateChanges.last {
+            // Success
+        } else {
+            XCTFail("Final state should be ready, got \(stateChanges.last!)")
+        }
+
+        cancellable.cancel()
     }
 
     // MARK: - Playback Control Tests
@@ -236,6 +287,7 @@ fileprivate class MockAnalyzeRecordingUseCase: AnalyzeRecordingUseCase {
     var lastRecording: Recording?
     var shouldThrowError = false
     var resultToReturn: AnalysisResult?
+    var progressCallbacks: [Double] = []
 
     init() {
         // Initialize with dummy dependencies (won't be used)
@@ -245,9 +297,19 @@ fileprivate class MockAnalyzeRecordingUseCase: AnalyzeRecordingUseCase {
         super.init(audioFileAnalyzer: dummyAnalyzer, analysisCache: dummyCache, logger: dummyLogger)
     }
 
-    override func execute(recording: Recording) async throws -> AnalysisResult {
+    override func execute(recording: Recording, progress: @escaping @MainActor (Double) -> Void) async throws -> AnalysisResult {
         executeCallCount += 1
         lastRecording = recording
+
+        // Simulate progress updates
+        await progress(0.0)
+        progressCallbacks.append(0.0)
+
+        await progress(0.5)
+        progressCallbacks.append(0.5)
+
+        await progress(1.0)
+        progressCallbacks.append(1.0)
 
         if shouldThrowError {
             throw NSError(domain: "TestError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Test error"])
@@ -263,7 +325,7 @@ fileprivate class MockAnalyzeRecordingUseCase: AnalyzeRecordingUseCase {
 
 @MainActor
 fileprivate class DummyAnalyzer: AudioFileAnalyzerProtocol {
-    func analyze(fileURL: URL) async throws -> (pitchData: PitchAnalysisData, spectrogramData: SpectrogramData) {
+    func analyze(fileURL: URL, progress: @escaping @MainActor (Double) async -> Void) async throws -> (pitchData: PitchAnalysisData, spectrogramData: SpectrogramData) {
         fatalError("Should not be called")
     }
 }

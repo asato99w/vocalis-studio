@@ -5,7 +5,7 @@ import OSLog
 
 /// Analysis state for the analysis screen
 public enum AnalysisState: Equatable {
-    case loading
+    case loading(progress: Double)  // progress: 0.0 to 1.0
     case ready(result: AnalysisResult)
     case error(message: String)
 }
@@ -15,7 +15,7 @@ public enum AnalysisState: Equatable {
 public class AnalysisViewModel: ObservableObject {
     // MARK: - Published Properties
 
-    @Published public private(set) var state: AnalysisState = .loading
+    @Published public private(set) var state: AnalysisState = .loading(progress: 0.0)
     @Published public private(set) var isPlaying: Bool = false
     @Published public private(set) var currentTime: Double = 0.0
 
@@ -62,11 +62,14 @@ public class AnalysisViewModel: ObservableObject {
     public func startAnalysis() async {
         logger.info("Starting analysis for recording: \(self.recording.id.value.uuidString)")
 
-        state = .loading
+        state = .loading(progress: 0.0)
 
         do {
-            // Execute analysis use case
-            let result = try await analyzeRecordingUseCase.execute(recording: recording)
+            // Execute analysis use case with progress reporting
+            let result = try await analyzeRecordingUseCase.execute(recording: recording) { [weak self] progress in
+                guard let self = self else { return }
+                self.state = .loading(progress: progress)
+            }
 
             state = .ready(result: result)
             logger.info("Analysis completed successfully")

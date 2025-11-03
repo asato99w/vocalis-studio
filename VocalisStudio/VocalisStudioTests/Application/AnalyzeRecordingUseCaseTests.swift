@@ -206,9 +206,14 @@ fileprivate class MockAudioFileAnalyzer: AudioFileAnalyzerProtocol {
     var shouldThrowError = false
     var resultToReturn: (pitchData: PitchAnalysisData, spectrogramData: SpectrogramData)?
 
-    func analyze(fileURL: URL) async throws -> (pitchData: PitchAnalysisData, spectrogramData: SpectrogramData) {
+    func analyze(fileURL: URL, progress: @escaping @MainActor (Double) async -> Void) async throws -> (pitchData: PitchAnalysisData, spectrogramData: SpectrogramData) {
         analyzeCallCount += 1
         lastAnalyzedURL = fileURL
+
+        // Simulate progress updates
+        await progress(0.0)
+        await progress(0.5)
+        await progress(1.0)
 
         if shouldThrowError {
             throw MockError.testError

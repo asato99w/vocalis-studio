@@ -34,18 +34,25 @@ public struct AnalysisView: View {
             }
 
             // Loading overlay
-            if case .loading = viewModel.state {
+            if case .loading(let progress) = viewModel.state {
                 Color.black.opacity(0.4)
                     .ignoresSafeArea()
 
                 VStack(spacing: 16) {
-                    ProgressView()
-                        .scaleEffect(1.5)
-                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-
                     Text("analysis.analyzing".localized)
                         .font(.headline)
                         .foregroundColor(.white)
+
+                    VStack(spacing: 8) {
+                        ProgressView(value: progress, total: 1.0)
+                            .progressViewStyle(LinearProgressViewStyle(tint: .white))
+                            .frame(width: 200)
+
+                        Text("\(Int(progress * 100))%")
+                            .font(.subheadline)
+                            .foregroundColor(.white)
+                            .monospacedDigit()
+                    }
                 }
                 .padding(32)
                 .background(Color(.systemGray6))
@@ -690,7 +697,14 @@ private class PreviewAudioPlayer: AudioPlayerProtocol {
 }
 
 private class PreviewAudioFileAnalyzer: AudioFileAnalyzerProtocol {
-    func analyze(fileURL: URL) async throws -> (pitchData: PitchAnalysisData, spectrogramData: SpectrogramData) {
+    func analyze(fileURL: URL, progress: @escaping @MainActor (Double) async -> Void) async throws -> (pitchData: PitchAnalysisData, spectrogramData: SpectrogramData) {
+        // Simulate progress updates
+        await progress(0.0)
+        try await Task.sleep(nanoseconds: 500_000_000)  // 0.5s
+        await progress(0.5)
+        try await Task.sleep(nanoseconds: 500_000_000)  // 0.5s
+        await progress(1.0)
+
         let pitchData = PitchAnalysisData(
             timeStamps: [0.0, 0.05, 0.10],
             frequencies: [261.6, 262.3, 261.9],

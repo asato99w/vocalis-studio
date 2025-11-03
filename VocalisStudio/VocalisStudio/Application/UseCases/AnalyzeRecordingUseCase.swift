@@ -4,7 +4,10 @@ import VocalisDomain
 /// Protocol for audio file analysis
 public protocol AudioFileAnalyzerProtocol {
     /// Analyze audio file and return pitch and spectrogram data
-    func analyze(fileURL: URL) async throws -> (pitchData: PitchAnalysisData, spectrogramData: SpectrogramData)
+    /// - Parameters:
+    ///   - fileURL: URL of audio file to analyze
+    ///   - progress: Callback for progress updates (0.0 to 1.0), called on MainActor
+    func analyze(fileURL: URL, progress: @escaping @MainActor (Double) async -> Void) async throws -> (pitchData: PitchAnalysisData, spectrogramData: SpectrogramData)
 }
 
 /// Protocol for analysis result caching
@@ -38,22 +41,26 @@ public class AnalyzeRecordingUseCase {
     }
 
     /// Analyze recording and return analysis result
-    /// - Parameter recording: Recording to analyze
+    /// - Parameters:
+    ///   - recording: Recording to analyze
+    ///   - progress: Callback for progress updates (0.0 to 1.0), called on MainActor
     /// - Returns: Analysis result with pitch and spectrogram data
     /// - Throws: Error if file reading or analysis fails
-    public func execute(recording: Recording) async throws -> AnalysisResult {
+    public func execute(recording: Recording, progress: @escaping @MainActor (Double) -> Void = { _ in }) async throws -> AnalysisResult {
         logger.info("Starting analysis for recording: \(recording.id.value.uuidString)", category: "useCase")
 
         // Check cache first
         if let cachedResult = analysisCache.get(recording.id) {
             logger.info("Cache hit for recording: \(recording.id.value.uuidString)", category: "useCase")
+            // Report 100% progress for cached results
+            await progress(1.0)
             return cachedResult
         }
 
         logger.info("Cache miss - analyzing file: \(recording.fileURL.path)", category: "useCase")
 
-        // Analyze audio file
-        let (pitchData, spectrogramData) = try await audioFileAnalyzer.analyze(fileURL: recording.fileURL)
+        // Analyze audio file with progress reporting
+        let (pitchData, spectrogramData) = try await audioFileAnalyzer.analyze(fileURL: recording.fileURL, progress: progress)
 
         // Create analysis result
         let result = AnalysisResult(

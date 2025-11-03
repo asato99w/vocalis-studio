@@ -31,8 +31,11 @@ public class AudioFileAnalyzer: AudioFileAnalyzerProtocol {
 
     public init() {}
 
-    public func analyze(fileURL: URL) async throws -> (pitchData: PitchAnalysisData, spectrogramData: SpectrogramData) {
+    public func analyze(fileURL: URL, progress: @escaping @MainActor (Double) async -> Void) async throws -> (pitchData: PitchAnalysisData, spectrogramData: SpectrogramData) {
         logger.info("Starting analysis for file: \(fileURL.path)")
+
+        // Report initial progress
+        await progress(0.0)
 
         // Load audio file
         let audioFile = try AVAudioFile(forReading: fileURL)
@@ -54,11 +57,18 @@ public class AudioFileAnalyzer: AudioFileAnalyzerProtocol {
 
         logger.info("File loaded: \(samples.count) samples, duration: \(String(format: "%.2f", duration))s")
 
-        // Analyze pitch
-        let pitchData = try await analyzePitch(samples: samples, duration: duration)
+        // Analyze pitch (0% → 50%)
+        let pitchData = try await analyzePitch(samples: samples, duration: duration) { pitchProgress in
+            await progress(pitchProgress * 0.5)  // Scale to 0.0 → 0.5
+        }
 
-        // Analyze spectrogram
-        let spectrogramData = try await analyzeSpectrogram(samples: samples, duration: duration)
+        // Analyze spectrogram (50% → 100%)
+        let spectrogramData = try await analyzeSpectrogram(samples: samples, duration: duration) { spectrogramProgress in
+            await progress(0.5 + spectrogramProgress * 0.5)  // Scale to 0.5 → 1.0
+        }
+
+        // Report final progress
+        await progress(1.0)
 
         logger.info("Analysis completed")
 
@@ -67,7 +77,7 @@ public class AudioFileAnalyzer: AudioFileAnalyzerProtocol {
 
     // MARK: - Pitch Analysis
 
-    private func analyzePitch(samples: [Float], duration: Double) async throws -> PitchAnalysisData {
+    private func analyzePitch(samples: [Float], duration: Double, progress: @escaping @MainActor (Double) async -> Void) async throws -> PitchAnalysisData {
         var timeStamps: [Double] = []
         var frequencies: [Float] = []
         var confidences: [Float] = []
@@ -75,6 +85,8 @@ public class AudioFileAnalyzer: AudioFileAnalyzerProtocol {
 
         let hopSamples = Int(sampleRate * pitchSamplingInterval)
         var position = 0
+        let totalSamples = samples.count
+        var lastReportedProgress: Double = 0.0
 
         while position + yinBufferSize <= samples.count {
             let timestamp = Double(position) / sampleRate
@@ -88,7 +100,17 @@ public class AudioFileAnalyzer: AudioFileAnalyzerProtocol {
             }
 
             position += hopSamples
+
+            // Report progress every 10% to avoid UI update overhead
+            let currentProgress = Double(position) / Double(totalSamples)
+            if currentProgress - lastReportedProgress >= 0.1 {
+                await progress(currentProgress)
+                lastReportedProgress = currentProgress
+            }
         }
+
+        // Report final progress
+        await progress(1.0)
 
         let totalWindows = samples.count / hopSamples
         let detectionRate = timeStamps.isEmpty ? 0.0 : Double(timeStamps.count) / Double(totalWindows) * 100.0
@@ -201,12 +223,14 @@ public class AudioFileAnalyzer: AudioFileAnalyzerProtocol {
 
     // MARK: - Spectrogram Analysis
 
-    private func analyzeSpectrogram(samples: [Float], duration: Double) async throws -> SpectrogramData {
+    private func analyzeSpectrogram(samples: [Float], duration: Double, progress: @escaping @MainActor (Double) async -> Void) async throws -> SpectrogramData {
         var timeStamps: [Double] = []
         var magnitudesArray: [[Float]] = []
 
         let hopSamples = Int(sampleRate * spectrogramSamplingInterval)
         var position = 0
+        let totalSamples = samples.count
+        var lastReportedProgress: Double = 0.0
 
         // Define frequency bins
         let binSize = spectrogramMaxFreq / Double(spectrogramFreqBins)
@@ -237,7 +261,17 @@ public class AudioFileAnalyzer: AudioFileAnalyzerProtocol {
             }
 
             position += hopSamples
+
+            // Report progress every 10% to avoid UI update overhead
+            let currentProgress = Double(position) / Double(totalSamples)
+            if currentProgress - lastReportedProgress >= 0.1 {
+                await progress(currentProgress)
+                lastReportedProgress = currentProgress
+            }
         }
+
+        // Report final progress
+        await progress(1.0)
 
         logger.info("Spectrogram analysis: \(timeStamps.count) time frames, \(self.spectrogramFreqBins) frequency bins")
 
