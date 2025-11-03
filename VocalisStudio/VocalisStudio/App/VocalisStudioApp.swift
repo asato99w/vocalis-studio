@@ -5,6 +5,11 @@ import OSLog
 @available(iOS 15.0, macOS 11.0, *)
 @main
 public struct VocalisStudioApp: App {
+    private static let boot = Logger(
+        subsystem: "com.kazuasato.VocalisStudio",
+        category: "boot"
+    )
+
     #if DEBUG
     private let animationsDisabled = CommandLine.arguments.contains("-UITestDisableAnimations")
     #else
@@ -14,6 +19,10 @@ public struct VocalisStudioApp: App {
     public init() {
         // Initialize file logging system (DEBUG builds only)
         #if DEBUG
+        // Add error-level markers for reliable log capture (log_capture_guide_v2.md)
+        Self.boot.error("UI_TEST_MARK: APP_INIT")
+        FileLogger.shared.log(level: "INFO", category: "boot", message: "APP_INIT_FILE")
+
         let logPath = FileLogger.shared.currentLogPath
         Logger.viewModel.info("File logging enabled")
         Logger.viewModel.info("Log file: \(logPath)")

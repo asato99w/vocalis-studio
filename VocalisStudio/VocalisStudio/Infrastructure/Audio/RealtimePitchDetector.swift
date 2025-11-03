@@ -32,6 +32,10 @@ public class RealtimePitchDetector: ObservableObject, PitchDetectorProtocol {
     // AVAudioRecorder/AVAudioEngine competition causes reduced RMS
     private let rmsSilenceThreshold: Float
 
+    // Actual sample rate from audio input (detected at runtime)
+    // Default 44100.0 Hz, but may be 48000.0 Hz on some devices/simulators
+    private var actualSampleRate: Double = 44100.0
+
     public init(rmsSilenceThreshold: Float = 0.02) {
         self.rmsSilenceThreshold = rmsSilenceThreshold
         log2n = vDSP_Length(log2(Double(bufferSize)))
@@ -157,6 +161,10 @@ public class RealtimePitchDetector: ObservableObject, PitchDetectorProtocol {
         let inputFormat = inputNode.outputFormat(forBus: 0)
         Logger.pitchDetection.debug("Input format: \(String(describing: inputFormat))")
 
+        // Store actual sample rate from audio input format
+        actualSampleRate = inputFormat.sampleRate
+        Logger.pitchDetection.debug("Actual sample rate: \(self.actualSampleRate) Hz")
+
         // Install tap on input node
         Logger.pitchDetection.debug("Installing tap on input node...")
         inputNode.installTap(onBus: 0, bufferSize: UInt32(hopSize), format: inputFormat) { [weak self] buffer, _ in
@@ -275,7 +283,7 @@ public class RealtimePitchDetector: ObservableObject, PitchDetectorProtocol {
             return
         }
 
-        let sampleRate = 44100.0
+        let sampleRate = actualSampleRate  // Use actual sample rate from audio input
         let minFreq = 100.0  // G2 - avoid low frequency noise
         let maxFreq = 800.0  // G5 - typical singing range for realtime
 
@@ -333,6 +341,19 @@ public class RealtimePitchDetector: ObservableObject, PitchDetectorProtocol {
 
         // Publish spectrum data for visualization (100-800 Hz range)
         let spectrumData = Array(magnitudes[minBin..<maxBin])
+
+        // Log raw spectrum data for debugging
+        let binResolution = sampleRate / Double(bufferSize)  // Hz per bin
+        Logger.pitchDetection.logToFile(level: "DEBUG", message: "🎵 RAW SPECTRUM - Count: \(spectrumData.count), Resolution: \(String(format: "%.2f", binResolution)) Hz/bin")
+
+        // Log top 10 peaks in spectrum
+        let indexedSpectrum = spectrumData.enumerated().map { ($0.offset, $0.element) }
+        let topPeaks = indexedSpectrum.sorted { $0.1 > $1.1 }.prefix(10)
+        for (index, magnitude) in topPeaks {
+            let frequency = minFreq + Double(index) * binResolution
+            Logger.pitchDetection.logToFile(level: "DEBUG", message: String(format: "  Peak[%3d]: %.1f Hz = %.4f", index, frequency, magnitude))
+        }
+
         Task { @MainActor in
             self.spectrum = spectrumData
         }
