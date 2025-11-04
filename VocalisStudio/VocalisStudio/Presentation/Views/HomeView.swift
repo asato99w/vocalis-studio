@@ -2,6 +2,7 @@ import SwiftUI
 import VocalisDomain
 
 /// Home screen - main entry point with navigation to all features
+/// Design: "Precision in Silence" - calm, professional, studio-like atmosphere
 public struct HomeView: View {
     @StateObject private var localization = LocalizationManager.shared
 
@@ -10,26 +11,26 @@ public struct HomeView: View {
     public var body: some View {
         NavigationStack {
             ZStack {
-                // Background gradient
-                LinearGradient(
-                    colors: [Color(red: 0.42, green: 0.36, blue: 0.90), Color(red: 0.58, green: 0.29, blue: 0.76)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .ignoresSafeArea()
+                // Background: Secondary color (calm light gray) instead of vivid gradient
+                ColorPalette.secondary
+                    .ignoresSafeArea()
 
                 VStack(spacing: 40) {
                     Spacer()
 
                     // App Logo and Title
                     VStack(spacing: 16) {
-                        Image(systemName: "music.mic")
-                            .font(.system(size: 80))
-                            .foregroundColor(.white)
+                        // Use actual app icon instead of system icon
+                        Image("AppIcon")
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 120, height: 120)
+                            .cornerRadius(24)
+                            .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4)
 
                         Text("app_name".localized)
-                            .font(.system(size: 36, weight: .bold))
-                            .foregroundColor(.white)
+                            .font(.system(size: 28, weight: .semibold))
+                            .foregroundColor(ColorPalette.text)
                     }
 
                     Spacer()
@@ -73,10 +74,10 @@ public struct HomeView: View {
                             Text("Debug")
                                 .font(.system(size: 10))
                         }
-                        .foregroundColor(.white.opacity(0.3))
+                        .foregroundColor(ColorPalette.text.opacity(0.3))
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background(Color.white.opacity(0.1))
+                        .background(ColorPalette.text.opacity(0.05))
                         .cornerRadius(6)
                     }
                     .padding(.bottom, 8)
@@ -89,6 +90,7 @@ public struct HomeView: View {
 }
 
 /// Custom menu button component
+/// Design: Primary color with subtle shadow for professional look
 struct MenuButton: View {
     let title: String
     let icon: String
@@ -104,12 +106,9 @@ struct MenuButton: View {
         .foregroundColor(.white)
         .frame(maxWidth: .infinity)
         .padding(.vertical, 20)
-        .background(Color.white.opacity(0.2))
-        .cornerRadius(12)
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.white.opacity(0.3), lineWidth: 1)
-        )
+        .background(ColorPalette.primary)  // Use design system primary color
+        .cornerRadius(10)
+        .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
     }
 }
 
