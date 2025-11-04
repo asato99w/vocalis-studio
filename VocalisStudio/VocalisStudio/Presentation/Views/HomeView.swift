@@ -32,7 +32,7 @@ public struct HomeView: View {
                             .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4)
 
                         Text("app_name".localized)
-                            .font(.system(size: 28, weight: .semibold))
+                            .font(Typography.headingLarge)
                             .foregroundColor(ColorPalette.text)
                     }
 
@@ -101,10 +101,9 @@ struct MenuButton: View {
     var body: some View {
         HStack {
             Image(systemName: icon)
-                .font(.title2)
+                .font(Typography.bodyLarge)
             Text(title)
-                .font(.title3)
-                .fontWeight(.semibold)
+                .font(Typography.bodyLarge)
         }
         .foregroundColor(.white)
         .frame(maxWidth: .infinity)
