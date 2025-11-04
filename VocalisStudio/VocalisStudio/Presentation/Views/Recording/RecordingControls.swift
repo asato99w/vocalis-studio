@@ -42,14 +42,8 @@ struct RecordingControls: View {
                     Image(systemName: "mic.fill")
                     Text("recording.start_button".localized)
                 }
-                .font(.callout)
-                .fontWeight(.semibold)
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .background(ColorPalette.alertActive)  // Use design system alert color for recording start
-                .cornerRadius(10)
             }
+            .buttonStyle(AlertButtonStyle())
             .accessibilityIdentifier("StartRecordingButton")
 
             if hasLastRecording {
@@ -64,13 +58,8 @@ struct RecordingControls: View {
                             Image(systemName: "stop.fill")
                             Text("recording.stop_playback_button".localized)
                         }
-                        .font(.caption)
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background(ColorPalette.primary)  // Use design system primary color
-                        .cornerRadius(8)
                     }
+                    .buttonStyle(PrimaryButtonStyle())
                     .accessibilityIdentifier("StopPlaybackButton")
                 } else {
                     // Separate button for playing last recording with fixed ID
@@ -83,13 +72,8 @@ struct RecordingControls: View {
                             Image(systemName: "play.fill")
                             Text("recording.play_last_button".localized)
                         }
-                        .font(.caption)
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background(ColorPalette.primary)  // Use design system primary color
-                        .cornerRadius(8)
                     }
+                    .buttonStyle(PrimaryButtonStyle())
                     .accessibilityIdentifier("PlayLastRecordingButton")
                 }
             }
@@ -106,13 +90,8 @@ struct RecordingControls: View {
 
             Button(action: onCancel) {
                 Text("cancel".localized)
-                    .font(.caption)
-                    .foregroundColor(ColorPalette.text)  // Use design system text color
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
-                    .background(ColorPalette.secondary)
-                    .cornerRadius(8)
             }
+            .buttonStyle(SecondaryButtonStyle())
         }
     }
 
@@ -124,14 +103,8 @@ struct RecordingControls: View {
                 Image(systemName: "stop.fill")
                 Text("recording.stop_button".localized)
             }
-            .font(.callout)
-            .fontWeight(.semibold)
-            .foregroundColor(ColorPalette.text)  // Use design system text color
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-            .background(ColorPalette.secondary)  // Use design system secondary color
-            .cornerRadius(10)
         }
+        .buttonStyle(SecondaryButtonStyle())
         .accessibilityIdentifier("StopRecordingButton")
     }
 }
