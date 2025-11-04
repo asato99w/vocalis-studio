@@ -319,45 +319,17 @@ When debugging issues (especially UI tests or runtime bugs), **ALWAYS attempt to
 
 ### Log Retrieval Best Practices
 
-**⚠️ 最重要**: UIテスト後の調査には**FileLoggerを第一選択**とする
+**⚠️ IMPORTANT**: Refer to detailed logging guide for specific methods:
+- **`VocalisStudio/claudedocs/log_capture_guide_v2.md`** - Comprehensive logging methods and troubleshooting
 
-**推奨順序**:
-1. **FileLogger** (`Logger.viewModel.logToFile()`) - UIテスト後の解析で確実
-2. **OSLog** (下記コマンド) - リアルタイムデバッグやシステム連携向け
-
-**理由**: `Logger.info/debug/error()`は**OSLogのみ**でFileLoggerには書かれない
-
-**FileLogger取得（推奨）**:
-```bash
-# 最新ログファイルを動的に検索（コンテナID変動対策）
-UDID="508462B0-4692-4B9B-88F9-73A63F9B91F5"
-find ~/Library/Developer/CoreSimulator/Devices/$UDID/data/Containers/Data/Application \
-  -name "vocalis_*.log" -type f -exec stat -f "%m %N" {} + 2>/dev/null \
-  | sort -rn | head -1 | cut -d' ' -f2-
-```
-
-**OSLog取得（補助）**:
-```bash
-# ✅ CORRECT: Retrieve logs immediately after test execution (within 2 minutes)
-# Test runs at 17:25 → Retrieve logs at 17:25-17:27
-
-xcrun simctl spawn <SIMULATOR_UDID> log show \
-  --style syslog \
-  --predicate 'process == "VocalisStudio" OR subsystem == "com.kazuasato.VocalisStudio"' \
-  --last 2m \
-  --debug --info \
-  | grep -E "pattern" | tail -100
-```
-
-**Critical timing requirement**:
-- UIテスト実行直後（2分以内）にログ取得すること
-- 時間が経過すると OSLog からログが消える
-- テスト実行時刻とログ取得時刻を必ず確認すること
+**Quick Reference**:
+- **FileLogger** (推奨) - UIテスト後の解析で確実
+- **OSLog** - リアルタイムデバッグ向け（2分以内に取得必須）
 
 **If logs cannot be retrieved**:
 1. Check test execution timestamp
-2. Check current time - if >5 minutes have passed, logs may be lost
-3. Report to user: "テスト実行から[X]分経過しているため、ログが取得できません。テストを再実行してください。"
+2. Report to user: "テスト実行から[X]分経過しているため、ログが取得できません。"
+3. Consult `log_capture_guide_v2.md` for alternative methods
 4. Do NOT proceed with speculation or code changes without logs
 
 ## Important Files to Reference
