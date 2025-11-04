@@ -33,7 +33,8 @@ public class StartRecordingWithScaleUseCase: StartRecordingWithScaleUseCaseProto
                 logger.warning("Recording denied: \(reason)", category: "useCase")
                 throw RecordingPermissionError.from(reason)
             }
-            fatalError("Unexpected permission state")
+            logger.error("Unexpected permission state", category: "useCase")
+            throw RecordingPermissionError.unexpectedState
         }
 
         logger.info("Recording permission granted", category: "useCase")

@@ -26,7 +26,7 @@ public class StartRecordingUseCase: StartRecordingUseCaseProtocol {
             if case .denied(let reason) = permission {
                 throw RecordingPermissionError.from(reason)
             }
-            fatalError("Unexpected permission state")
+            throw RecordingPermissionError.unexpectedState
         }
         // Prepare recording - get the URL where audio will be saved
         let recordingURL = try await audioRecorder.prepareRecording()

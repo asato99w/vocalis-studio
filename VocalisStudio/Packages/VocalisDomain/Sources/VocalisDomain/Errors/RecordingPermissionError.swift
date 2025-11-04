@@ -11,6 +11,9 @@ public enum RecordingPermissionError: Error, Equatable {
     /// Invalid recording settings
     case invalidSettings(String)
 
+    /// Unexpected permission state
+    case unexpectedState
+
     /// Convert from RecordingPermission.DenialReason
     public static func from(_ reason: RecordingPermission.DenialReason) -> RecordingPermissionError {
         switch reason {
@@ -35,6 +38,8 @@ extension RecordingPermissionError: LocalizedError {
             return "この機能を使用するにはプレミアムプランが必要です"
         case .invalidSettings(let message):
             return "録音設定が無効です: \(message)"
+        case .unexpectedState:
+            return "予期しないエラーが発生しました"
         }
     }
 
@@ -46,6 +51,8 @@ extension RecordingPermissionError: LocalizedError {
             return "スケール録音機能はプレミアムプラン限定です"
         case .invalidSettings:
             return "録音設定を確認してください"
+        case .unexpectedState:
+            return "録音権限の確認中に予期しない状態が発生しました"
         }
     }
 
@@ -57,6 +64,8 @@ extension RecordingPermissionError: LocalizedError {
             return "プレミアムプランにアップグレードしてすべての機能をご利用ください"
         case .invalidSettings:
             return "録音設定を修正してください"
+        case .unexpectedState:
+            return "アプリを再起動するか、サポートにお問い合わせください"
         }
     }
 }
