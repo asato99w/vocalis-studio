@@ -130,13 +130,8 @@ public struct RecordingView: View {
                             Image(systemName: isSettingsPanelVisible ? "chevron.up" : "gearshape.fill")
                             Text(isSettingsPanelVisible ? "recording.hide_settings".localized : "recording.show_settings".localized)
                         }
-                        .font(Typography.caption)
-                        .foregroundColor(ColorPalette.primary)  // Use design system primary color
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(ColorPalette.secondary)  // Use design system secondary color
-                        .cornerRadius(8)
                     }
+                    .buttonStyle(CompactButtonStyle())
                     .disabled(viewModel.recordingState == .recording)
 
                     Spacer()
@@ -189,13 +184,8 @@ public struct RecordingView: View {
                     Image(systemName: isSettingsPanelVisible ? "sidebar.left" : "gearshape.fill")
                     Text(isSettingsPanelVisible ? "recording.hide_settings".localized : "recording.show_settings".localized)
                 }
-                .font(Typography.caption)
-                .foregroundColor(.blue)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(Color(.systemGray6))
-                .cornerRadius(6)
             }
+            .buttonStyle(CompactButtonStyle())
             .disabled(viewModel.recordingState == .recording)
 
             Spacer()
