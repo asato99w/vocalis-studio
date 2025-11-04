@@ -47,7 +47,7 @@ struct RecordingControls: View {
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
-                .background(Color.red)
+                .background(ColorPalette.alertActive)  // Use design system alert color for recording start
                 .cornerRadius(10)
             }
             .accessibilityIdentifier("StartRecordingButton")
@@ -68,7 +68,7 @@ struct RecordingControls: View {
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
-                        .background(Color.blue)
+                        .background(ColorPalette.primary)  // Use design system primary color
                         .cornerRadius(8)
                     }
                     .accessibilityIdentifier("StopPlaybackButton")
@@ -87,7 +87,7 @@ struct RecordingControls: View {
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
-                        .background(Color.blue)
+                        .background(ColorPalette.primary)  // Use design system primary color
                         .cornerRadius(8)
                     }
                     .accessibilityIdentifier("PlayLastRecordingButton")
@@ -107,10 +107,10 @@ struct RecordingControls: View {
             Button(action: onCancel) {
                 Text("cancel".localized)
                     .font(.caption)
-                    .foregroundColor(.white)
+                    .foregroundColor(ColorPalette.text)  // Use design system text color
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
-                    .background(Color.gray)
+                    .background(ColorPalette.secondary)
                     .cornerRadius(8)
             }
         }
@@ -126,10 +126,10 @@ struct RecordingControls: View {
             }
             .font(.callout)
             .fontWeight(.semibold)
-            .foregroundColor(.white)
+            .foregroundColor(ColorPalette.text)  // Use design system text color
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
-            .background(Color.gray)
+            .background(ColorPalette.secondary)  // Use design system secondary color
             .cornerRadius(10)
         }
         .accessibilityIdentifier("StopRecordingButton")

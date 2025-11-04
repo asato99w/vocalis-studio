@@ -131,10 +131,10 @@ public struct RecordingView: View {
                             Text(isSettingsPanelVisible ? "recording.hide_settings".localized : "recording.show_settings".localized)
                         }
                         .font(.caption)
-                        .foregroundColor(.blue)
+                        .foregroundColor(ColorPalette.primary)  // Use design system primary color
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
-                        .background(Color(.systemGray6))
+                        .background(ColorPalette.secondary)  // Use design system secondary color
                         .cornerRadius(8)
                     }
                     .disabled(viewModel.recordingState == .recording)

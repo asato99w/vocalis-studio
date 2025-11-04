@@ -20,12 +20,15 @@ public struct HomeView: View {
 
                     // App Logo and Title
                     VStack(spacing: 16) {
-                        // Use actual app icon instead of system icon
-                        Image("AppIcon")
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(width: 120, height: 120)
-                            .cornerRadius(24)
+                        // Temporary: Use system icon with design system styling until app icon asset is added
+                        Image(systemName: "waveform.circle.fill")
+                            .font(.system(size: 80))
+                            .foregroundColor(ColorPalette.primary)
+                            .background(
+                                Circle()
+                                    .fill(ColorPalette.secondary)
+                                    .frame(width: 120, height: 120)
+                            )
                             .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4)
 
                         Text("app_name".localized)
