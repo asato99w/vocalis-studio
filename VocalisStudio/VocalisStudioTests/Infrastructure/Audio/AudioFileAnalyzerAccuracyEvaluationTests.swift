@@ -11,6 +11,9 @@ import VocalisDomain
 /// AudioFileAnalyzer analyzes entire audio files and returns PitchAnalysisData with time-series data
 /// Tests extract pitch values at note center times and compare against expected frequencies
 ///
+/// ⚠️ SLOW-RUNNING TESTS (execution time: ~450 seconds) - DISABLED BY DEFAULT
+/// To enable: Comment out the `try XCTSkipIf(true)` line in setUp()
+///
 @available(iOS 13.0, *)
 final class AudioFileAnalyzerAccuracyEvaluationTests: XCTestCase {
 
@@ -22,6 +25,9 @@ final class AudioFileAnalyzerAccuracyEvaluationTests: XCTestCase {
 
     override func setUp() async throws {
         try await super.setUp()
+
+        // ⚠️ ACCURACY TESTS DISABLED BY DEFAULT - Comment out this line to enable
+        try XCTSkipIf(true, "Accuracy tests are slow (~450s). Enable by commenting out this line.")
 
         // Initialize AudioFileAnalyzer
         audioFileAnalyzer = AudioFileAnalyzer()

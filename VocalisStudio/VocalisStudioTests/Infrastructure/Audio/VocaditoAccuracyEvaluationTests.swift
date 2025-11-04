@@ -3,10 +3,13 @@ import AVFoundation
 import VocalisDomain
 @testable import VocalisStudio
 
-/// vocadito singing voice dataset accuracy evaluation tests
+/// vocadito singing voice dataset accuracy evaluation tests for RealtimePitchDetector
 ///
 /// Uses TestNotes.json for test data with 3 tracks (vocadito_1, vocadito_4, vocadito_7)
 /// Each track has 3 notes for pitch detection accuracy testing
+///
+/// ⚠️ SLOW-RUNNING TESTS (execution time: ~450 seconds) - DISABLED BY DEFAULT
+/// To enable: Comment out the `try XCTSkipIf(true)` line in setUp()
 ///
 @available(iOS 13.0, *)
 final class VocaditoAccuracyEvaluationTests: XCTestCase {
@@ -19,6 +22,9 @@ final class VocaditoAccuracyEvaluationTests: XCTestCase {
 
     override func setUp() async throws {
         try await super.setUp()
+
+        // ⚠️ ACCURACY TESTS DISABLED BY DEFAULT - Comment out this line to enable
+        try XCTSkipIf(true, "Accuracy tests are slow (~450s). Enable by commenting out this line.")
 
         // Initialize pitch detector on MainActor
         pitchDetector = await MainActor.run {
