@@ -16,7 +16,7 @@ struct RecordingSettingsPanel: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("recording.scale_label".localized)
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(ColorPalette.text.opacity(0.6))
 
                     Picker("recording.scale_label".localized, selection: $viewModel.scaleType) {
                         Text("recording.scale_five_tone".localized).tag(ScaleType.fiveTone)
@@ -30,7 +30,7 @@ struct RecordingSettingsPanel: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("recording.start_pitch_label".localized)
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(ColorPalette.text.opacity(0.6))
 
                     Picker("recording.start_pitch_label".localized, selection: $viewModel.startPitchIndex) {
                         ForEach(0..<viewModel.availablePitches.count, id: \.self) { index in
@@ -45,7 +45,7 @@ struct RecordingSettingsPanel: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("recording.tempo_label".localized)
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(ColorPalette.text.opacity(0.6))
 
                     HStack(spacing: 8) {
                         Text("\(viewModel.tempo)")
@@ -60,7 +60,7 @@ struct RecordingSettingsPanel: View {
 
                         Text("recording.tempo_unit".localized)
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(ColorPalette.text.opacity(0.6))
                     }
                     .disabled(!viewModel.isSettingsEnabled)
                 }
@@ -69,7 +69,7 @@ struct RecordingSettingsPanel: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("recording.ascending_count_label".localized)
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(ColorPalette.text.opacity(0.6))
 
                     Picker("recording.ascending_count_label".localized, selection: $viewModel.ascendingCount) {
                         ForEach(1...10, id: \.self) { count in
@@ -82,7 +82,7 @@ struct RecordingSettingsPanel: View {
             }
             .padding(12)
         }
-        .background(Color(.systemGray6))
+        .background(ColorPalette.secondary)
     }
 }
 
@@ -136,7 +136,7 @@ struct RecordingSettingsCompact: View {
             }
         }
         .padding()
-        .background(Color(.systemGray6))
+        .background(ColorPalette.secondary)
         .cornerRadius(12)
     }
 }

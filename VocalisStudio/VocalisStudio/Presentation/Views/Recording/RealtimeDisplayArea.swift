@@ -89,13 +89,13 @@ struct FrequencySpectrumView: View {
                 drawFrequencyLabels(context: context, size: size)
             }
         }
-        .background(Color.black)
+        .background(ColorPalette.background)
         .cornerRadius(8)
     }
 
     private func drawPlaceholder(context: GraphicsContext, size: CGSize) {
         // Draw subtle grid for inactive state
-        let gridColor = Color.gray.opacity(0.2)
+        let gridColor = ColorPalette.text.opacity(0.1)
         for i in 0..<10 {
             let y = CGFloat(i) * size.height / 10
             var path = Path()
@@ -106,7 +106,7 @@ struct FrequencySpectrumView: View {
     }
 
     private func drawFrequencyLabels(context: GraphicsContext, size: CGSize) {
-        let labelColor = Color.white.opacity(0.6)
+        let labelColor = ColorPalette.text.opacity(0.6)
         let frequencies = [100, 200, 300, 400, 500, 600, 700, 800]
 
         for freq in frequencies {
@@ -170,7 +170,7 @@ struct PitchIndicator: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity)
-        .background(Color(.systemGray6))
+        .background(ColorPalette.secondary)
         .cornerRadius(8)
     }
 
@@ -180,7 +180,7 @@ struct PitchIndicator: View {
         HStack(spacing: 8) {
             Text("recording.pitch_target".localized)
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundColor(ColorPalette.text.opacity(0.6))
                 .frame(width: 60, alignment: .leading)
 
             if let target = targetPitch {
@@ -188,17 +188,17 @@ struct PitchIndicator: View {
                     Text(target.noteName)
                         .font(.callout)
                         .fontWeight(.bold)
-                        .foregroundColor(.blue)
+                        .foregroundColor(ColorPalette.accent)
                         .accessibilityIdentifier("TargetPitchNoteName")
 
                     Text(String(format: "%.1f Hz", target.frequency))
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(ColorPalette.text.opacity(0.6))
                 }
             } else {
                 Text("--")
                     .font(.callout)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(ColorPalette.text.opacity(0.6))
                     .accessibilityIdentifier("TargetPitchEmpty")
             }
 
@@ -212,7 +212,7 @@ struct PitchIndicator: View {
         HStack(spacing: 8) {
             Text("recording.pitch_detected".localized)
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundColor(ColorPalette.text.opacity(0.6))
                 .frame(width: 60, alignment: .leading)
 
             if (isActive || isPlayingRecording), let detected = detectedPitch {
@@ -225,12 +225,12 @@ struct PitchIndicator: View {
                     Text(detected.noteName)
                         .font(.callout)
                         .fontWeight(.bold)
-                        .foregroundColor(.primary)
+                        .foregroundColor(ColorPalette.text)
                         .accessibilityIdentifier("DetectedPitchNoteName")
 
                     Text(String(format: "%.1f Hz", detected.frequency))
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(ColorPalette.text.opacity(0.6))
 
                     // Cents deviation
                     if let cents = detected.cents {
@@ -247,7 +247,7 @@ struct PitchIndicator: View {
             } else {
                 Text((isActive || isPlayingRecording) ? "..." : "--")
                     .font(.callout)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(ColorPalette.text.opacity(0.6))
                     .accessibilityIdentifier("DetectedPitchEmpty")
             }
 
@@ -259,10 +259,10 @@ struct PitchIndicator: View {
 
     private var accuracyColor: Color {
         switch pitchAccuracy {
-        case .accurate: return .green
-        case .slightlyOff: return .orange
-        case .off: return .red
-        case .none: return .gray
+        case .accurate: return Color.green
+        case .slightlyOff: return Color.orange
+        case .off: return Color.red
+        case .none: return ColorPalette.text.opacity(0.4)
         }
     }
 }

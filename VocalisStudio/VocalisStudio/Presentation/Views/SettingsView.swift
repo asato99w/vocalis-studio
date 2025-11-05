@@ -21,7 +21,7 @@ public struct SettingsView: View {
                     Text("settings.version_label".localized)
                     Spacer()
                     Text("1.0.0")
-                        .foregroundColor(.secondary)
+                        .foregroundColor(ColorPalette.text.opacity(0.6))
                 }
             }
         }

@@ -57,7 +57,7 @@ struct DebugMenuView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Tier Override")
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundColor(ColorPalette.text.opacity(0.6))
 
             if let currentTier = subscriptionViewModel.currentStatus?.tier {
                 Picker("Tier", selection: Binding(
@@ -77,7 +77,7 @@ struct DebugMenuView: View {
                 // Display current selection for UI testing
                 Text("Selected: \(currentTier.displayName)")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(ColorPalette.text.opacity(0.6))
                     .accessibilityIdentifier("SelectedTierLabel")
             } else {
                 ProgressView()
@@ -96,7 +96,7 @@ struct DebugMenuView: View {
                 Spacer()
             }
         }
-        .foregroundColor(.orange)
+        .foregroundColor(Color.orange)
     }
 
     // MARK: - Current Status Info
@@ -108,18 +108,18 @@ struct DebugMenuView: View {
                     Text("Current Tier")
                     Spacer()
                     Text(status.tier.displayName)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(ColorPalette.text.opacity(0.6))
                 }
 
                 HStack {
                     Text("Cohort")
                     Spacer()
                     Text(status.cohort.rawValue)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(ColorPalette.text.opacity(0.6))
                 }
             } else {
                 Text("Loading...")
-                    .foregroundColor(.secondary)
+                    .foregroundColor(ColorPalette.text.opacity(0.6))
             }
         }
     }
