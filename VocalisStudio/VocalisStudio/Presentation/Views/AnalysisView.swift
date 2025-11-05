@@ -35,50 +35,51 @@ public struct AnalysisView: View {
 
             // Loading overlay
             if case .loading(let progress) = viewModel.state {
-                Color.black.opacity(0.4)
+                ColorPalette.background.opacity(0.4)
                     .ignoresSafeArea()
 
                 VStack(spacing: 16) {
                     Text("analysis.analyzing".localized)
                         .font(.headline)
-                        .foregroundColor(.white)
+                        .foregroundColor(ColorPalette.text)
 
                     VStack(spacing: 8) {
                         ProgressView(value: progress, total: 1.0)
-                            .progressViewStyle(LinearProgressViewStyle(tint: .white))
+                            .progressViewStyle(LinearProgressViewStyle(tint: ColorPalette.primary))
                             .frame(width: 200)
 
                         Text("\(Int(progress * 100))%")
                             .font(.subheadline)
-                            .foregroundColor(.white)
+                            .foregroundColor(ColorPalette.text)
                             .monospacedDigit()
                     }
                 }
                 .padding(32)
-                .background(Color(.systemGray6))
+                .background(ColorPalette.secondary)
                 .cornerRadius(16)
             }
 
             // Error overlay
             if case .error(let message) = viewModel.state {
-                Color.black.opacity(0.4)
+                ColorPalette.background.opacity(0.4)
                     .ignoresSafeArea()
 
                 VStack(spacing: 16) {
                     Image(systemName: "exclamationmark.triangle")
                         .font(.system(size: 48))
-                        .foregroundColor(.red)
+                        .foregroundColor(ColorPalette.alertActive)
 
                     Text("analysis.error".localized)
                         .font(.headline)
+                        .foregroundColor(ColorPalette.text)
 
                     Text(message)
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(ColorPalette.text.opacity(0.6))
                         .multilineTextAlignment(.center)
                 }
                 .padding(32)
-                .background(Color(.systemBackground))
+                .background(ColorPalette.background)
                 .cornerRadius(16)
                 .shadow(radius: 10)
             }
@@ -179,6 +180,7 @@ struct RecordingInfoPanel: View {
             Text("analysis.info_title".localized)
                 .font(.subheadline)
                 .fontWeight(.semibold)
+                .foregroundColor(ColorPalette.text)
 
             Group {
                 InfoRow(label: "analysis.info_datetime".localized, value: formatDate(recording.createdAt))
@@ -190,7 +192,7 @@ struct RecordingInfoPanel: View {
             }
         }
         .padding(10)
-        .background(Color(.systemGray6))
+        .background(ColorPalette.secondary)
         .cornerRadius(8)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("RecordingInfoPanel")
@@ -210,6 +212,7 @@ struct RecordingInfoCompact: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("analysis.info_title".localized)
                 .font(.headline)
+                .foregroundColor(ColorPalette.text)
             HStack {
                 Text(formatDate(recording.createdAt))
                 Text("|")
@@ -218,14 +221,14 @@ struct RecordingInfoCompact: View {
                 Text("recording.scale_five_tone".localized + " C3 120" + "recording.tempo_unit".localized)
             }
             .font(.subheadline)
-            .foregroundColor(.secondary)
+            .foregroundColor(ColorPalette.text.opacity(0.6))
             Text("analysis.info_ascending_count".localized + ": 3 " + "recording.ascending_count_unit".localized)
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundColor(ColorPalette.text.opacity(0.6))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
-        .background(Color(.systemGray6))
+        .background(ColorPalette.secondary)
         .cornerRadius(12)
     }
 
@@ -243,10 +246,11 @@ struct InfoRow: View {
     var body: some View {
         HStack {
             Text(label)
-                .foregroundColor(.secondary)
+                .foregroundColor(ColorPalette.text.opacity(0.6))
             Spacer()
             Text(value)
                 .fontWeight(.medium)
+                .foregroundColor(ColorPalette.text)
         }
         .font(.caption)
     }
@@ -266,24 +270,28 @@ struct PlaybackControl: View {
             Text("analysis.playback_title".localized)
                 .font(.subheadline)
                 .fontWeight(.semibold)
+                .foregroundColor(ColorPalette.text)
 
             // Playback buttons
             HStack(spacing: 20) {
                 Button(action: { onSeek(max(0, currentTime - 5)) }) {
                     Image(systemName: "backward.fill")
                         .font(.callout)
+                        .foregroundColor(ColorPalette.primary)
                 }
                 .accessibilityIdentifier("AnalysisSeekBackButton")
 
                 Button(action: onPlayPause) {
                     Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
                         .font(.system(size: 40))
+                        .foregroundColor(ColorPalette.primary)
                 }
                 .accessibilityIdentifier("AnalysisPlayPauseButton")
 
                 Button(action: { onSeek(min(duration, currentTime + 5)) }) {
                     Image(systemName: "forward.fill")
                         .font(.callout)
+                        .foregroundColor(ColorPalette.primary)
                 }
                 .accessibilityIdentifier("AnalysisSeekForwardButton")
             }
@@ -294,6 +302,7 @@ struct PlaybackControl: View {
                     get: { currentTime },
                     set: { onSeek($0) }
                 ), in: 0...duration)
+                .tint(ColorPalette.primary)
                 .accessibilityIdentifier("AnalysisProgressSlider")
 
                 HStack {
@@ -302,11 +311,11 @@ struct PlaybackControl: View {
                     Text(formatTime(duration))
                 }
                 .font(.caption2)
-                .foregroundColor(.secondary)
+                .foregroundColor(ColorPalette.text.opacity(0.6))
             }
         }
         .padding(10)
-        .background(Color(.systemGray6))
+        .background(ColorPalette.secondary)
         .cornerRadius(8)
     }
 
@@ -479,6 +488,7 @@ struct PitchAnalysisView: View {
             Text("analysis.pitch_graph_title".localized)
                 .font(.subheadline)
                 .fontWeight(.semibold)
+                .foregroundColor(ColorPalette.text)
 
             GeometryReader { geometry in
                 Canvas { context, size in
@@ -490,7 +500,7 @@ struct PitchAnalysisView: View {
                     drawLegend(context: context, size: size)
                 }
             }
-            .background(Color(.systemGray6))
+            .background(ColorPalette.secondary)
             .cornerRadius(8)
         }
     }

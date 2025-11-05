@@ -49,15 +49,15 @@ public struct RecordingListView: View {
         VStack(spacing: 20) {
             Image(systemName: "mic.slash")
                 .font(.system(size: 60))
-                .foregroundColor(.gray)
+                .foregroundColor(ColorPalette.text.opacity(0.5))
 
             Text("list.empty_title".localized)
                 .font(.title2)
-                .foregroundColor(.gray)
+                .foregroundColor(ColorPalette.text)
 
             Text("list.empty_message".localized)
                 .font(.body)
-                .foregroundColor(.secondary)
+                .foregroundColor(ColorPalette.text.opacity(0.6))
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
         }
@@ -107,7 +107,7 @@ private struct RecordingRow: View {
             Button(action: onTap) {
                 Image(systemName: isPlaying ? "stop.circle.fill" : "play.circle.fill")
                     .font(.system(size: 40))
-                    .foregroundColor(isPlaying ? .red : .blue)
+                    .foregroundColor(isPlaying ? ColorPalette.alertActive : ColorPalette.primary)
             }
             .buttonStyle(PlainButtonStyle())
 
@@ -115,10 +115,11 @@ private struct RecordingRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(recording.formattedDate)
                     .font(.headline)
+                    .foregroundColor(ColorPalette.text)
 
                 Text(recording.duration.formatted)
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(ColorPalette.text.opacity(0.6))
             }
 
             Spacer()
@@ -130,7 +131,7 @@ private struct RecordingRow: View {
                 analyzeRecordingUseCase: analyzeRecordingUseCase
             )) {
                 Image(systemName: "waveform.path.ecg")
-                    .foregroundColor(.blue)
+                    .foregroundColor(ColorPalette.accent)
                     .font(.title3)
             }
             .buttonStyle(PlainButtonStyle())
@@ -139,7 +140,7 @@ private struct RecordingRow: View {
             // Delete button
             Button(action: { showDeleteConfirmation = true }) {
                 Image(systemName: "trash")
-                    .foregroundColor(.red)
+                    .foregroundColor(ColorPalette.alertActive)
                     .font(.title3)
             }
             .buttonStyle(PlainButtonStyle())
