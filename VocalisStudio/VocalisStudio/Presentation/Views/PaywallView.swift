@@ -21,20 +21,12 @@ public struct PaywallView: View {
         NavigationView {
             ZStack {
                 ScrollView {
-                    VStack(spacing: 24) {
+                    VStack(spacing: 32) {
                         // Header
                         headerSection
 
-                        // Tier Cards
-                        ForEach(viewModel.availableTiers, id: \.self) { tier in
-                            TierCard(
-                                tier: tier,
-                                isSelected: viewModel.selectedTier == tier,
-                                isRecommended: viewModel.isRecommended(tier),
-                                features: viewModel.features(for: tier),
-                                onSelect: { viewModel.selectTier(tier) }
-                            )
-                        }
+                        // Simple comparison: Free → Premium
+                        comparisonSection
 
                         // Purchase Button
                         purchaseButton
@@ -93,21 +85,80 @@ public struct PaywallView: View {
     // MARK: - Sections
 
     private var headerSection: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "star.circle.fill")
+        VStack(spacing: 16) {
+            Image(systemName: "crown.fill")
                 .font(.system(size: 60))
                 .foregroundColor(.yellow)
 
-            Text("すべての機能を解放")
-                .font(.title2)
+            Text("無制限録音を解放")
+                .font(Typography.headingLarge)
                 .fontWeight(.bold)
 
-            Text("プレミアムプランで本格的なボイストレーニング")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+            Text("プレミアムで毎日何度でも録音できます")
+                .font(Typography.body)
+                .foregroundColor(ColorPalette.text.opacity(0.7))
                 .multilineTextAlignment(.center)
         }
         .padding(.vertical)
+    }
+
+    private var comparisonSection: some View {
+        VStack(spacing: 24) {
+            // Current limitation (Free)
+            VStack(spacing: 12) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 40))
+                    .foregroundColor(.orange)
+
+                Text("現在")
+                    .font(Typography.caption)
+                    .foregroundColor(ColorPalette.text.opacity(0.6))
+
+                Text("5回/日まで")
+                    .font(.system(size: 28, weight: .bold))
+                    .foregroundColor(ColorPalette.text)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 24)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(ColorPalette.text.opacity(0.05))
+            )
+
+            // Arrow down
+            Image(systemName: "arrow.down")
+                .font(.system(size: 32, weight: .bold))
+                .foregroundColor(ColorPalette.primary)
+
+            // Premium unlimited
+            VStack(spacing: 12) {
+                Image(systemName: "infinity")
+                    .font(.system(size: 40))
+                    .foregroundColor(.green)
+
+                Text("プレミアム")
+                    .font(Typography.caption)
+                    .foregroundColor(ColorPalette.text.opacity(0.6))
+
+                Text("無制限")
+                    .font(.system(size: 28, weight: .bold))
+                    .foregroundColor(ColorPalette.text)
+
+                Text("¥480/月")
+                    .font(Typography.body)
+                    .foregroundColor(ColorPalette.primary)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 24)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(ColorPalette.primary.opacity(0.1))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(ColorPalette.primary, lineWidth: 2)
+                    )
+            )
+        }
     }
 
     private var purchaseButton: some View {

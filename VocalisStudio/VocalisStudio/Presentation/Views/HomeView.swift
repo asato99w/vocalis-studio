@@ -5,6 +5,7 @@ import VocalisDomain
 /// Design: "Precision in Silence" - calm, professional, studio-like atmosphere
 public struct HomeView: View {
     @StateObject private var localization = LocalizationManager.shared
+    @EnvironmentObject private var subscriptionViewModel: SubscriptionViewModel
 
     public init() {}
 
@@ -17,6 +18,12 @@ public struct HomeView: View {
 
                 VStack(spacing: 40) {
                     Spacer()
+
+                    // Upgrade Banner for free users
+                    if subscriptionViewModel.currentStatus?.tier == .free {
+                        UpgradeBanner()
+                            .padding(.horizontal, 20)
+                    }
 
                     // App Logo and Title
                     VStack(spacing: 16) {
@@ -88,6 +95,54 @@ public struct HomeView: View {
                 }
             }
             .navigationBarHidden(true)
+            .task {
+                await subscriptionViewModel.loadStatus()
+            }
+        }
+    }
+}
+
+/// Upgrade banner component for free users
+private struct UpgradeBanner: View {
+    @EnvironmentObject private var subscriptionViewModel: SubscriptionViewModel
+    @State private var showPaywall = false
+
+    var body: some View {
+        Button(action: {
+            showPaywall = true
+        }) {
+            HStack(spacing: 12) {
+                Image(systemName: "crown.fill")
+                    .font(.system(size: 24))
+                    .foregroundColor(.yellow)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("無制限録音を解放")
+                        .font(Typography.body)
+                        .fontWeight(.semibold)
+                    Text("プレミアムで回数制限なし")
+                        .font(.system(size: 12))
+                        .foregroundColor(ColorPalette.text.opacity(0.7))
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .foregroundColor(ColorPalette.text.opacity(0.5))
+            }
+            .padding()
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(ColorPalette.alertActive.opacity(0.1))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(ColorPalette.alertActive.opacity(0.3), lineWidth: 1)
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+        .sheet(isPresented: $showPaywall) {
+            PaywallView(viewModel: DependencyContainer.shared.paywallViewModel)
         }
     }
 }
@@ -120,6 +175,7 @@ struct MenuButton: View {
 struct HomeView_Previews: PreviewProvider {
     static var previews: some View {
         HomeView()
+            .environmentObject(DependencyContainer.shared.subscriptionViewModel)
     }
 }
 #endif
