@@ -11,8 +11,8 @@ public struct HomeView: View {
     public var body: some View {
         NavigationStack {
             ZStack {
-                // Background: Secondary color (calm light gray) instead of vivid gradient
-                ColorPalette.secondary
+                // Background: Adaptive background color for light/dark mode
+                ColorPalette.background
                     .ignoresSafeArea()
 
                 VStack(spacing: 40) {
