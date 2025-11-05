@@ -149,6 +149,9 @@ final class AVAudioEngineScalePlayerTests: XCTestCase {
 
         try await sut.play()
 
+        // Wait for playback to complete (note duration + small buffer)
+        try await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
+
         // After completion, should not be playing
         XCTAssertFalse(sut.isPlaying)
         XCTAssertEqual(sut.progress, 1.0)

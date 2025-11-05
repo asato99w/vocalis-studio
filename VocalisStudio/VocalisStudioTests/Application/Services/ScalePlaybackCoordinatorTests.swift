@@ -33,6 +33,9 @@ final class ScalePlaybackCoordinatorTests: XCTestCase {
         // When: Start muted playback
         try await sut.startMutedPlayback(settings: settings)
 
+        // Wait for background task to execute
+        try await Task.sleep(nanoseconds: 50_000_000) // 0.05 seconds
+
         // Then: ScalePlayer should be loaded and playing in muted mode
         XCTAssertTrue(mockScalePlayer.loadScaleCalled, "loadScaleElements should be called")
         XCTAssertTrue(mockScalePlayer.playCalled, "play should be called")
