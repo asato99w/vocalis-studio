@@ -12,6 +12,7 @@ public struct RecordingView: View {
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
     @Environment(\.uiTestAnimationsDisabled) var uiTestAnimationsDisabled
     @State private var isSettingsPanelVisible: Bool = true
+    @State private var showingAlert: Bool = false
 
     public init(viewModel: RecordingViewModel) {
         _viewModel = StateObject(wrappedValue: viewModel)
@@ -46,11 +47,14 @@ public struct RecordingView: View {
                 }
             }
         }
-        .alert(isPresented: .constant(viewModel.errorMessage != nil)) {
+        .alert(isPresented: $showingAlert) {
             Alert(
                 title: Text("error".localized),
                 message: Text(viewModel.errorMessage ?? ""),
-                dismissButton: .default(Text("ok".localized))
+                dismissButton: .default(Text("ok".localized)) {
+                    viewModel.recordingStateVM.clearError()
+                    showingAlert = false
+                }
             )
         }
         .onChange(of: viewModel.recordingState) { newState in
@@ -64,6 +68,10 @@ public struct RecordingView: View {
                     }
                 }
             }
+        }
+        .onChange(of: viewModel.errorMessage) { errorMessage in
+            // Show alert when error message is set
+            showingAlert = errorMessage != nil
         }
         .onAppear {
             // Reload audio settings when returning to recording screen

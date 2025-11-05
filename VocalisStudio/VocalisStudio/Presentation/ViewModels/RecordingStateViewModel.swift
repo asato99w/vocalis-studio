@@ -97,6 +97,11 @@ public class RecordingStateViewModel: ObservableObject {
 
     // MARK: - Public Methods
 
+    /// Clear error message
+    public func clearError() {
+        errorMessage = nil
+    }
+
     /// Start the recording process with countdown
     public func startRecording(settings: ScaleSettings? = nil) async {
         print("[DIAG] startRecording START: state=\(recordingState)")

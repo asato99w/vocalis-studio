@@ -20,6 +20,14 @@ public final class RecordingUsageTracker {
 
     /// Get today's recording count
     public func getTodayCount() -> Int {
+        #if DEBUG
+        // UIテスト用: 環境変数でカウントをオーバーライド
+        if let testCount = ProcessInfo.processInfo.environment["DAILY_RECORDING_COUNT"],
+           let count = Int(testCount) {
+            return count
+        }
+        #endif
+
         resetIfNeeded()
         return userDefaults.integer(forKey: recordingCountKey)
     }
