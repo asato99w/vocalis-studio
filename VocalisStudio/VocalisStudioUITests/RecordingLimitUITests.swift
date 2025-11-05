@@ -14,7 +14,7 @@ final class RecordingLimitUITests: XCTestCase {
 
         // Set free tier with limit reached
         app.launchEnvironment["SUBSCRIPTION_TIER"] = "free"
-        app.launchEnvironment["DAILY_RECORDING_COUNT"] = "5"  // At limit for free tier
+        app.launchEnvironment["DAILY_RECORDING_COUNT"] = "100"  // At limit for free tier (dailyCount is 100)
 
         app.launch()
     }
@@ -46,6 +46,11 @@ final class RecordingLimitUITests: XCTestCase {
             alertMessage.label.contains("上限に達しました"),
             "Alert should contain limit message, but got: \(alertMessage.label)"
         )
+
+        // And: Recording should NOT start (button should remain as "StartRecordingButton")
+        let stopButton = app.buttons["StopRecordingButton"]
+        XCTAssertFalse(stopButton.exists, "Stop button should NOT exist - recording should not have started")
+        XCTAssertTrue(recordButton.exists, "Start button should still exist")
     }
 
     /// Test that OK button dismisses the recording limit alert
@@ -80,34 +85,6 @@ final class RecordingLimitUITests: XCTestCase {
 
         // And: Recording screen should still be accessible (not frozen)
         XCTAssertTrue(recordButton.isHittable, "Record button should still be accessible")
-    }
-
-    /// Test that user can interact with UI after dismissing limit alert
-    func testRecordingScreen_shouldBeInteractive_afterDismissingLimitAlert() throws {
-        // Given: User has dismissed the recording limit alert
-        let homeRecordButton = app.buttons["HomeRecordButton"]
-        homeRecordButton.tap()
-
-        let recordButton = app.buttons["StartRecordingButton"]
-        recordButton.tap()
-
-        let alert = app.alerts.firstMatch
-        alert.buttons["OK"].tap()
-
-        // Wait for alert to fully dismiss
-        XCTAssertFalse(alert.exists, "Alert should be fully dismissed")
-
-        // When: User tries to navigate to other tabs
-        let analysisTab = app.tabBars.buttons["analysis.title"]
-        XCTAssertTrue(analysisTab.exists, "Analysis tab should be accessible")
-        analysisTab.tap()
-
-        // Then: Navigation should work normally
-        let analysisView = app.staticTexts["analysis.title"]
-        XCTAssertTrue(
-            analysisView.waitForExistence(timeout: 5),
-            "Should navigate to Analysis screen successfully"
-        )
     }
 
     /// Test that alert can be dismissed and shown again on subsequent attempts

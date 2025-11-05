@@ -343,6 +343,7 @@ public class RecordingStateViewModel: ObservableObject {
             recordingState = .idle
             currentSession = nil
             progress = 0.0
+            isCountdownComplete = false  // Reset flag to prevent pitch detection from starting
         }
     }
 

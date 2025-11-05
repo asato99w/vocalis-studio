@@ -29,6 +29,22 @@ public final class StoreKitSubscriptionRepository: SubscriptionRepositoryProtoco
     // MARK: - SubscriptionRepositoryProtocol
 
     public func getCurrentStatus() async throws -> SubscriptionDomain.SubscriptionStatus {
+        #if DEBUG
+        // UIテスト用: 環境変数でティアをオーバーライド
+        if let tierString = ProcessInfo.processInfo.environment["SUBSCRIPTION_TIER"],
+           let tier = SubscriptionTier(rawValue: tierString) {
+            let cohort = (try? await getUserCohort()) ?? .v2_0
+            return SubscriptionStatus(
+                tier: tier,
+                cohort: cohort,
+                isActive: true,
+                expirationDate: nil,
+                purchaseDate: nil,
+                willAutoRenew: false
+            )
+        }
+        #endif
+
         // Get or determine user cohort
         let cohort = try await getUserCohort()
 

@@ -53,7 +53,7 @@ public struct RecordingView: View {
                 message: Text(viewModel.errorMessage ?? ""),
                 dismissButton: .default(Text("ok".localized)) {
                     viewModel.recordingStateVM.clearError()
-                    showingAlert = false
+                    // showingAlert is automatically managed by onChange(of: viewModel.errorMessage)
                 }
             )
         }
