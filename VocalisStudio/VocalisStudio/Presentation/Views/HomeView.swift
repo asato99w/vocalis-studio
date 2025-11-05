@@ -19,12 +19,6 @@ public struct HomeView: View {
                 VStack(spacing: 40) {
                     Spacer()
 
-                    // Upgrade Banner for free users
-                    if subscriptionViewModel.currentStatus?.tier == .free {
-                        UpgradeBanner()
-                            .padding(.horizontal, 20)
-                    }
-
                     // App Logo and Title
                     VStack(spacing: 16) {
                         // Temporary: Use system icon with design system styling until app icon asset is added
@@ -74,6 +68,12 @@ public struct HomeView: View {
                     .padding(.horizontal, 40)
 
                     Spacer()
+
+                    // Upgrade Banner for free users
+                    if subscriptionViewModel.currentStatus?.tier == .free {
+                        UpgradeBanner()
+                            .padding(.horizontal, 40)
+                    }
 
                     // Debug button (only in debug builds) - unobtrusive
                     #if DEBUG
