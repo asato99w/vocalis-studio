@@ -90,6 +90,7 @@ public class RecordingViewModel: ObservableObject {
         )
 
         setupBindings()
+        setupCallbacks()
 
         Logger.viewModel.info("RecordingViewModel initialized with child ViewModels")
     }
@@ -151,6 +152,18 @@ public class RecordingViewModel: ObservableObject {
                     }
                 }
                 .store(in: &cancellables)
+        }
+    }
+
+    private func setupCallbacks() {
+        // Set up auto-stop callback for duration limit
+        // When RecordingStateVM detects duration limit reached, it will call this
+        // to ensure proper cleanup of pitch detection and scale playback
+        recordingStateVM.onAutoStopNeeded = { [weak self] in
+            guard let self = self else { return }
+            Logger.viewModel.info("⏱️ Duration limit reached - calling RecordingViewModel.stopRecording() for cleanup")
+            Logger.viewModel.logToFile(level: "INFO", message: "⏱️ Duration limit reached - calling RecordingViewModel.stopRecording() for cleanup")
+            await self.stopRecording()
         }
     }
 

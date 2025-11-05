@@ -26,6 +26,12 @@ public class RecordingStateViewModel: ObservableObject {
     @Published public private(set) var dailyRecordingCount: Int = 0
     @Published public private(set) var recordingLimit: RecordingLimit = RecordingLimit(dailyCount: 5, maxDuration: 30)
 
+    // MARK: - Callbacks
+
+    /// Called when automatic stop is needed (e.g., duration limit reached)
+    /// This allows parent coordinator to perform proper cleanup (stop pitch detection, etc.) before stopping recording
+    public var onAutoStopNeeded: (() async -> Void)?
+
     // MARK: - Dependencies
 
     private let startRecordingUseCase: StartRecordingUseCaseProtocol
@@ -375,7 +381,15 @@ public class RecordingStateViewModel: ObservableObject {
                         let tierName = self.currentTier.displayName
                         self.errorMessage = "録音時間の上限に達しました (\(tierName)プラン: \(Int(maxDuration))秒)"
                     }
-                    await self.stopRecording()
+
+                    // Call the auto-stop handler if provided (allows parent coordinator to cleanup pitch detection, etc.)
+                    let callback = await MainActor.run { self.onAutoStopNeeded }
+                    if let callback = callback {
+                        await callback()
+                    } else {
+                        // Fallback: just stop recording state (but this won't cleanup pitch detection)
+                        await self.stopRecording()
+                    }
                     break
                 }
 
