@@ -8,6 +8,17 @@ public struct SettingsView: View {
 
     public var body: some View {
         Form {
+            // Audio Settings Section
+            Section("オーディオ設定") {
+                NavigationLink {
+                    AudioSettingsView(
+                        viewModel: DependencyContainer.shared.makeAudioSettingsViewModel()
+                    )
+                } label: {
+                    Label("音量・検出設定", systemImage: "speaker.wave.2")
+                }
+            }
+
             Section("settings.language_section".localized) {
                 Picker("settings.language_label".localized, selection: $localization.currentLanguage) {
                     Text("settings.language_japanese".localized).tag("ja")

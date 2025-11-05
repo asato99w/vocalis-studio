@@ -65,6 +65,11 @@ public struct RecordingView: View {
                 }
             }
         }
+        .onAppear {
+            // Reload audio settings when returning to recording screen
+            // (in case user modified settings in SettingsView)
+            viewModel.reloadAudioSettings(from: DependencyContainer.shared.audioSettingsRepository)
+        }
     }
 
     // MARK: - Landscape Layout

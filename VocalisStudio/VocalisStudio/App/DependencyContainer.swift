@@ -39,16 +39,13 @@ public class DependencyContainer {
     }()
 
     public lazy var pitchDetector: RealtimePitchDetector = {
-        // In iOS Simulator, use lower RMS threshold (0.005) to account for
-        // AVAudioRecorder/AVAudioEngine competition causing reduced RMS values
-        // On real device, use default threshold (0.02) for normal operation
-        #if targetEnvironment(simulator)
-        let threshold: Float = 0.005
-        #else
-        let threshold: Float = 0.02
-        #endif
+        // Load audio detection settings from repository
+        let settings = audioSettingsRepository.get()
 
-        return RealtimePitchDetector(rmsSilenceThreshold: threshold)
+        return RealtimePitchDetector(
+            rmsSilenceThreshold: settings.rmsSilenceThreshold,
+            confidenceThreshold: settings.confidenceThreshold
+        )
     }()
 
     private lazy var audioFileAnalyzer: AudioFileAnalyzerProtocol = {
@@ -78,6 +75,10 @@ public class DependencyContainer {
             purchaseService: storeKitPurchaseService,
             cohortStore: userCohortStore
         )
+    }()
+
+    public lazy var audioSettingsRepository: AudioSettingsRepositoryProtocol = {
+        UserDefaultsAudioSettingsRepository()
     }()
 
     // MARK: - Application Layer
@@ -162,6 +163,11 @@ public class DependencyContainer {
             restoreUseCase: restorePurchasesUseCase
         )
     }()
+
+    // Audio Settings ViewModel Factory
+    func makeAudioSettingsViewModel() -> AudioSettingsViewModel {
+        AudioSettingsViewModel(repository: audioSettingsRepository)
+    }
 
     // MARK: - Setup
 

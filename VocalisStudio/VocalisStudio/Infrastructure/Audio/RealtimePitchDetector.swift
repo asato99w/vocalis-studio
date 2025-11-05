@@ -30,16 +30,27 @@ public class RealtimePitchDetector: ObservableObject, PitchDetectorProtocol {
     // Default 0.02 is for normal conditions (real device)
     // Lower values (e.g., 0.005) can be used in iOS Simulator where
     // AVAudioRecorder/AVAudioEngine competition causes reduced RMS
-    private let rmsSilenceThreshold: Float
+    private var rmsSilenceThreshold: Float
+
+    // Confidence threshold for pitch detection
+    // Default 0.4 - only report pitches with confidence above this threshold
+    private var confidenceThreshold: Float
 
     // Actual sample rate from audio input (detected at runtime)
     // Default 44100.0 Hz, but may be 48000.0 Hz on some devices/simulators
     private var actualSampleRate: Double = 44100.0
 
-    public init(rmsSilenceThreshold: Float = 0.02) {
+    public init(rmsSilenceThreshold: Float = 0.02, confidenceThreshold: Float = 0.4) {
         self.rmsSilenceThreshold = rmsSilenceThreshold
+        self.confidenceThreshold = confidenceThreshold
         log2n = vDSP_Length(log2(Double(bufferSize)))
         fftSetup = vDSP_DFT_zop_CreateSetup(nil, vDSP_Length(bufferSize), vDSP_DFT_Direction.FORWARD)
+    }
+
+    /// Update audio detection settings
+    public func updateSettings(_ settings: AudioDetectionSettings) {
+        self.rmsSilenceThreshold = settings.rmsSilenceThreshold
+        self.confidenceThreshold = settings.confidenceThreshold
     }
 
     deinit {
@@ -430,7 +441,7 @@ public class RealtimePitchDetector: ObservableObject, PitchDetectorProtocol {
         )
 
         // Only report if confidence is high enough
-        guard confidence > 0.4 else {
+        guard confidence > Double(confidenceThreshold) else {
             // Log rejected detections for first 20 times
             if count <= 20 {
                 FileLogger.shared.log(
@@ -675,8 +686,8 @@ public class RealtimePitchDetector: ObservableObject, PitchDetectorProtocol {
             bufferSize: bufferSize
         )
 
-        // Lower confidence threshold for playback analysis
-        if confidence <= 0.3 {  // Lowered from 0.4
+        // Lower confidence threshold for playback analysis (75% of realtime threshold)
+        if confidence <= Double(confidenceThreshold * 0.75) {
             return nil
         }
 

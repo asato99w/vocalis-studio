@@ -1,0 +1,273 @@
+import XCTest
+@testable import VocalisDomain
+
+/// Tests for AudioDetectionSettings Value Object
+final class AudioDetectionSettingsTests: XCTestCase {
+
+    // MARK: - Initialization Tests
+
+    func testInit_shouldCreateWithValidValues() {
+        // When
+        let settings = AudioDetectionSettings(
+            outputVolume: 0.8,
+            rmsSilenceThreshold: 0.02,
+            confidenceThreshold: 0.4
+        )
+
+        // Then
+        XCTAssertEqual(settings.outputVolume, 0.8)
+        XCTAssertEqual(settings.rmsSilenceThreshold, 0.02)
+        XCTAssertEqual(settings.confidenceThreshold, 0.4)
+    }
+
+    // MARK: - Output Volume Validation Tests
+
+    func testInit_shouldClampOutputVolumeToMinimum() {
+        // When
+        let settings = AudioDetectionSettings(
+            outputVolume: -0.5,  // Invalid: too low
+            rmsSilenceThreshold: 0.02,
+            confidenceThreshold: 0.4
+        )
+
+        // Then
+        XCTAssertEqual(settings.outputVolume, 0.0, "Output volume should be clamped to minimum 0.0")
+    }
+
+    func testInit_shouldClampOutputVolumeToMaximum() {
+        // When
+        let settings = AudioDetectionSettings(
+            outputVolume: 1.5,  // Invalid: too high
+            rmsSilenceThreshold: 0.02,
+            confidenceThreshold: 0.4
+        )
+
+        // Then
+        XCTAssertEqual(settings.outputVolume, 1.0, "Output volume should be clamped to maximum 1.0")
+    }
+
+    // MARK: - RMS Threshold Validation Tests
+
+    func testInit_shouldClampRMSThresholdToMinimum() {
+        // When
+        let settings = AudioDetectionSettings(
+            outputVolume: 0.8,
+            rmsSilenceThreshold: -0.1,  // Invalid: too low
+            confidenceThreshold: 0.4
+        )
+
+        // Then
+        XCTAssertEqual(settings.rmsSilenceThreshold, 0.001, "RMS threshold should be clamped to minimum 0.001")
+    }
+
+    func testInit_shouldClampRMSThresholdToMaximum() {
+        // When
+        let settings = AudioDetectionSettings(
+            outputVolume: 0.8,
+            rmsSilenceThreshold: 0.5,  // Invalid: too high
+            confidenceThreshold: 0.4
+        )
+
+        // Then
+        XCTAssertEqual(settings.rmsSilenceThreshold, 0.1, "RMS threshold should be clamped to maximum 0.1")
+    }
+
+    // MARK: - Confidence Threshold Validation Tests
+
+    func testInit_shouldClampConfidenceThresholdToMinimum() {
+        // When
+        let settings = AudioDetectionSettings(
+            outputVolume: 0.8,
+            rmsSilenceThreshold: 0.02,
+            confidenceThreshold: 0.05  // Invalid: too low
+        )
+
+        // Then
+        XCTAssertEqual(settings.confidenceThreshold, 0.1, "Confidence threshold should be clamped to minimum 0.1")
+    }
+
+    func testInit_shouldClampConfidenceThresholdToMaximum() {
+        // When
+        let settings = AudioDetectionSettings(
+            outputVolume: 0.8,
+            rmsSilenceThreshold: 0.02,
+            confidenceThreshold: 1.5  // Invalid: too high
+        )
+
+        // Then
+        XCTAssertEqual(settings.confidenceThreshold, 1.0, "Confidence threshold should be clamped to maximum 1.0")
+    }
+
+    // MARK: - Default Settings Tests
+
+    func testDefaultSettings_shouldHaveReasonableValues() {
+        // When
+        let settings = AudioDetectionSettings.default
+
+        // Then
+        XCTAssertEqual(settings.outputVolume, 0.8)
+        XCTAssertEqual(settings.rmsSilenceThreshold, 0.02)
+        XCTAssertEqual(settings.confidenceThreshold, 0.4)
+    }
+
+    func testSimulatorSettings_shouldHaveLowerThresholds() {
+        // When
+        let settings = AudioDetectionSettings.simulator
+
+        // Then
+        XCTAssertEqual(settings.outputVolume, 0.8)
+        XCTAssertEqual(settings.rmsSilenceThreshold, 0.005, "Simulator should have lower RMS threshold")
+        XCTAssertEqual(settings.confidenceThreshold, 0.3, "Simulator should have lower confidence threshold")
+    }
+
+    // MARK: - Detection Sensitivity Tests
+
+    func testSensitivity_whenRMSThresholdIs005_shouldReturnHigh() {
+        // Given
+        let settings = AudioDetectionSettings(
+            outputVolume: 0.8,
+            rmsSilenceThreshold: 0.005,
+            confidenceThreshold: 0.4
+        )
+
+        // When
+        let sensitivity = settings.sensitivity
+
+        // Then
+        XCTAssertEqual(sensitivity, .high)
+    }
+
+    func testSensitivity_whenRMSThresholdIs002_shouldReturnNormal() {
+        // Given
+        let settings = AudioDetectionSettings(
+            outputVolume: 0.8,
+            rmsSilenceThreshold: 0.02,
+            confidenceThreshold: 0.4
+        )
+
+        // When
+        let sensitivity = settings.sensitivity
+
+        // Then
+        XCTAssertEqual(sensitivity, .normal)
+    }
+
+    func testSensitivity_whenRMSThresholdIs005High_shouldReturnLow() {
+        // Given
+        let settings = AudioDetectionSettings(
+            outputVolume: 0.8,
+            rmsSilenceThreshold: 0.05,
+            confidenceThreshold: 0.4
+        )
+
+        // When
+        let sensitivity = settings.sensitivity
+
+        // Then
+        XCTAssertEqual(sensitivity, .low)
+    }
+
+    // MARK: - DetectionSensitivity Enum Tests
+
+    func testDetectionSensitivityLow_shouldReturnCorrectRMSThreshold() {
+        // When
+        let threshold = AudioDetectionSettings.DetectionSensitivity.low.rmsThreshold
+
+        // Then
+        XCTAssertEqual(threshold, 0.05)
+    }
+
+    func testDetectionSensitivityNormal_shouldReturnCorrectRMSThreshold() {
+        // When
+        let threshold = AudioDetectionSettings.DetectionSensitivity.normal.rmsThreshold
+
+        // Then
+        XCTAssertEqual(threshold, 0.02)
+    }
+
+    func testDetectionSensitivityHigh_shouldReturnCorrectRMSThreshold() {
+        // When
+        let threshold = AudioDetectionSettings.DetectionSensitivity.high.rmsThreshold
+
+        // Then
+        XCTAssertEqual(threshold, 0.005)
+    }
+
+    func testDetectionSensitivityInit_withLowThreshold_shouldReturnHigh() {
+        // When
+        let sensitivity = AudioDetectionSettings.DetectionSensitivity(fromRMSThreshold: 0.008)
+
+        // Then
+        XCTAssertEqual(sensitivity, .high)
+    }
+
+    func testDetectionSensitivityInit_withMidThreshold_shouldReturnNormal() {
+        // When
+        let sensitivity = AudioDetectionSettings.DetectionSensitivity(fromRMSThreshold: 0.025)
+
+        // Then
+        XCTAssertEqual(sensitivity, .normal)
+    }
+
+    func testDetectionSensitivityInit_withHighThreshold_shouldReturnLow() {
+        // When
+        let sensitivity = AudioDetectionSettings.DetectionSensitivity(fromRMSThreshold: 0.045)
+
+        // Then
+        XCTAssertEqual(sensitivity, .low)
+    }
+
+    // MARK: - Codable Tests
+
+    func testCodable_shouldEncodeAndDecode() throws {
+        // Given
+        let original = AudioDetectionSettings(
+            outputVolume: 0.75,
+            rmsSilenceThreshold: 0.015,
+            confidenceThreshold: 0.35
+        )
+
+        // When
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(AudioDetectionSettings.self, from: data)
+
+        // Then
+        XCTAssertEqual(original, decoded)
+    }
+
+    // MARK: - Equatable Tests
+
+    func testEquatable_whenAllPropertiesSame_shouldReturnTrue() {
+        // Given
+        let settings1 = AudioDetectionSettings(
+            outputVolume: 0.8,
+            rmsSilenceThreshold: 0.02,
+            confidenceThreshold: 0.4
+        )
+        let settings2 = AudioDetectionSettings(
+            outputVolume: 0.8,
+            rmsSilenceThreshold: 0.02,
+            confidenceThreshold: 0.4
+        )
+
+        // Then
+        XCTAssertEqual(settings1, settings2)
+    }
+
+    func testEquatable_whenOutputVolumeDifferent_shouldReturnFalse() {
+        // Given
+        let settings1 = AudioDetectionSettings(
+            outputVolume: 0.8,
+            rmsSilenceThreshold: 0.02,
+            confidenceThreshold: 0.4
+        )
+        let settings2 = AudioDetectionSettings(
+            outputVolume: 0.6,
+            rmsSilenceThreshold: 0.02,
+            confidenceThreshold: 0.4
+        )
+
+        // Then
+        XCTAssertNotEqual(settings1, settings2)
+    }
+}

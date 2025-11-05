@@ -359,4 +359,14 @@ public class RecordingViewModel: ObservableObject {
         Logger.viewModel.debug("🔵 stopPlayback() completed")
         Logger.viewModel.logToFile(level: "INFO", message: "🔴 stopPlayback() completed")
     }
+
+    /// Reload audio detection settings from repository and update pitch detector
+    /// Called after user modifies settings in AudioSettingsView
+    public func reloadAudioSettings(from repository: AudioSettingsRepositoryProtocol) {
+        let settings = repository.get()
+        if let pitchDetector = pitchDetector as? RealtimePitchDetector {
+            pitchDetector.updateSettings(settings)
+            Logger.viewModel.info("🔧 Audio settings reloaded: RMS=\(settings.rmsSilenceThreshold), Confidence=\(settings.confidenceThreshold)")
+        }
+    }
 }
