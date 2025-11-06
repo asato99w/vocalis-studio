@@ -10,6 +10,16 @@ final class RealtimePitchDetectorTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
+
+        // Configure audio session for pitch detection tests
+        // This is required before startRealtimeDetection() can succeed
+        do {
+            try AudioSessionManager.shared.configureForRecording()
+        } catch {
+            // Ignore errors in test environment (simulator may not have full audio support)
+            print("⚠️ Audio session configuration failed (acceptable in test environment): \(error)")
+        }
+
         sut = RealtimePitchDetector()
     }
 

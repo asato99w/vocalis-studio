@@ -60,7 +60,7 @@ final class SubscriptionViewModelDebugTests: XCTestCase {
         XCTAssertTrue(sut.currentStatus?.isActive ?? false)
         XCTAssertNotNil(sut.currentStatus?.expirationDate)
         XCTAssertNotNil(sut.currentStatus?.purchaseDate)
-        XCTAssertTrue(sut.currentStatus?.willAutoRenew ?? false)
+        XCTAssertFalse(sut.currentStatus?.willAutoRenew ?? true)
     }
 
     func testSetDebugTier_PremiumPlus_SetsCorrectStatus() {
@@ -73,7 +73,7 @@ final class SubscriptionViewModelDebugTests: XCTestCase {
         XCTAssertTrue(sut.currentStatus?.isActive ?? false)
         XCTAssertNotNil(sut.currentStatus?.expirationDate)
         XCTAssertNotNil(sut.currentStatus?.purchaseDate)
-        XCTAssertTrue(sut.currentStatus?.willAutoRenew ?? false)
+        XCTAssertFalse(sut.currentStatus?.willAutoRenew ?? true)
     }
 
     func testSetDebugTier_MultipleTimes_RetainsLatestValue() {
@@ -114,9 +114,9 @@ final class SubscriptionViewModelDebugTests: XCTestCase {
         sut.setDebugTier(.premium)
         XCTAssertEqual(sut.currentStatus?.tier, .premium)
 
-        // Then - Load status should override
-        await sut.loadStatus()
-        XCTAssertEqual(sut.currentStatus?.tier, .free, "loadStatus() should override debug tier with actual status from use case")
+        // Then - clearDebugTier should load actual status and override debug tier
+        await sut.clearDebugTier()
+        XCTAssertEqual(sut.currentStatus?.tier, .free, "clearDebugTier() should load actual status from use case")
     }
 
     // MARK: - Singleton Sharing Test

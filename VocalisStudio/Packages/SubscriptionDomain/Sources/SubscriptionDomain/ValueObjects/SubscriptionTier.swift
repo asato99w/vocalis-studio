@@ -19,9 +19,9 @@ public enum SubscriptionTier: String, Codable, Comparable, CaseIterable {
         case .free:
             return ""
         case .premium:
-            return "com.kazuasato.VocalisStudio.premium.monthly"
+            return "com.vocalisstudio.premium.monthly"
         case .premiumPlus:
-            return "com.kazuasato.VocalisStudio.premiumplus.monthly"
+            return "com.vocalisstudio.premiumplus.monthly"
         }
     }
 

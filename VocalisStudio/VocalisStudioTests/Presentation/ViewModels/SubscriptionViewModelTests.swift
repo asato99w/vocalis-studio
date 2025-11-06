@@ -72,20 +72,20 @@ final class SubscriptionViewModelTests: XCTestCase {
     }
 
     func testLoadStatusSetsLoadingStateDuringExecution() async {
-        // When: Start loading (don't await completion yet)
-        let loadTask = Task {
-            await viewModel.loadStatus()
-        }
+        // Given: Observe isLoading changes via Combine
+        var recordedValues: [Bool] = []
+        viewModel.$isLoading
+            .sink { recordedValues.append($0) }
+            .store(in: &cancellables)
 
-        // Then: Should be loading during execution
-        try? await Task.sleep(nanoseconds: 10_000_000) // 10ms
-        XCTAssertTrue(viewModel.isLoading, "Should be loading during execution")
+        // When: Load status
+        await viewModel.loadStatus()
 
-        // Wait for completion
-        await loadTask.value
-
-        // Then: Should not be loading after completion
-        XCTAssertFalse(viewModel.isLoading, "Should not be loading after completion")
+        // Then: Should have recorded loading state transition: false → true → false
+        XCTAssertEqual(recordedValues.count, 3, "Should have 3 state changes")
+        XCTAssertFalse(recordedValues[0], "Initial state should be false")
+        XCTAssertTrue(recordedValues[1], "Should be true during execution")
+        XCTAssertFalse(recordedValues[2], "Should be false after completion")
     }
 
     // MARK: - Purchase Tests
@@ -130,20 +130,22 @@ final class SubscriptionViewModelTests: XCTestCase {
     }
 
     func testPurchaseSetsLoadingStateDuringExecution() async {
-        // When: Start purchase (don't await completion yet)
-        let purchaseTask = Task {
-            await viewModel.purchase(tier: .premium)
-        }
+        // Given: Observe isLoading changes via Combine
+        var recordedValues: [Bool] = []
+        viewModel.$isLoading
+            .sink { recordedValues.append($0) }
+            .store(in: &cancellables)
 
-        // Then: Should be loading during execution
-        try? await Task.sleep(nanoseconds: 10_000_000) // 10ms
-        XCTAssertTrue(viewModel.isLoading, "Should be loading during execution")
+        // When: Purchase tier (which internally calls loadStatus() on success)
+        await viewModel.purchase(tier: .premium)
 
-        // Wait for completion
-        await purchaseTask.value
-
-        // Then: Should not be loading after completion
-        XCTAssertFalse(viewModel.isLoading, "Should not be loading after completion")
+        // Then: Should have recorded loading state transition
+        // false (initial) → true (purchase) → true (loadStatus) → false (complete)
+        XCTAssertEqual(recordedValues.count, 4, "Should have 4 state changes (purchase calls loadStatus)")
+        XCTAssertFalse(recordedValues[0], "Initial state should be false")
+        XCTAssertTrue(recordedValues[1], "Should be true during purchase")
+        XCTAssertTrue(recordedValues[2], "Should remain true during loadStatus")
+        XCTAssertFalse(recordedValues[3], "Should be false after completion")
     }
 
     // MARK: - Restore Tests
