@@ -47,7 +47,7 @@ public struct SettingsView: View {
             }
 
             Section("規約・ポリシー") {
-                Link(destination: URL(string: "https://vocalis-studio.example.com/terms.html")!) {
+                Link(destination: URL(string: "https://asato99w.github.io/vocalis-studio/terms.html")!) {
                     HStack {
                         Text("利用規約")
                             .foregroundColor(ColorPalette.text)
@@ -58,7 +58,7 @@ public struct SettingsView: View {
                     }
                 }
 
-                Link(destination: URL(string: "https://vocalis-studio.example.com/privacy.html")!) {
+                Link(destination: URL(string: "https://asato99w.github.io/vocalis-studio/privacy.html")!) {
                     HStack {
                         Text("プライバシーポリシー")
                             .foregroundColor(ColorPalette.text)

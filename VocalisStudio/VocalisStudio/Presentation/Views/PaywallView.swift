@@ -207,10 +207,10 @@ public struct PaywallView: View {
                 .multilineTextAlignment(.center)
 
             HStack(spacing: 16) {
-                Link("利用規約", destination: URL(string: "https://vocalis-studio.example.com/terms.html")!)
+                Link("利用規約", destination: URL(string: "https://asato99w.github.io/vocalis-studio/terms.html")!)
                     .font(.caption)
 
-                Link("プライバシーポリシー", destination: URL(string: "https://vocalis-studio.example.com/privacy.html")!)
+                Link("プライバシーポリシー", destination: URL(string: "https://asato99w.github.io/vocalis-studio/privacy.html")!)
                     .font(.caption)
             }
         }
