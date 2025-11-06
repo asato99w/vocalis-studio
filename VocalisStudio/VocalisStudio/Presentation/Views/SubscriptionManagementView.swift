@@ -164,18 +164,16 @@ public struct SubscriptionManagementView: View {
             }
             .disabled(viewModel.isLoading)
 
-            // Cancel Subscription
+            // Cancel Subscription Link
             Button {
                 openAppStoreManagement()
             } label: {
-                Label("解約", systemImage: "xmark.circle")
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.red)
-                    .cornerRadius(12)
+                Text("解約する")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .underline()
             }
+            .padding(.top, 8)
         }
     }
 
