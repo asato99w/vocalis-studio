@@ -39,9 +39,38 @@ This is a native iOS project using Xcode's build system:
 
 - **Open Project**: `open VocalisStudio/VocalisStudio.xcodeproj`
 - **Build**: `⌘+B` in Xcode or `xcodebuild -project VocalisStudio/VocalisStudio.xcodeproj -scheme VocalisStudio -destination 'platform=iOS Simulator,name=iPhone 16' build -allowProvisioningUpdates`
-- **Run Tests**: `⌘+U` in Xcode or `xcodebuild test -project VocalisStudio/VocalisStudio.xcodeproj -scheme VocalisStudio -destination 'platform=iOS Simulator,name=iPhone 16' -allowProvisioningUpdates`
+- **Run Tests**: See "Test Management" section below for efficient test execution
 - **Clean**: `⌘+Shift+K` in Xcode or `xcodebuild clean -project VocalisStudio/VocalisStudio.xcodeproj -scheme VocalisStudio`
 - **Run on Device**: Connect iPhone via cable, pair in Xcode (Window > Devices and Simulators), then `⌘+R`. First run requires trusting developer certificate in iPhone Settings > General > VPN & Device Management
+
+### Test Management
+
+The project uses multiple test schemes for efficient test execution. **See `VocalisStudio/claudedocs/test-scheme-management.md` for detailed documentation.**
+
+**Quick Test Commands**:
+```bash
+# UI Tests only (recommended during UI development)
+./VocalisStudio/scripts/test-runner.sh ui
+
+# Unit Tests only (recommended during TDD)
+./VocalisStudio/scripts/test-runner.sh unit
+
+# All tests (recommended for CI/CD)
+./VocalisStudio/scripts/test-runner.sh all
+
+# Specific test class
+./VocalisStudio/scripts/test-runner.sh ui PaywallUITests
+```
+
+**Available Schemes**:
+- `VocalisStudio-UIOnly` - UI Tests only (skips Unit Tests)
+- `VocalisStudio-UnitOnly` - Unit Tests only (skips UI Tests)
+- `VocalisStudio-All` - All tests (Unit + UI)
+
+**Why Multiple Schemes?**
+- **Efficiency**: Run only necessary tests to save time
+- **Error Isolation**: One test type's compilation errors won't block the other
+- **Development Flow**: Focus on relevant tests during development
 
 ## Architecture Overview
 
