@@ -114,8 +114,8 @@ public struct PaywallView: View {
                     .font(Typography.caption)
                     .foregroundColor(ColorPalette.text.opacity(0.6))
 
-                Text("5回/日まで")
-                    .font(.system(size: 28, weight: .bold))
+                Text("1日5回まで / 1回30秒まで")
+                    .font(.system(size: 20, weight: .bold))
                     .foregroundColor(ColorPalette.text)
             }
             .frame(maxWidth: .infinity)
@@ -140,8 +140,8 @@ public struct PaywallView: View {
                     .font(Typography.caption)
                     .foregroundColor(ColorPalette.text.opacity(0.6))
 
-                Text("無制限")
-                    .font(.system(size: 28, weight: .bold))
+                Text("回数無制限 / 1回最大5分")
+                    .font(.system(size: 20, weight: .bold))
                     .foregroundColor(ColorPalette.text)
 
                 Text("¥480/月")
