@@ -25,6 +25,10 @@ public final class SubscriptionViewModel: ObservableObject {
     private let purchaseUseCase: PurchaseSubscriptionUseCaseProtocol
     private let restoreUseCase: RestorePurchasesUseCaseProtocol
 
+    #if DEBUG
+    private var isDebugTierSet = false
+    #endif
+
     // MARK: - Initialization
 
     public init(
@@ -41,6 +45,13 @@ public final class SubscriptionViewModel: ObservableObject {
 
     /// Load current subscription status
     public func loadStatus() async {
+        #if DEBUG
+        // Skip loading from StoreKit if debug tier is manually set
+        if isDebugTierSet {
+            return
+        }
+        #endif
+
         isLoading = true
         errorMessage = nil
 
@@ -56,6 +67,11 @@ public final class SubscriptionViewModel: ObservableObject {
 
     /// Purchase a subscription tier
     public func purchase(tier: SubscriptionTier) async {
+        #if DEBUG
+        // Clear debug tier flag when making real purchase
+        isDebugTierSet = false
+        #endif
+
         isLoading = true
         errorMessage = nil
 
@@ -71,6 +87,11 @@ public final class SubscriptionViewModel: ObservableObject {
 
     /// Restore previous purchases
     public func restorePurchases() async {
+        #if DEBUG
+        // Clear debug tier flag when restoring purchases
+        isDebugTierSet = false
+        #endif
+
         isLoading = true
         errorMessage = nil
 
@@ -100,17 +121,24 @@ public final class SubscriptionViewModel: ObservableObject {
     // MARK: - Debug Methods
 
     #if DEBUG
-    /// Set debug subscription tier (for testing only)
+    /// Set debug tier for testing (overrides StoreKit state)
     public func setDebugTier(_ tier: SubscriptionTier) {
-        let status = SubscriptionStatus(
+        isDebugTierSet = true
+        currentStatus = SubscriptionStatus(
             tier: tier,
             cohort: .v2_0,
             isActive: tier != .free,
-            expirationDate: tier != .free ? Date().addingTimeInterval(30 * 24 * 60 * 60) : nil,
+            expirationDate: tier != .free ? Date().addingTimeInterval(86400 * 30) : nil,
             purchaseDate: tier != .free ? Date() : nil,
-            willAutoRenew: tier != .free
+            willAutoRenew: false
         )
-        currentStatus = status
+    }
+
+    /// Clear debug tier and reload from StoreKit
+    public func clearDebugTier() async {
+        isDebugTierSet = false
+        await loadStatus()
     }
     #endif
+
 }

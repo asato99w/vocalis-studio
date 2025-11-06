@@ -36,10 +36,8 @@ struct DebugMenuView: View {
         .navigationTitle("Debug Menu")
         .navigationBarTitleDisplayMode(.inline)
         .task {
-            // Load subscription status when view appears
-            if subscriptionViewModel.currentStatus == nil {
-                await subscriptionViewModel.loadStatus()
-            }
+            // Always reload subscription status to get the latest state
+            await subscriptionViewModel.loadStatus()
         }
         .alert("Reset Usage", isPresented: $showingResetAlert) {
             Button("Cancel", role: .cancel) {}
@@ -50,12 +48,11 @@ struct DebugMenuView: View {
             Text("録音回数がリセットされます。よろしいですか?")
         }
     }
-
     // MARK: - Debug Tier Picker
 
     private var debugTierPicker: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Tier Override")
+            Text("Quick Tier Switch")
                 .font(.subheadline)
                 .foregroundColor(ColorPalette.text.opacity(0.6))
 
@@ -74,11 +71,9 @@ struct DebugMenuView: View {
                 }
                 .pickerStyle(.segmented)
 
-                // Display current selection for UI testing
-                Text("Selected: \(currentTier.displayName)")
+                Text("現在: \(currentTier.displayName)")
                     .font(.caption)
                     .foregroundColor(ColorPalette.text.opacity(0.6))
-                    .accessibilityIdentifier("SelectedTierLabel")
             } else {
                 ProgressView()
                     .frame(maxWidth: .infinity)
