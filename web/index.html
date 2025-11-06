@@ -121,18 +121,137 @@
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
         }
 
-        /* Features Section */
-        .features {
+        /* Container */
+        .container {
             max-width: 1200px;
             margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        /* How It Works Section */
+        .how-it-works {
             padding: 5rem 2rem;
+            background: var(--background);
         }
 
         .section-title {
             text-align: center;
             font-size: 2.5rem;
             font-weight: 700;
-            margin-bottom: 3rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .section-description {
+            text-align: center;
+            font-size: 1.125rem;
+            color: var(--text-secondary);
+            max-width: 800px;
+            margin: 0 auto 4rem;
+            line-height: 1.8;
+        }
+
+        .steps {
+            display: flex;
+            flex-direction: column;
+            gap: 4rem;
+        }
+
+        .step {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        .step-number {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: var(--gradient);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .step-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .screenshot-placeholder {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .phone-frame {
+            width: 280px;
+            height: 560px;
+            border: 12px solid #1C1C1E;
+            border-radius: 40px;
+            background: var(--surface);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .phone-frame::before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 25px;
+            background: #1C1C1E;
+            border-radius: 0 0 20px 20px;
+        }
+
+        .phone-content {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            padding: 2rem;
+            text-align: center;
+            color: var(--text-secondary);
+        }
+
+        .phone-content p {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .phone-content span {
+            font-size: 0.875rem;
+        }
+
+        .step-content h3 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .step-content p {
+            color: var(--text-secondary);
+            line-height: 1.8;
+            font-size: 1.0625rem;
+        }
+
+        /* Features Section */
+        .features {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 5rem 2rem;
+            background: var(--surface);
         }
 
         .features-grid {
@@ -164,6 +283,41 @@
         }
 
         .feature-card p {
+            color: var(--text-secondary);
+            line-height: 1.8;
+        }
+
+        /* Use Cases Section */
+        .use-cases {
+            padding: 5rem 2rem;
+            background: var(--background);
+        }
+
+        .use-case-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .use-case-card {
+            background: var(--surface);
+            border-radius: 20px;
+            padding: 2.5rem;
+            transition: transform 0.3s;
+        }
+
+        .use-case-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .use-case-card h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .use-case-card p {
             color: var(--text-secondary);
             line-height: 1.8;
         }
@@ -317,7 +471,38 @@
                 font-size: 2rem;
             }
 
+            .section-description {
+                font-size: 1rem;
+            }
+
+            .step {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+
+            .step-number {
+                margin: 0 auto;
+            }
+
+            .step-content {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+
+            .phone-frame {
+                width: 240px;
+                height: 480px;
+            }
+
+            .step-content h3 {
+                font-size: 1.5rem;
+            }
+
             .features-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .use-case-grid {
                 grid-template-columns: 1fr;
             }
 
@@ -335,43 +520,123 @@
     </header>
 
     <section class="hero">
-        <h1>あなたの歌声を磨く</h1>
-        <p>本格的なボーカルトレーニングをいつでもどこでも。Vocalis Studioで理想の歌声を手に入れよう。</p>
-        <a href="#pricing" class="cta-button">今すぐ始める</a>
+        <h1>iPhoneで、本格的なボーカルトレーニング</h1>
+        <p>音階に合わせて歌いながら録音。あなたの音程を可視化して、歌唱力を向上させるiOSアプリです。</p>
+        <a href="#how-it-works" class="cta-button">使い方を見る</a>
+    </section>
+
+    <section class="how-it-works" id="how-it-works">
+        <div class="container">
+            <h2 class="section-title">Vocalis Studioとは？</h2>
+            <p class="section-description">
+                Vocalis Studioは、スケール（音階）を再生しながら同時に録音できるボーカルトレーニングアプリです。<br>
+                ドレミファソラシドの音階に合わせて歌い、あなたの音程がどれくらい正確かをリアルタイムで確認できます。
+            </p>
+
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <div class="screenshot-placeholder">
+                            <div class="phone-frame">
+                                <div class="phone-content">
+                                    <p>スケール選択画面</p>
+                                    <span>ここにスクリーンショット</span>
+                                </div>
+                            </div>
+                        </div>
+                        <h3>スケールを選ぶ</h3>
+                        <p>5音階から13音階まで、様々なスケールパターンから選択。初心者は5音階から始めるのがおすすめです。</p>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <div class="screenshot-placeholder">
+                            <div class="phone-frame">
+                                <div class="phone-content">
+                                    <p>録音画面</p>
+                                    <span>ここにスクリーンショット</span>
+                                </div>
+                            </div>
+                        </div>
+                        <h3>音階に合わせて歌う</h3>
+                        <p>アプリが音階を再生するので、それに合わせて声を出します。画面には現在の音程がリアルタイムで表示されます。</p>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <div class="screenshot-placeholder">
+                            <div class="phone-frame">
+                                <div class="phone-content">
+                                    <p>分析画面</p>
+                                    <span>ここにスクリーンショット</span>
+                                </div>
+                            </div>
+                        </div>
+                        <h3>音程を確認する</h3>
+                        <p>録音後、目標の音程とあなたの実際の音程を比較。どの音が外れていたか、一目でわかります。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </section>
 
     <section class="features">
-        <h2 class="section-title">機能</h2>
+        <h2 class="section-title">主な機能</h2>
         <div class="features-grid">
             <div class="feature-card">
-                <div class="feature-icon">🎤</div>
-                <h3>高精度な録音</h3>
-                <p>プロフェッショナルレベルの録音品質で、あなたの歌声を正確にキャプチャします。</p>
-            </div>
-            <div class="feature-card">
                 <div class="feature-icon">🎼</div>
-                <h3>スケール練習</h3>
-                <p>様々な音階パターンで発声練習。基礎から応用まで、段階的にスキルアップ。</p>
+                <h3>5種類のスケール練習</h3>
+                <p>5音階、7音階、8音階、10音階、13音階。あなたのレベルに合わせて選べます。</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon">📊</div>
-                <h3>音程分析</h3>
-                <p>リアルタイムで音程を可視化。正確な音程感覚を養います。</p>
+                <h3>リアルタイム音程表示</h3>
+                <p>歌っている最中も、録音後も、あなたの音程を視覚的に確認できます。</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🎤</div>
+                <h3>スケール再生+同時録音</h3>
+                <p>音階を聴きながら録音できるから、正しい音程で歌う練習ができます。</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon">💾</div>
-                <h3>録音管理</h3>
-                <p>練習の記録を保存・管理。上達の過程を振り返ることができます。</p>
+                <h3>練習履歴の保存</h3>
+                <p>過去の録音を保存して、上達の記録を振り返ることができます。</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon">⚙️</div>
-                <h3>カスタマイズ可能</h3>
-                <p>音量、検出感度など、あなたの環境に合わせた設定が可能です。</p>
+                <h3>音量・感度調整</h3>
+                <p>再生音量、録音感度を自分の環境に合わせて細かく調整できます。</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon">🌙</div>
                 <h3>ダークモード対応</h3>
-                <p>目に優しいダークモードで、夜間の練習も快適に。</p>
+                <p>目に優しいダークモードで、夜間の練習も快適です。</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="use-cases">
+        <div class="container">
+            <h2 class="section-title">こんな方におすすめ</h2>
+            <div class="use-case-grid">
+                <div class="use-case-card">
+                    <h3>🎵 歌が上手くなりたい</h3>
+                    <p>カラオケで音程が外れてしまう...そんな悩みを解決。毎日の練習で音程感覚が身につきます。</p>
+                </div>
+                <div class="use-case-card">
+                    <h3>🎙️ ボイトレ教室に通えない</h3>
+                    <p>時間やお金の都合で教室に通えなくても、アプリがあれば自宅で本格的な練習ができます。</p>
+                </div>
+                <div class="use-case-card">
+                    <h3>📈 上達を記録したい</h3>
+                    <p>練習の記録を残して、自分の成長を実感。モチベーション維持にも役立ちます。</p>
+                </div>
             </div>
         </div>
     </section>
