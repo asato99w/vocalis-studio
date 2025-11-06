@@ -169,9 +169,7 @@ public struct SubscriptionManagementView: View {
                 openAppStoreManagement()
             } label: {
                 Text("解約する")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .underline()
+                    .foregroundColor(.blue)
             }
             .padding(.top, 8)
         }
