@@ -3,11 +3,28 @@ import SwiftUI
 /// Settings screen - language selection and app information
 public struct SettingsView: View {
     @StateObject private var localization = LocalizationManager.shared
+    @EnvironmentObject private var subscriptionViewModel: SubscriptionViewModel
 
     public init() {}
 
     public var body: some View {
         Form {
+            // Subscription Section
+            Section("サブスクリプション") {
+                HStack {
+                    Label("現在のプラン", systemImage: "crown.fill")
+                    Spacer()
+                    Text(subscriptionViewModel.currentStatus?.tier == .premium ? "プレミアム" : "無料")
+                        .foregroundColor(subscriptionViewModel.currentStatus?.tier == .premium ? .green : ColorPalette.text.opacity(0.6))
+                }
+
+                Button {
+                    openSubscriptionManagement()
+                } label: {
+                    Label("サブスクリプションを管理", systemImage: "gear")
+                }
+            }
+
             // Audio Settings Section
             Section("オーディオ設定") {
                 NavigationLink {
@@ -38,6 +55,19 @@ public struct SettingsView: View {
         }
         .navigationTitle("settings.title".localized)
         .navigationBarTitleDisplayMode(.large)
+        .task {
+            await subscriptionViewModel.loadStatus()
+        }
+    }
+
+    // MARK: - Private Methods
+
+    private func openSubscriptionManagement() {
+        // iOS設定アプリのサブスクリプション管理画面に遷移
+        // Note: シミュレータでは動作しないが、実機では正しく動作する
+        if let url = URL(string: "itms-apps://apps.apple.com/account/subscriptions") {
+            UIApplication.shared.open(url)
+        }
     }
 }
 
@@ -48,6 +78,7 @@ struct SettingsView_Previews: PreviewProvider {
     static var previews: some View {
         NavigationStack {
             SettingsView()
+                .environmentObject(DependencyContainer.shared.subscriptionViewModel)
         }
     }
 }
