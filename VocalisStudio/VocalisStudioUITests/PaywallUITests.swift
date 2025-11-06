@@ -188,4 +188,78 @@ final class PaywallUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["無制限録音を解放"].exists)
         XCTAssertTrue(app.staticTexts["プレミアムで毎日何度でも録音できます"].exists)
     }
+
+    // MARK: - Purchase Status Update Tests
+
+    func testPurchase_shouldUpdateToPremiumStatus() throws {
+        // Navigate to subscription management
+        navigateToSubscriptionManagement()
+
+        // Verify initial free tier status
+        XCTAssertTrue(app.staticTexts["無料"].exists, "Should start with free tier")
+
+        // Tap purchase button
+        let purchaseButton = app.buttons["購入する"]
+        XCTAssertTrue(purchaseButton.exists, "Purchase button should exist")
+        purchaseButton.tap()
+
+        // Wait for StoreKit test purchase to complete (StoreKit Testing auto-approves)
+        // In StoreKit Testing environment, purchases complete immediately
+        sleep(2)
+
+        // Verify premium status is shown
+        let premiumText = app.staticTexts.containing(NSPredicate(format: "label CONTAINS[cd] %@", "Premium"))
+        XCTAssertTrue(premiumText.firstMatch.waitForExistence(timeout: 5), "Should show Premium status after purchase")
+
+        // Navigate back to settings to verify status persists
+        app.navigationBars.buttons.firstMatch.tap()
+        sleep(1)
+
+        // Return to subscription management
+        let subscriptionLink = app.buttons.containing(NSPredicate(format: "label CONTAINS[cd] %@", "サブスクリプションを管理"))
+        subscriptionLink.firstMatch.tap()
+
+        // Verify premium status is still shown
+        XCTAssertTrue(premiumText.firstMatch.exists, "Premium status should persist after navigation")
+    }
+
+    func testDebugMenu_tierSwitch_shouldPersistAcrossScreens() throws {
+        #if DEBUG
+        // Navigate to Debug Menu
+        let settingsTab = app.tabBars.buttons["設定"]
+        settingsTab.tap()
+
+        let debugMenuButton = app.buttons.containing(NSPredicate(format: "label CONTAINS[cd] %@", "Debug Menu"))
+        XCTAssertTrue(debugMenuButton.firstMatch.exists, "Debug Menu button should exist")
+        debugMenuButton.firstMatch.tap()
+
+        // Switch to Premium tier in debug menu
+        let tierPicker = app.segmentedControls.firstMatch
+        XCTAssertTrue(tierPicker.exists, "Tier picker should exist")
+        tierPicker.buttons["Premium"].tap()
+
+        // Wait for status update
+        sleep(1)
+
+        // Verify current tier shows Premium
+        let currentTierLabel = app.staticTexts.containing(NSPredicate(format: "label CONTAINS[cd] %@", "現在: Premium"))
+        XCTAssertTrue(currentTierLabel.firstMatch.exists, "Should show current tier as Premium")
+
+        // Navigate to subscription management
+        app.navigationBars.buttons.firstMatch.tap()
+        let subscriptionLink = app.buttons.containing(NSPredicate(format: "label CONTAINS[cd] %@", "サブスクリプションを管理"))
+        subscriptionLink.firstMatch.tap()
+
+        // Verify Premium status is shown in subscription management
+        let premiumText = app.staticTexts.containing(NSPredicate(format: "label CONTAINS[cd] %@", "Premium"))
+        XCTAssertTrue(premiumText.firstMatch.exists, "Should show Premium status in subscription management")
+
+        // Return to debug menu
+        app.navigationBars.buttons.firstMatch.tap()
+        debugMenuButton.firstMatch.tap()
+
+        // Verify tier is still Premium
+        XCTAssertTrue(currentTierLabel.firstMatch.exists, "Tier should still be Premium in debug menu")
+        #endif
+    }
 }
