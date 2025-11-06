@@ -2,9 +2,11 @@ import Foundation
 
 /// ピッチ検出のオーディオ設定
 public struct AudioDetectionSettings: Equatable, Codable {
-    /// 出力音量 (0.0 - 1.0)
-    /// スケール・再生の音量
-    public let outputVolume: Float
+    /// スケール再生音量 (0.0 - 1.0)
+    public let scalePlaybackVolume: Float
+
+    /// 録音再生音量 (0.0 - 1.0)
+    public let recordingPlaybackVolume: Float
 
     /// RMS silence threshold (0.001 - 0.1)
     /// 内部パラメータ: ユーザーには「検出感度」として表示
@@ -17,12 +19,14 @@ public struct AudioDetectionSettings: Equatable, Codable {
     // MARK: - Initialization
 
     public init(
-        outputVolume: Float,
+        scalePlaybackVolume: Float,
+        recordingPlaybackVolume: Float,
         rmsSilenceThreshold: Float,
         confidenceThreshold: Float
     ) {
         // Validation: clamp values to valid ranges
-        self.outputVolume = max(0.0, min(1.0, outputVolume))
+        self.scalePlaybackVolume = max(0.0, min(1.0, scalePlaybackVolume))
+        self.recordingPlaybackVolume = max(0.0, min(1.0, recordingPlaybackVolume))
         self.rmsSilenceThreshold = max(0.001, min(0.1, rmsSilenceThreshold))
         self.confidenceThreshold = max(0.1, min(1.0, confidenceThreshold))
     }
@@ -31,14 +35,16 @@ public struct AudioDetectionSettings: Equatable, Codable {
 
     /// デフォルト設定 (実機用)
     public static let `default` = AudioDetectionSettings(
-        outputVolume: 0.8,
+        scalePlaybackVolume: 0.8,
+        recordingPlaybackVolume: 0.8,
         rmsSilenceThreshold: 0.02,
         confidenceThreshold: 0.4
     )
 
     /// シミュレーター用設定 (低感度閾値)
     public static let simulator = AudioDetectionSettings(
-        outputVolume: 0.8,
+        scalePlaybackVolume: 0.8,
+        recordingPlaybackVolume: 0.8,
         rmsSilenceThreshold: 0.005,
         confidenceThreshold: 0.3
     )

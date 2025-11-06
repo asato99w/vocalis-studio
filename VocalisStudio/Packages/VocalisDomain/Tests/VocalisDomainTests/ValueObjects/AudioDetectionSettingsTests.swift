@@ -9,41 +9,71 @@ final class AudioDetectionSettingsTests: XCTestCase {
     func testInit_shouldCreateWithValidValues() {
         // When
         let settings = AudioDetectionSettings(
-            outputVolume: 0.8,
+            scalePlaybackVolume: 0.8,
+            recordingPlaybackVolume: 0.7,
             rmsSilenceThreshold: 0.02,
             confidenceThreshold: 0.4
         )
 
         // Then
-        XCTAssertEqual(settings.outputVolume, 0.8)
+        XCTAssertEqual(settings.scalePlaybackVolume, 0.8)
+        XCTAssertEqual(settings.recordingPlaybackVolume, 0.7)
         XCTAssertEqual(settings.rmsSilenceThreshold, 0.02)
         XCTAssertEqual(settings.confidenceThreshold, 0.4)
     }
 
-    // MARK: - Output Volume Validation Tests
+    // MARK: - Volume Validation Tests
 
-    func testInit_shouldClampOutputVolumeToMinimum() {
+    func testInit_shouldClampScalePlaybackVolumeToMinimum() {
         // When
         let settings = AudioDetectionSettings(
-            outputVolume: -0.5,  // Invalid: too low
+            scalePlaybackVolume: -0.5,  // Invalid: too low
+            recordingPlaybackVolume: 0.8,
             rmsSilenceThreshold: 0.02,
             confidenceThreshold: 0.4
         )
 
         // Then
-        XCTAssertEqual(settings.outputVolume, 0.0, "Output volume should be clamped to minimum 0.0")
+        XCTAssertEqual(settings.scalePlaybackVolume, 0.0, "Scale playback volume should be clamped to minimum 0.0")
     }
 
-    func testInit_shouldClampOutputVolumeToMaximum() {
+    func testInit_shouldClampScalePlaybackVolumeToMaximum() {
         // When
         let settings = AudioDetectionSettings(
-            outputVolume: 1.5,  // Invalid: too high
+            scalePlaybackVolume: 1.5,  // Invalid: too high
+            recordingPlaybackVolume: 0.8,
             rmsSilenceThreshold: 0.02,
             confidenceThreshold: 0.4
         )
 
         // Then
-        XCTAssertEqual(settings.outputVolume, 1.0, "Output volume should be clamped to maximum 1.0")
+        XCTAssertEqual(settings.scalePlaybackVolume, 1.0, "Scale playback volume should be clamped to maximum 1.0")
+    }
+
+    func testInit_shouldClampRecordingPlaybackVolumeToMinimum() {
+        // When
+        let settings = AudioDetectionSettings(
+            scalePlaybackVolume: 0.8,
+            recordingPlaybackVolume: -0.5,  // Invalid: too low
+            rmsSilenceThreshold: 0.02,
+            confidenceThreshold: 0.4
+        )
+
+        // Then
+        XCTAssertEqual(settings.recordingPlaybackVolume, 0.0, "Recording playback volume should be clamped to minimum 0.0")
+    }
+
+    func testInit_shouldClampRecordingPlaybackVolumeToMaximum() {
+        // When
+        let settings = AudioDetectionSettings(
+            scalePlaybackVolume: 0.8,
+            recordingPlaybackVolume: 1.5,  // Invalid: too high
+            rmsSilenceThreshold: 0.02,
+            confidenceThreshold: 0.4
+        )
+
+        // Then
+        XCTAssertEqual(settings.recordingPlaybackVolume, 1.0, "Recording playback volume should be clamped to maximum 1.0")
     }
 
     // MARK: - RMS Threshold Validation Tests
@@ -51,7 +81,8 @@ final class AudioDetectionSettingsTests: XCTestCase {
     func testInit_shouldClampRMSThresholdToMinimum() {
         // When
         let settings = AudioDetectionSettings(
-            outputVolume: 0.8,
+            scalePlaybackVolume: 0.8,
+            recordingPlaybackVolume: 0.7,
             rmsSilenceThreshold: -0.1,  // Invalid: too low
             confidenceThreshold: 0.4
         )
@@ -63,7 +94,8 @@ final class AudioDetectionSettingsTests: XCTestCase {
     func testInit_shouldClampRMSThresholdToMaximum() {
         // When
         let settings = AudioDetectionSettings(
-            outputVolume: 0.8,
+            scalePlaybackVolume: 0.8,
+            recordingPlaybackVolume: 0.7,
             rmsSilenceThreshold: 0.5,  // Invalid: too high
             confidenceThreshold: 0.4
         )
@@ -77,7 +109,8 @@ final class AudioDetectionSettingsTests: XCTestCase {
     func testInit_shouldClampConfidenceThresholdToMinimum() {
         // When
         let settings = AudioDetectionSettings(
-            outputVolume: 0.8,
+            scalePlaybackVolume: 0.8,
+            recordingPlaybackVolume: 0.7,
             rmsSilenceThreshold: 0.02,
             confidenceThreshold: 0.05  // Invalid: too low
         )
@@ -89,7 +122,8 @@ final class AudioDetectionSettingsTests: XCTestCase {
     func testInit_shouldClampConfidenceThresholdToMaximum() {
         // When
         let settings = AudioDetectionSettings(
-            outputVolume: 0.8,
+            scalePlaybackVolume: 0.8,
+            recordingPlaybackVolume: 0.7,
             rmsSilenceThreshold: 0.02,
             confidenceThreshold: 1.5  // Invalid: too high
         )
@@ -105,7 +139,8 @@ final class AudioDetectionSettingsTests: XCTestCase {
         let settings = AudioDetectionSettings.default
 
         // Then
-        XCTAssertEqual(settings.outputVolume, 0.8)
+        XCTAssertEqual(settings.scalePlaybackVolume, 0.8)
+        XCTAssertEqual(settings.recordingPlaybackVolume, 0.8)
         XCTAssertEqual(settings.rmsSilenceThreshold, 0.02)
         XCTAssertEqual(settings.confidenceThreshold, 0.4)
     }
@@ -115,7 +150,8 @@ final class AudioDetectionSettingsTests: XCTestCase {
         let settings = AudioDetectionSettings.simulator
 
         // Then
-        XCTAssertEqual(settings.outputVolume, 0.8)
+        XCTAssertEqual(settings.scalePlaybackVolume, 0.8)
+        XCTAssertEqual(settings.recordingPlaybackVolume, 0.8)
         XCTAssertEqual(settings.rmsSilenceThreshold, 0.005, "Simulator should have lower RMS threshold")
         XCTAssertEqual(settings.confidenceThreshold, 0.3, "Simulator should have lower confidence threshold")
     }
@@ -125,7 +161,8 @@ final class AudioDetectionSettingsTests: XCTestCase {
     func testSensitivity_whenRMSThresholdIs005_shouldReturnHigh() {
         // Given
         let settings = AudioDetectionSettings(
-            outputVolume: 0.8,
+            scalePlaybackVolume: 0.8,
+            recordingPlaybackVolume: 0.7,
             rmsSilenceThreshold: 0.005,
             confidenceThreshold: 0.4
         )
@@ -140,7 +177,8 @@ final class AudioDetectionSettingsTests: XCTestCase {
     func testSensitivity_whenRMSThresholdIs002_shouldReturnNormal() {
         // Given
         let settings = AudioDetectionSettings(
-            outputVolume: 0.8,
+            scalePlaybackVolume: 0.8,
+            recordingPlaybackVolume: 0.7,
             rmsSilenceThreshold: 0.02,
             confidenceThreshold: 0.4
         )
@@ -155,7 +193,8 @@ final class AudioDetectionSettingsTests: XCTestCase {
     func testSensitivity_whenRMSThresholdIs005High_shouldReturnLow() {
         // Given
         let settings = AudioDetectionSettings(
-            outputVolume: 0.8,
+            scalePlaybackVolume: 0.8,
+            recordingPlaybackVolume: 0.7,
             rmsSilenceThreshold: 0.05,
             confidenceThreshold: 0.4
         )
@@ -222,7 +261,8 @@ final class AudioDetectionSettingsTests: XCTestCase {
     func testCodable_shouldEncodeAndDecode() throws {
         // Given
         let original = AudioDetectionSettings(
-            outputVolume: 0.75,
+            scalePlaybackVolume: 0.75,
+            recordingPlaybackVolume: 0.65,
             rmsSilenceThreshold: 0.015,
             confidenceThreshold: 0.35
         )
@@ -240,12 +280,14 @@ final class AudioDetectionSettingsTests: XCTestCase {
     func testEquatable_whenAllPropertiesSame_shouldReturnTrue() {
         // Given
         let settings1 = AudioDetectionSettings(
-            outputVolume: 0.8,
+            scalePlaybackVolume: 0.8,
+            recordingPlaybackVolume: 0.7,
             rmsSilenceThreshold: 0.02,
             confidenceThreshold: 0.4
         )
         let settings2 = AudioDetectionSettings(
-            outputVolume: 0.8,
+            scalePlaybackVolume: 0.8,
+            recordingPlaybackVolume: 0.7,
             rmsSilenceThreshold: 0.02,
             confidenceThreshold: 0.4
         )
@@ -254,15 +296,36 @@ final class AudioDetectionSettingsTests: XCTestCase {
         XCTAssertEqual(settings1, settings2)
     }
 
-    func testEquatable_whenOutputVolumeDifferent_shouldReturnFalse() {
+    func testEquatable_whenScalePlaybackVolumeDifferent_shouldReturnFalse() {
         // Given
         let settings1 = AudioDetectionSettings(
-            outputVolume: 0.8,
+            scalePlaybackVolume: 0.8,
+            recordingPlaybackVolume: 0.7,
             rmsSilenceThreshold: 0.02,
             confidenceThreshold: 0.4
         )
         let settings2 = AudioDetectionSettings(
-            outputVolume: 0.6,
+            scalePlaybackVolume: 0.6,
+            recordingPlaybackVolume: 0.7,
+            rmsSilenceThreshold: 0.02,
+            confidenceThreshold: 0.4
+        )
+
+        // Then
+        XCTAssertNotEqual(settings1, settings2)
+    }
+
+    func testEquatable_whenRecordingPlaybackVolumeDifferent_shouldReturnFalse() {
+        // Given
+        let settings1 = AudioDetectionSettings(
+            scalePlaybackVolume: 0.8,
+            recordingPlaybackVolume: 0.7,
+            rmsSilenceThreshold: 0.02,
+            confidenceThreshold: 0.4
+        )
+        let settings2 = AudioDetectionSettings(
+            scalePlaybackVolume: 0.8,
+            recordingPlaybackVolume: 0.5,
             rmsSilenceThreshold: 0.02,
             confidenceThreshold: 0.4
         )

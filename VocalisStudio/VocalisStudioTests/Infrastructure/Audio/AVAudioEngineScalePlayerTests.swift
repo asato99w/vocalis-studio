@@ -6,10 +6,12 @@ import VocalisDomain
 final class AVAudioEngineScalePlayerTests: XCTestCase {
 
     var sut: AVAudioEngineScalePlayer!
+    var mockSettingsRepository: MockAudioSettingsRepository!
 
     override func setUp() async throws {
         try await super.setUp()
-        sut = AVAudioEngineScalePlayer()
+        mockSettingsRepository = MockAudioSettingsRepository()
+        sut = AVAudioEngineScalePlayer(settingsRepository: mockSettingsRepository)
     }
 
     override func tearDown() async throws {

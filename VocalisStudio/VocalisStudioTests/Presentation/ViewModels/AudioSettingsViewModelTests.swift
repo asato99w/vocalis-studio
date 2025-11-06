@@ -30,7 +30,8 @@ final class AudioSettingsViewModelTests: XCTestCase {
     func testInit_shouldLoadCurrentSettings() {
         // Given: Repository returns specific settings
         let expectedSettings = AudioDetectionSettings(
-            outputVolume: 0.7,
+            scalePlaybackVolume: 0.7,
+            recordingPlaybackVolume: 0.6,
             rmsSilenceThreshold: 0.015,  // 0.01 < 0.015 < 0.035 → .normal
             confidenceThreshold: 0.35
         )
@@ -42,24 +43,41 @@ final class AudioSettingsViewModelTests: XCTestCase {
 
         // Then: Settings should be loaded
         XCTAssertTrue(customMockRepository.getCalled)
-        XCTAssertEqual(viewModel.outputVolume, 0.7)
+        XCTAssertEqual(viewModel.scalePlaybackVolume, 0.7)
+        XCTAssertEqual(viewModel.recordingPlaybackVolume, 0.6)
         XCTAssertEqual(viewModel.detectionSensitivity, .normal)  // 0.015 maps to .normal
         XCTAssertEqual(viewModel.confidenceThreshold, 0.35)
     }
 
-    // MARK: - Output Volume Tests
+    // MARK: - Volume Tests
 
-    func testSetOutputVolume_shouldUpdateValue() {
+    func testSetScalePlaybackVolume_shouldUpdateValue() {
         // When
-        sut.outputVolume = 0.9
+        sut.scalePlaybackVolume = 0.9
 
         // Then
-        XCTAssertEqual(sut.outputVolume, 0.9)
+        XCTAssertEqual(sut.scalePlaybackVolume, 0.9)
     }
 
-    func testSetOutputVolume_shouldNotSaveImmediately() {
+    func testSetScalePlaybackVolume_shouldNotSaveImmediately() {
         // When
-        sut.outputVolume = 0.9
+        sut.scalePlaybackVolume = 0.9
+
+        // Then: Save should not be called yet
+        XCTAssertFalse(mockRepository.saveCalled)
+    }
+
+    func testSetRecordingPlaybackVolume_shouldUpdateValue() {
+        // When
+        sut.recordingPlaybackVolume = 0.7
+
+        // Then
+        XCTAssertEqual(sut.recordingPlaybackVolume, 0.7)
+    }
+
+    func testSetRecordingPlaybackVolume_shouldNotSaveImmediately() {
+        // When
+        sut.recordingPlaybackVolume = 0.7
 
         // Then: Save should not be called yet
         XCTAssertFalse(mockRepository.saveCalled)
@@ -79,7 +97,8 @@ final class AudioSettingsViewModelTests: XCTestCase {
         // Given: Settings with RMS 0.005 (high sensitivity)
         let customMockRepository = MockAudioSettingsRepository()
         customMockRepository.settingsToReturn = AudioDetectionSettings(
-            outputVolume: 0.8,
+            scalePlaybackVolume: 0.8,
+            recordingPlaybackVolume: 0.8,
             rmsSilenceThreshold: 0.005,
             confidenceThreshold: 0.4
         )
@@ -105,7 +124,8 @@ final class AudioSettingsViewModelTests: XCTestCase {
 
     func testSaveSettings_shouldCallRepositorySave() throws {
         // Given
-        sut.outputVolume = 0.6
+        sut.scalePlaybackVolume = 0.6
+        sut.recordingPlaybackVolume = 0.5
         sut.detectionSensitivity = .low
         sut.confidenceThreshold = 0.5
 
@@ -115,7 +135,8 @@ final class AudioSettingsViewModelTests: XCTestCase {
         // Then
         XCTAssertTrue(mockRepository.saveCalled)
         XCTAssertNotNil(mockRepository.savedSettings)
-        XCTAssertEqual(mockRepository.savedSettings?.outputVolume, 0.6)
+        XCTAssertEqual(mockRepository.savedSettings?.scalePlaybackVolume, 0.6)
+        XCTAssertEqual(mockRepository.savedSettings?.recordingPlaybackVolume, 0.5)
         XCTAssertEqual(mockRepository.savedSettings?.rmsSilenceThreshold, 0.05) // .low = 0.05
         XCTAssertEqual(mockRepository.savedSettings?.confidenceThreshold, 0.5)
     }
@@ -142,7 +163,8 @@ final class AudioSettingsViewModelTests: XCTestCase {
 
     func testResetSettings_shouldReloadDefaultSettings() throws {
         // Given: Change settings
-        sut.outputVolume = 0.5
+        sut.scalePlaybackVolume = 0.5
+        sut.recordingPlaybackVolume = 0.4
         sut.confidenceThreshold = 0.2
 
         // When: Reset
@@ -175,12 +197,23 @@ final class AudioSettingsViewModelTests: XCTestCase {
         XCTAssertFalse(sut.hasChanges)
     }
 
-    func testHasChanges_whenOutputVolumeChanged_shouldReturnTrue() {
+    func testHasChanges_whenScalePlaybackVolumeChanged_shouldReturnTrue() {
         // Given
-        let originalVolume = sut.outputVolume
+        let originalVolume = sut.scalePlaybackVolume
 
         // When
-        sut.outputVolume = originalVolume + 0.1
+        sut.scalePlaybackVolume = originalVolume + 0.1
+
+        // Then
+        XCTAssertTrue(sut.hasChanges)
+    }
+
+    func testHasChanges_whenRecordingPlaybackVolumeChanged_shouldReturnTrue() {
+        // Given
+        let originalVolume = sut.recordingPlaybackVolume
+
+        // When
+        sut.recordingPlaybackVolume = originalVolume + 0.1
 
         // Then
         XCTAssertTrue(sut.hasChanges)
@@ -210,7 +243,8 @@ final class AudioSettingsViewModelTests: XCTestCase {
 
     func testHasChanges_afterSave_shouldReturnFalse() throws {
         // Given
-        sut.outputVolume = 0.9
+        sut.scalePlaybackVolume = 0.9
+        sut.recordingPlaybackVolume = 0.8
 
         // When
         try sut.saveSettings()

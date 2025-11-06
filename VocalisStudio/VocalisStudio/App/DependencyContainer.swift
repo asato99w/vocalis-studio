@@ -19,7 +19,7 @@ public class DependencyContainer {
     }()
 
     public lazy var scalePlayer: ScalePlayerProtocol = {
-        AVAudioEngineScalePlayer()
+        AVAudioEngineScalePlayer(settingsRepository: audioSettingsRepository)
     }()
 
     public lazy var scalePlaybackCoordinator: ScalePlaybackCoordinator = {
@@ -31,7 +31,7 @@ public class DependencyContainer {
     }()
 
     public lazy var audioPlayer: AudioPlayerProtocol = {
-        AVAudioPlayerWrapper()
+        AVAudioPlayerWrapper(settingsRepository: audioSettingsRepository)
     }()
 
     public lazy var recordingRepository: RecordingRepositoryProtocol = {

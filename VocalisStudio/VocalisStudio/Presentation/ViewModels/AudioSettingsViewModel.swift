@@ -8,7 +8,8 @@ final class AudioSettingsViewModel: ObservableObject {
 
     // MARK: - Published Properties
 
-    @Published var outputVolume: Float
+    @Published var scalePlaybackVolume: Float
+    @Published var recordingPlaybackVolume: Float
     @Published var detectionSensitivity: AudioDetectionSettings.DetectionSensitivity
     @Published var confidenceThreshold: Float
 
@@ -35,7 +36,8 @@ final class AudioSettingsViewModel: ObservableObject {
         self.originalSettings = settings
 
         // Initialize published properties
-        self.outputVolume = settings.outputVolume
+        self.scalePlaybackVolume = settings.scalePlaybackVolume
+        self.recordingPlaybackVolume = settings.recordingPlaybackVolume
         self.detectionSensitivity = settings.sensitivity
         self.confidenceThreshold = settings.confidenceThreshold
     }
@@ -60,7 +62,8 @@ final class AudioSettingsViewModel: ObservableObject {
         originalSettings = settings
 
         // Update UI
-        outputVolume = settings.outputVolume
+        scalePlaybackVolume = settings.scalePlaybackVolume
+        recordingPlaybackVolume = settings.recordingPlaybackVolume
         detectionSensitivity = settings.sensitivity
         confidenceThreshold = settings.confidenceThreshold
     }
@@ -69,7 +72,8 @@ final class AudioSettingsViewModel: ObservableObject {
 
     private func buildCurrentSettings() -> AudioDetectionSettings {
         AudioDetectionSettings(
-            outputVolume: outputVolume,
+            scalePlaybackVolume: scalePlaybackVolume,
+            recordingPlaybackVolume: recordingPlaybackVolume,
             rmsSilenceThreshold: detectionSensitivity.rmsThreshold,
             confidenceThreshold: confidenceThreshold
         )

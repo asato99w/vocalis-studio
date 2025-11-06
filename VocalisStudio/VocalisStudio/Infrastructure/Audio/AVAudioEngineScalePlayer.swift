@@ -8,6 +8,7 @@ import OSLog
 public class AVAudioEngineScalePlayer: ScalePlayerProtocol {
     private let engine: AVAudioEngine
     private let sampler: AVAudioUnitSampler
+    private let settingsRepository: AudioSettingsRepositoryProtocol
     private var scale: [MIDINote] = []  // Legacy support
     private var scaleElements: [ScaleElement] = []  // New chord-enabled playback
     private var tempo: Tempo?
@@ -65,7 +66,8 @@ public class AVAudioEngineScalePlayer: ScalePlayerProtocol {
         return nil
     }
 
-    public init() {
+    public init(settingsRepository: AudioSettingsRepositoryProtocol) {
+        self.settingsRepository = settingsRepository
         engine = AVAudioEngine()
         sampler = AVAudioUnitSampler()
 
@@ -73,7 +75,7 @@ public class AVAudioEngineScalePlayer: ScalePlayerProtocol {
         engine.attach(sampler)
         engine.connect(sampler, to: engine.mainMixerNode, format: nil)
 
-        // Set volume to maximum for playback
+        // Set volume to maximum for playback (will be adjusted in play method)
         engine.mainMixerNode.outputVolume = 1.0
     }
 
@@ -138,8 +140,9 @@ public class AVAudioEngineScalePlayer: ScalePlayerProtocol {
             throw ScalePlayerError.alreadyPlaying
         }
 
-        // Set output volume based on muted parameter
-        engine.mainMixerNode.outputVolume = muted ? 0.0 : 1.0
+        // Load current settings and apply scale playback volume
+        let settings = settingsRepository.get()
+        engine.mainMixerNode.outputVolume = muted ? 0.0 : settings.scalePlaybackVolume
 
         // Choose playback mode based on what's loaded
         if !scaleElements.isEmpty {

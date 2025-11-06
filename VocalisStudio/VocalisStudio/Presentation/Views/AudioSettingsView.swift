@@ -17,23 +17,37 @@ struct AudioSettingsView: View {
     var body: some View {
         NavigationView {
             Form {
-                // Output Volume Section
+                // Volume Settings Section
                 Section {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("出力音量")
-                                .font(.body)
-                            Spacer()
-                            Text("\(Int(viewModel.outputVolume * 100))%")
-                                .foregroundColor(.secondary)
+                    VStack(alignment: .leading, spacing: 16) {
+                        // Scale Playback Volume
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("スケール再生音量")
+                                    .font(.body)
+                                Spacer()
+                                Text("\(Int(viewModel.scalePlaybackVolume * 100))%")
+                                    .foregroundColor(.secondary)
+                            }
+                            Slider(value: $viewModel.scalePlaybackVolume, in: 0...1, step: 0.05)
                         }
 
-                        Slider(value: $viewModel.outputVolume, in: 0...1, step: 0.05)
+                        // Recording Playback Volume
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("録音再生音量")
+                                    .font(.body)
+                                Spacer()
+                                Text("\(Int(viewModel.recordingPlaybackVolume * 100))%")
+                                    .foregroundColor(.secondary)
+                            }
+                            Slider(value: $viewModel.recordingPlaybackVolume, in: 0...1, step: 0.05)
+                        }
                     }
                 } header: {
                     Text("音量設定")
                 } footer: {
-                    Text("スケール再生と録音再生の音量")
+                    Text("スケール再生音量と録音再生音量を個別に調整できます")
                 }
 
                 // Detection Sensitivity Section

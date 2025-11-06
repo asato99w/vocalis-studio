@@ -5,8 +5,14 @@ import AVFoundation
 /// Wrapper for AVAudioPlayer
 public class AVAudioPlayerWrapper: NSObject, AudioPlayerProtocol {
 
+    private let settingsRepository: AudioSettingsRepositoryProtocol
     private var audioPlayer: AVAudioPlayer?
     private var playbackContinuation: CheckedContinuation<Void, Error>?
+
+    public init(settingsRepository: AudioSettingsRepositoryProtocol) {
+        self.settingsRepository = settingsRepository
+        super.init()
+    }
 
     public var isPlaying: Bool {
         return audioPlayer?.isPlaying ?? false
@@ -42,6 +48,10 @@ public class AVAudioPlayerWrapper: NSObject, AudioPlayerProtocol {
             // Create audio player
             audioPlayer = try AVAudioPlayer(contentsOf: url)
             audioPlayer?.delegate = self
+
+            // Apply recording playback volume from settings
+            let settings = settingsRepository.get()
+            audioPlayer?.volume = settings.recordingPlaybackVolume
 
             // Configure audio session for playback with recording support
             // Use playAndRecord to be compatible with pitch detection
