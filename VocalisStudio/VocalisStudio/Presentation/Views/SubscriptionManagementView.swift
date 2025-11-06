@@ -26,9 +26,6 @@ public struct SubscriptionManagementView: View {
                             // Current Status Card
                             currentStatusCard(status: status)
 
-                            // Features Access
-                            featuresSection
-
                             // Management Actions
                             actionsSection
                         } else {
@@ -167,16 +164,16 @@ public struct SubscriptionManagementView: View {
             }
             .disabled(viewModel.isLoading)
 
-            // App Store Management
+            // Cancel Subscription
             Button {
                 openAppStoreManagement()
             } label: {
-                Label("App Storeで管理", systemImage: "bag")
+                Label("解約", systemImage: "xmark.circle")
                     .font(.headline)
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(Color.accentColor)
+                    .background(Color.red)
                     .cornerRadius(12)
             }
         }

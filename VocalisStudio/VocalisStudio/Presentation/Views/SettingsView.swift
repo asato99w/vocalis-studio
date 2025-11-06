@@ -11,13 +11,6 @@ public struct SettingsView: View {
         Form {
             // Subscription Section
             Section("サブスクリプション") {
-                HStack {
-                    Label("現在のプラン", systemImage: "crown.fill")
-                    Spacer()
-                    Text(subscriptionViewModel.currentStatus?.tier == .premium ? "プレミアム" : "無料")
-                        .foregroundColor(subscriptionViewModel.currentStatus?.tier == .premium ? .green : ColorPalette.text.opacity(0.6))
-                }
-
                 NavigationLink {
                     SubscriptionManagementView(viewModel: subscriptionViewModel)
                 } label: {
