@@ -73,6 +73,7 @@ public final class PaywallViewModel: ObservableObject {
             // Refresh status after successful purchase
             await loadStatus()
             isPurchaseSuccessful = true
+            isLoading = false
         } catch {
             errorMessage = error.localizedDescription
             isPurchaseSuccessful = false
@@ -98,6 +99,11 @@ public final class PaywallViewModel: ObservableObject {
     /// Clear error message
     public func clearError() {
         errorMessage = nil
+    }
+
+    /// Reset purchase success state
+    public func resetPurchaseSuccess() {
+        isPurchaseSuccessful = false
     }
 
     // MARK: - Computed Properties

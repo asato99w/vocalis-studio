@@ -12,6 +12,7 @@ public struct PaywallView: View {
 
     @StateObject private var viewModel: PaywallViewModel
     @Environment(\.dismiss) private var dismiss
+    @State private var showPurchaseSuccessAlert = false
 
     public init(viewModel: PaywallViewModel) {
         _viewModel = StateObject(wrappedValue: viewModel)
@@ -53,7 +54,7 @@ public struct PaywallView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    if viewModel.hasActiveSubscription {
+                    if viewModel.hasActiveSubscription || viewModel.isPurchaseSuccessful {
                         Button("閉じる") {
                             dismiss()
                         }
@@ -69,12 +70,19 @@ public struct PaywallView: View {
                     Text(error)
                 }
             }
-            .alert("購入完了", isPresented: .constant(viewModel.isPurchaseSuccessful)) {
+            .alert("購入完了", isPresented: $showPurchaseSuccessAlert) {
                 Button("OK") {
+                    showPurchaseSuccessAlert = false
+                    viewModel.resetPurchaseSuccess()
                     dismiss()
                 }
             } message: {
                 Text("サブスクリプションの購入が完了しました。")
+            }
+        }
+        .onChange(of: viewModel.isPurchaseSuccessful) { newValue in
+            if newValue {
+                showPurchaseSuccessAlert = true
             }
         }
         .task {

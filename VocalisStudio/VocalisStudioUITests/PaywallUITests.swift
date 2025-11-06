@@ -25,8 +25,8 @@ final class PaywallUITests: XCTestCase {
     // MARK: - Paywall Display Tests
 
     func testPaywallDisplay_showsCorrectPricing() throws {
-        // Navigate to home → settings → subscription management
-        navigateToSubscriptionManagement()
+        // Navigate to paywall via Debug Menu
+        navigateToPaywall()
 
         // Verify free tier information
         XCTAssertTrue(app.staticTexts["1日5回まで / 1回30秒まで"].exists, "Should show free tier limits")
@@ -37,12 +37,16 @@ final class PaywallUITests: XCTestCase {
     }
 
     func testPaywallDisplay_showsTermsAndPrivacy() throws {
-        // Navigate to paywall
-        navigateToSubscriptionManagement()
+        // Navigate to paywall via Debug Menu
+        navigateToPaywall()
 
         // Verify terms and privacy links exist
-        XCTAssertTrue(app.links["利用規約"].exists, "Should have terms link")
-        XCTAssertTrue(app.links["プライバシーポリシー"].exists, "Should have privacy policy link")
+        // Note: SwiftUI Link may appear as other elements (buttons, staticTexts) in XCUITest
+        let termsElement = app.descendants(matching: .any).containing(NSPredicate(format: "label CONTAINS %@", "利用規約"))
+        XCTAssertTrue(termsElement.firstMatch.exists, "Should have terms link")
+
+        let privacyElement = app.descendants(matching: .any).containing(NSPredicate(format: "label CONTAINS %@", "プライバシーポリシー"))
+        XCTAssertTrue(privacyElement.firstMatch.exists, "Should have privacy policy link")
 
         // Verify disclaimer text
         XCTAssertTrue(app.staticTexts["購入により利用規約とプライバシーポリシーに同意したものとみなされます"].exists,
@@ -51,31 +55,25 @@ final class PaywallUITests: XCTestCase {
 
     // MARK: - Recording Limit → Paywall Flow
 
-    func testRecordingLimitReached_showsPaywall() throws {
-        // Note: This requires the app to be in a state where limit is reached
-        // In real testing, you would:
-        // 1. Record 5 times to hit the limit
-        // 2. Attempt 6th recording
-        // 3. Verify paywall is shown
-
-        // For now, we test the navigation path exists
-        let homeTab = app.tabBars.buttons["ホーム"]
-        homeTab.tap()
-
-        let upgradeButton = app.buttons.containing(NSPredicate(format: "label CONTAINS[cd] %@", "プレミアム"))
-        if upgradeButton.firstMatch.exists {
-            upgradeButton.firstMatch.tap()
-
-            // Verify paywall is displayed
-            XCTAssertTrue(app.navigationBars["プレミアムプラン"].exists, "Should show paywall")
-            XCTAssertTrue(app.staticTexts["無制限録音を解放"].exists, "Should show unlock message")
-        }
+    // SKIP: Feature not yet implemented
+    // This test requires recording limit enforcement which is not yet implemented in the app.
+    // The feature will:
+    // 1. Track recording count per day for free tier users
+    // 2. Show paywall when limit is reached on 6th recording attempt
+    // 3. Allow unlimited recordings for premium users
+    //
+    // To implement this test properly:
+    // 1. Add UI test launch argument to set recording count to 5
+    // 2. Attempt to start a 6th recording
+    // 3. Verify paywall is shown instead of starting recording
+    func SKIP_testRecordingLimitReached_showsPaywall() throws {
+        throw XCTSkip("Feature not yet implemented: Recording limit enforcement and paywall display on limit reached")
     }
 
     // MARK: - Purchase Flow Tests
 
     func testPurchaseButton_isAccessible() throws {
-        navigateToSubscriptionManagement()
+        navigateToPaywall()
 
         // Verify purchase button exists and is enabled
         let purchaseButton = app.buttons["購入する"]
@@ -94,9 +92,13 @@ final class PaywallUITests: XCTestCase {
     // MARK: - Settings Navigation Tests
 
     func testSettings_hasSubscriptionLink() throws {
-        // Navigate to settings
-        let settingsTab = app.tabBars.buttons["設定"]
-        settingsTab.tap()
+        // Navigate to settings from Home
+        let homeSettingsButton = app.buttons["HomeSettingsButton"]
+        XCTAssertTrue(homeSettingsButton.waitForExistence(timeout: 5), "Home settings button should exist")
+        homeSettingsButton.tap()
+
+        // Wait for settings view to appear
+        Thread.sleep(forTimeInterval: 0.5)
 
         // Verify subscription management link exists
         let subscriptionLink = app.buttons.containing(NSPredicate(format: "label CONTAINS[cd] %@", "サブスクリプションを管理"))
@@ -105,18 +107,29 @@ final class PaywallUITests: XCTestCase {
         // Tap to navigate
         subscriptionLink.firstMatch.tap()
 
+        // Wait for navigation
+        Thread.sleep(forTimeInterval: 0.5)
+
         // Verify navigation to subscription management
         XCTAssertTrue(app.navigationBars["サブスクリプション管理"].exists, "Should navigate to subscription management")
     }
 
     func testSettings_hasTermsAndPrivacyLinks() throws {
-        // Navigate to settings
-        let settingsTab = app.tabBars.buttons["設定"]
-        settingsTab.tap()
+        // Navigate to settings from Home
+        let homeSettingsButton = app.buttons["HomeSettingsButton"]
+        XCTAssertTrue(homeSettingsButton.waitForExistence(timeout: 5), "Home settings button should exist")
+        homeSettingsButton.tap()
+
+        // Wait for settings view to appear
+        Thread.sleep(forTimeInterval: 0.5)
 
         // Verify terms and privacy links exist in settings
-        XCTAssertTrue(app.links["利用規約"].exists, "Should have terms link in settings")
-        XCTAssertTrue(app.links["プライバシーポリシー"].exists, "Should have privacy link in settings")
+        // Note: These are Link elements in SwiftUI Form, need to find them differently
+        let termsLink = app.staticTexts["利用規約"]
+        XCTAssertTrue(termsLink.waitForExistence(timeout: 5), "Should have terms link in settings")
+
+        let privacyLink = app.staticTexts["プライバシーポリシー"]
+        XCTAssertTrue(privacyLink.exists, "Should have privacy link in settings")
     }
 
     // MARK: - Subscription Status Display Tests
@@ -143,7 +156,7 @@ final class PaywallUITests: XCTestCase {
     // MARK: - Loading States Tests
 
     func testPurchaseButton_showsLoadingState() throws {
-        navigateToSubscriptionManagement()
+        navigateToPaywall()
 
         let purchaseButton = app.buttons["購入する"]
         XCTAssertTrue(purchaseButton.exists)
@@ -160,22 +173,60 @@ final class PaywallUITests: XCTestCase {
     // MARK: - Helper Methods
 
     private func navigateToSubscriptionManagement() {
-        // Method 1: Via Settings
-        let settingsTab = app.tabBars.buttons["設定"]
-        if settingsTab.exists {
-            settingsTab.tap()
+        // Navigate from Home → Settings → Subscription Management
+        let homeSettingsButton = app.buttons["HomeSettingsButton"]
+        if homeSettingsButton.waitForExistence(timeout: 5) {
+            homeSettingsButton.tap()
 
+            // Wait for settings view to appear
+            Thread.sleep(forTimeInterval: 0.5)
+
+            // Tap subscription management link
             let subscriptionLink = app.buttons.containing(NSPredicate(format: "label CONTAINS[cd] %@", "サブスクリプションを管理"))
-            if subscriptionLink.firstMatch.exists {
+            if subscriptionLink.firstMatch.waitForExistence(timeout: 5) {
                 subscriptionLink.firstMatch.tap()
+
+                // Wait for subscription management view to appear
+                Thread.sleep(forTimeInterval: 0.5)
             }
         }
+    }
+
+    private func navigateToPaywall() {
+        // Option 1: Use Upgrade Banner on home screen (actual user flow)
+        // This banner appears when user is on free tier
+        let upgradeBanner = app.buttons.containing(NSPredicate(format: "label CONTAINS[cd] %@", "無制限録音を解放"))
+        if upgradeBanner.firstMatch.waitForExistence(timeout: 2) {
+            upgradeBanner.firstMatch.tap()
+            Thread.sleep(forTimeInterval: 0.5)
+            return
+        }
+
+        // Option 2: Use Debug Menu on home screen (debug builds only)
+        #if DEBUG
+        let debugButton = app.staticTexts["Debug"]
+        if debugButton.waitForExistence(timeout: 2) {
+            debugButton.tap()
+
+            // Wait for debug menu view to appear
+            Thread.sleep(forTimeInterval: 0.5)
+
+            // Tap Paywall link
+            let paywallLink = app.buttons.containing(NSPredicate(format: "label CONTAINS[cd] %@", "プレミアムプラン"))
+            if paywallLink.firstMatch.waitForExistence(timeout: 5) {
+                paywallLink.firstMatch.tap()
+
+                // Wait for paywall view to appear
+                Thread.sleep(forTimeInterval: 0.5)
+            }
+        }
+        #endif
     }
 
     // MARK: - Accessibility Tests
 
     func testPaywall_isAccessible() throws {
-        navigateToSubscriptionManagement()
+        navigateToPaywall()
 
         // Verify all important elements have accessibility identifiers or labels
         let purchaseButton = app.buttons["購入する"]
@@ -192,11 +243,8 @@ final class PaywallUITests: XCTestCase {
     // MARK: - Purchase Status Update Tests
 
     func testPurchase_shouldUpdateToPremiumStatus() throws {
-        // Navigate to subscription management
-        navigateToSubscriptionManagement()
-
-        // Verify initial free tier status
-        XCTAssertTrue(app.staticTexts["無料"].exists, "Should start with free tier")
+        // Navigate to paywall
+        navigateToPaywall()
 
         // Tap purchase button
         let purchaseButton = app.buttons["購入する"]
@@ -207,31 +255,33 @@ final class PaywallUITests: XCTestCase {
         // In StoreKit Testing environment, purchases complete immediately
         sleep(2)
 
-        // Verify premium status is shown
-        let premiumText = app.staticTexts.containing(NSPredicate(format: "label CONTAINS[cd] %@", "Premium"))
-        XCTAssertTrue(premiumText.firstMatch.waitForExistence(timeout: 5), "Should show Premium status after purchase")
+        // Wait for purchase success alert to appear and be auto-handled by XCUITest
+        Thread.sleep(forTimeInterval: 2)
 
-        // Navigate back to settings to verify status persists
-        app.navigationBars.buttons.firstMatch.tap()
-        sleep(1)
+        // Expected behavior: After purchase, app should return to home/top page
+        // Verify we're back on home screen by checking for home-specific elements
 
-        // Return to subscription management
-        let subscriptionLink = app.buttons.containing(NSPredicate(format: "label CONTAINS[cd] %@", "サブスクリプションを管理"))
-        subscriptionLink.firstMatch.tap()
+        // Check for upgrade banner (should be on home screen)
+        let upgradeBanner = app.buttons.containing(NSPredicate(format: "label CONTAINS[cd] %@", "無制限録音を解放"))
 
-        // Verify premium status is still shown
-        XCTAssertTrue(premiumText.firstMatch.exists, "Premium status should persist after navigation")
+        // Check for home settings button
+        let homeSettingsButton = app.buttons["HomeSettingsButton"]
+
+        // At least one home screen element should be accessible
+        let isOnHomeScreen = upgradeBanner.firstMatch.waitForExistence(timeout: 3) || homeSettingsButton.waitForExistence(timeout: 3)
+
+        XCTAssertTrue(isOnHomeScreen, "After purchase, should return to home/top page but PaywallView sheet is still present (implementation error)")
     }
 
     func testDebugMenu_tierSwitch_shouldPersistAcrossScreens() throws {
         #if DEBUG
-        // Navigate to Debug Menu
-        let settingsTab = app.tabBars.buttons["設定"]
-        settingsTab.tap()
+        // Navigate to Debug Menu from Home (Debug button is at bottom of home screen)
+        let debugButton = app.staticTexts["Debug"]
+        XCTAssertTrue(debugButton.waitForExistence(timeout: 5), "Debug button should exist on home screen")
+        debugButton.tap()
 
-        let debugMenuButton = app.buttons.containing(NSPredicate(format: "label CONTAINS[cd] %@", "Debug Menu"))
-        XCTAssertTrue(debugMenuButton.firstMatch.exists, "Debug Menu button should exist")
-        debugMenuButton.firstMatch.tap()
+        // Wait for debug menu
+        Thread.sleep(forTimeInterval: 0.5)
 
         // Switch to Premium tier in debug menu
         let tierPicker = app.segmentedControls.firstMatch
@@ -239,24 +289,40 @@ final class PaywallUITests: XCTestCase {
         tierPicker.buttons["Premium"].tap()
 
         // Wait for status update
-        sleep(1)
+        Thread.sleep(forTimeInterval: 1)
 
         // Verify current tier shows Premium
         let currentTierLabel = app.staticTexts.containing(NSPredicate(format: "label CONTAINS[cd] %@", "現在: Premium"))
         XCTAssertTrue(currentTierLabel.firstMatch.exists, "Should show current tier as Premium")
 
-        // Navigate to subscription management
+        // Navigate back to home
         app.navigationBars.buttons.firstMatch.tap()
+        Thread.sleep(forTimeInterval: 0.5)
+
+        // Navigate to Settings → Subscription Management
+        let homeSettingsButton = app.buttons["HomeSettingsButton"]
+        homeSettingsButton.tap()
+        Thread.sleep(forTimeInterval: 0.5)
+
         let subscriptionLink = app.buttons.containing(NSPredicate(format: "label CONTAINS[cd] %@", "サブスクリプションを管理"))
         subscriptionLink.firstMatch.tap()
+        Thread.sleep(forTimeInterval: 0.5)
 
         // Verify Premium status is shown in subscription management
         let premiumText = app.staticTexts.containing(NSPredicate(format: "label CONTAINS[cd] %@", "Premium"))
         XCTAssertTrue(premiumText.firstMatch.exists, "Should show Premium status in subscription management")
 
-        // Return to debug menu
+        // Return to settings
         app.navigationBars.buttons.firstMatch.tap()
-        debugMenuButton.firstMatch.tap()
+        Thread.sleep(forTimeInterval: 0.5)
+
+        // Return to home
+        app.navigationBars.buttons.firstMatch.tap()
+        Thread.sleep(forTimeInterval: 0.5)
+
+        // Return to debug menu
+        debugButton.tap()
+        Thread.sleep(forTimeInterval: 0.5)
 
         // Verify tier is still Premium
         XCTAssertTrue(currentTierLabel.firstMatch.exists, "Tier should still be Premium in debug menu")

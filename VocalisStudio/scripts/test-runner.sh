@@ -52,6 +52,7 @@ run_tests() {
         -project ${PROJECT} \
         -scheme ${scheme} \
         -destination '${DESTINATION}' \
+        -parallel-testing-enabled NO \
         -allowProvisioningUpdates"
 
     # Add test filter if specified
