@@ -241,7 +241,9 @@ public struct SubscriptionManagementView: View {
     }
 
     private func openAppStoreManagement() {
-        if let url = URL(string: "https://apps.apple.com/account/subscriptions") {
+        // iOS設定アプリのサブスクリプション管理画面に遷移
+        // Note: シミュレータでは動作しないが、実機では正しく動作する
+        if let url = URL(string: "itms-apps://apps.apple.com/account/subscriptions") {
             UIApplication.shared.open(url)
         }
     }

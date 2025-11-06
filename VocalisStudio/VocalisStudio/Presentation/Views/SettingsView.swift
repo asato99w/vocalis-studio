@@ -18,8 +18,8 @@ public struct SettingsView: View {
                         .foregroundColor(subscriptionViewModel.currentStatus?.tier == .premium ? .green : ColorPalette.text.opacity(0.6))
                 }
 
-                Button {
-                    openSubscriptionManagement()
+                NavigationLink {
+                    SubscriptionManagementView(viewModel: subscriptionViewModel)
                 } label: {
                     Label("サブスクリプションを管理", systemImage: "gear")
                 }
@@ -57,16 +57,6 @@ public struct SettingsView: View {
         .navigationBarTitleDisplayMode(.large)
         .task {
             await subscriptionViewModel.loadStatus()
-        }
-    }
-
-    // MARK: - Private Methods
-
-    private func openSubscriptionManagement() {
-        // iOS設定アプリのサブスクリプション管理画面に遷移
-        // Note: シミュレータでは動作しないが、実機では正しく動作する
-        if let url = URL(string: "itms-apps://apps.apple.com/account/subscriptions") {
-            UIApplication.shared.open(url)
         }
     }
 }
