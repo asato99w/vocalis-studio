@@ -45,6 +45,30 @@ public struct SettingsView: View {
                         .foregroundColor(ColorPalette.text.opacity(0.6))
                 }
             }
+
+            Section("規約・ポリシー") {
+                Link(destination: URL(string: "https://vocalis-studio.example.com/terms.html")!) {
+                    HStack {
+                        Text("利用規約")
+                            .foregroundColor(ColorPalette.text)
+                        Spacer()
+                        Image(systemName: "arrow.up.right.square")
+                            .foregroundColor(.secondary)
+                            .font(.caption)
+                    }
+                }
+
+                Link(destination: URL(string: "https://vocalis-studio.example.com/privacy.html")!) {
+                    HStack {
+                        Text("プライバシーポリシー")
+                            .foregroundColor(ColorPalette.text)
+                        Spacer()
+                        Image(systemName: "arrow.up.right.square")
+                            .foregroundColor(.secondary)
+                            .font(.caption)
+                    }
+                }
+            }
         }
         .navigationTitle("settings.title".localized)
         .navigationBarTitleDisplayMode(.large)

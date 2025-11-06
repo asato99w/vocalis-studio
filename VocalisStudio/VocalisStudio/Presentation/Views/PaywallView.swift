@@ -199,15 +199,11 @@ public struct PaywallView: View {
                 .multilineTextAlignment(.center)
 
             HStack(spacing: 16) {
-                Button("利用規約") {
-                    // Open terms URL
-                }
-                .font(.caption)
+                Link("利用規約", destination: URL(string: "https://vocalis-studio.example.com/terms.html")!)
+                    .font(.caption)
 
-                Button("プライバシーポリシー") {
-                    // Open privacy URL
-                }
-                .font(.caption)
+                Link("プライバシーポリシー", destination: URL(string: "https://vocalis-studio.example.com/privacy.html")!)
+                    .font(.caption)
             }
         }
         .padding(.top)
