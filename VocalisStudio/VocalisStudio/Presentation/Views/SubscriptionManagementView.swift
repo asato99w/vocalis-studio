@@ -113,6 +113,11 @@ public struct SubscriptionManagementView: View {
                         value: status.willAutoRenew ? "ON" : "OFF"
                     )
                 }
+
+                DetailRow(
+                    title: "バージョン",
+                    value: "v1.0"
+                )
             }
         }
         .padding()
