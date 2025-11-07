@@ -27,7 +27,7 @@ public enum ScaleElement: Equatable {
 }
 
 /// Scale settings entity
-public struct ScaleSettings: Equatable, Codable {
+public struct ScaleSettings: Equatable, Codable, Hashable {
     public let startNote: MIDINote
     public let endNote: MIDINote
     public let notePattern: NotePattern

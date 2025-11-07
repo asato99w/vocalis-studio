@@ -5,6 +5,7 @@ import VocalisDomain
 public struct RecordingListView: View {
     @StateObject private var viewModel: RecordingListViewModel
     @StateObject private var localization = LocalizationManager.shared
+    @State private var selectedRecording: Recording?
 
     private let audioPlayer: AudioPlayerProtocol
     private let analyzeRecordingUseCase: AnalyzeRecordingUseCase
@@ -31,6 +32,13 @@ public struct RecordingListView: View {
         }
         .navigationTitle("list.title".localized)
         .navigationBarTitleDisplayMode(.large)
+        .navigationDestination(item: $selectedRecording) { recording in
+            AnalysisView(
+                recording: recording,
+                audioPlayer: audioPlayer,
+                analyzeRecordingUseCase: analyzeRecordingUseCase
+            )
+        }
         .task {
             await viewModel.loadRecordings()
         }
@@ -71,11 +79,22 @@ public struct RecordingListView: View {
                 RecordingRow(
                     recording: recording,
                     isPlaying: viewModel.playingRecordingId == recording.id,
+                    viewModel: viewModel,
                     audioPlayer: audioPlayer,
                     analyzeRecordingUseCase: analyzeRecordingUseCase,
+                    selectedRecording: $selectedRecording,
                     onTap: {
                         Task {
+                            let wasPlaying = viewModel.playingRecordingId == recording.id
                             await viewModel.playRecording(recording)
+
+                            if wasPlaying {
+                                // Stopped playback
+                                await viewModel.stopPositionTracking()
+                            } else if viewModel.playingRecordingId == recording.id {
+                                // Started playback
+                                await viewModel.startPositionTracking()
+                            }
                         }
                     },
                     onDelete: {
@@ -94,57 +113,91 @@ public struct RecordingListView: View {
 private struct RecordingRow: View {
     let recording: Recording
     let isPlaying: Bool
+    let viewModel: RecordingListViewModel
     let audioPlayer: AudioPlayerProtocol
     let analyzeRecordingUseCase: AnalyzeRecordingUseCase
+    @Binding var selectedRecording: Recording?
     let onTap: () -> Void
     let onDelete: () -> Void
 
     @State private var showDeleteConfirmation = false
 
     var body: some View {
-        HStack(spacing: 16) {
-            // Play button
-            Button(action: onTap) {
-                Image(systemName: isPlaying ? "stop.circle.fill" : "play.circle.fill")
-                    .font(.system(size: 40))
-                    .foregroundColor(isPlaying ? ColorPalette.alertActive : ColorPalette.primary)
+        VStack(spacing: 8) {
+            // Top row: Date and scale name
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(recording.formattedDate)
+                        .font(.subheadline)
+                        .foregroundColor(ColorPalette.text)
+
+                    if let scaleDisplayName = recording.scaleDisplayName {
+                        Text(scaleDisplayName)
+                            .font(.caption)
+                            .foregroundColor(ColorPalette.text.opacity(0.6))
+                    }
+                }
+
+                Spacer()
+
+                // Analysis button
+                Button(action: {
+                    selectedRecording = recording
+                }) {
+                    Image(systemName: "waveform.path.ecg")
+                        .foregroundColor(ColorPalette.accent)
+                        .font(.title3)
+                }
+                .buttonStyle(PlainButtonStyle())
+                .accessibilityIdentifier("AnalysisNavigationLink_\(recording.id.value.uuidString)")
+
+                // Delete button
+                Button(action: { showDeleteConfirmation = true }) {
+                    Image(systemName: "trash")
+                        .foregroundColor(ColorPalette.alertActive)
+                        .font(.title3)
+                }
+                .buttonStyle(PlainButtonStyle())
+                .accessibilityIdentifier("DeleteRecordingButton_\(recording.id.value.uuidString)")
             }
-            .buttonStyle(PlainButtonStyle())
 
-            // Recording info
-            VStack(alignment: .leading, spacing: 4) {
-                Text(recording.formattedDate)
-                    .font(.headline)
-                    .foregroundColor(ColorPalette.text)
+            // Bottom row: Play button and slider on the same line
+            HStack(spacing: 12) {
+                // Play button
+                Button(action: onTap) {
+                    Image(systemName: isPlaying ? "stop.circle.fill" : "play.circle.fill")
+                        .font(.system(size: 32))
+                        .foregroundColor(isPlaying ? ColorPalette.alertActive : ColorPalette.primary)
+                }
+                .buttonStyle(PlainButtonStyle())
+                .accessibilityLabel(isPlaying ? "stop.circle.fill" : "play.circle.fill")
 
-                Text(recording.duration.formatted)
-                    .font(.subheadline)
-                    .foregroundColor(ColorPalette.text.opacity(0.6))
+                // Slider and time info
+                VStack(spacing: 4) {
+                    Slider(
+                        value: Binding(
+                            get: { viewModel.currentPlaybackPosition[recording.id] ?? 0.0 },
+                            set: { newValue in
+                                Task {
+                                    await viewModel.seek(to: newValue, for: recording.id)
+                                }
+                            }
+                        ),
+                        in: 0...recording.duration.seconds
+                    )
+                    .accentColor(ColorPalette.primary)
+
+                    HStack {
+                        Text(formatTime(viewModel.currentPlaybackPosition[recording.id] ?? 0.0))
+                            .font(.caption2)
+                            .foregroundColor(ColorPalette.text.opacity(0.5))
+                        Spacer()
+                        Text(formatTime(recording.duration.seconds))
+                            .font(.caption2)
+                            .foregroundColor(ColorPalette.text.opacity(0.5))
+                    }
+                }
             }
-
-            Spacer()
-
-            // Analysis button
-            NavigationLink(destination: AnalysisView(
-                recording: recording,
-                audioPlayer: audioPlayer,
-                analyzeRecordingUseCase: analyzeRecordingUseCase
-            )) {
-                Image(systemName: "waveform.path.ecg")
-                    .foregroundColor(ColorPalette.accent)
-                    .font(.title3)
-            }
-            .buttonStyle(PlainButtonStyle())
-            .accessibilityIdentifier("AnalysisNavigationLink_\(recording.id.value.uuidString)")
-
-            // Delete button
-            Button(action: { showDeleteConfirmation = true }) {
-                Image(systemName: "trash")
-                    .foregroundColor(ColorPalette.alertActive)
-                    .font(.title3)
-            }
-            .buttonStyle(PlainButtonStyle())
-            .accessibilityIdentifier("DeleteRecordingButton_\(recording.id.value.uuidString)")
         }
         .padding(.vertical, 8)
         .confirmationDialog(
@@ -162,5 +215,12 @@ private struct RecordingRow: View {
         } message: {
             Text("list.delete_confirmation_message".localized)
         }
+    }
+
+    /// Format time in seconds to MM:SS format
+    private func formatTime(_ seconds: Double) -> String {
+        let minutes = Int(seconds) / 60
+        let remainingSeconds = Int(seconds) % 60
+        return String(format: "%d:%02d", minutes, remainingSeconds)
     }
 }

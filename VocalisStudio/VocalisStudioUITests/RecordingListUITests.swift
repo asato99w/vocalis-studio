@@ -98,6 +98,137 @@ final class RecordingListUITests: XCTestCase {
         XCTAssertTrue(deleteButtons.firstMatch.waitForExistence(timeout: 3), "Should be back at recording list with delete button visible")
     }
 
+    /// Test: Recording list shows scale name for scale recordings
+    /// Expected: ~12 seconds execution time
+    @MainActor
+    func testRecordingListShowsScaleName() throws {
+        let app = launchAppWithResetRecordingCount()
+
+        // 1. Create a recording with scale (scale is enabled by default)
+        let homeRecordButton = app.buttons["HomeRecordButton"]
+        XCTAssertTrue(homeRecordButton.waitForExistence(timeout: 5), "Home record button should exist")
+        homeRecordButton.tap()
+
+        let startButton = app.buttons["StartRecordingButton"]
+        XCTAssertTrue(startButton.waitForExistence(timeout: 5), "Start recording button should exist")
+        startButton.tap()
+
+        // Wait for recording to start
+        let stopButton = app.buttons["StopRecordingButton"]
+        XCTAssertTrue(stopButton.waitForExistence(timeout: 10), "Stop recording button should appear")
+
+        // Record for 1 second
+        Thread.sleep(forTimeInterval: 1.0)
+
+        stopButton.tap()
+
+        // Wait for recording to finish
+        let playButton = app.buttons["PlayLastRecordingButton"]
+        XCTAssertTrue(playButton.waitForExistence(timeout: 5), "Play button should appear after save")
+
+        // 2. Navigate back to Home
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        Thread.sleep(forTimeInterval: 0.5)
+
+        // 3. Navigate to Recording List
+        let homeListButton = app.buttons["HomeListButton"]
+        XCTAssertTrue(homeListButton.waitForExistence(timeout: 5), "Home list button should exist")
+        homeListButton.tap()
+
+        // Wait for list to load
+        Thread.sleep(forTimeInterval: 2.0)
+
+        // Screenshot: Recording list with scale name
+        let screenshot = app.screenshot()
+        let attachment = XCTAttachment(screenshot: screenshot)
+        attachment.name = "scale_name_display"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+
+        // 4. Verify scale name is displayed (e.g., "C4 五声音階")
+        // The scale name should contain the note name pattern and scale pattern name
+        let scaleNameTexts = app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", "五声音階"))
+        XCTAssertTrue(scaleNameTexts.firstMatch.waitForExistence(timeout: 3), "Scale name containing '五声音階' should be displayed in the recording list")
+    }
+
+    /// Test: Playback position slider appears during playback
+    /// Expected: ~15 seconds execution time
+    @MainActor
+    func testPlaybackPositionSliderAppearsWhenPlaying() throws {
+        let app = launchAppWithResetRecordingCount()
+
+        // 1. Create a recording
+        let homeRecordButton = app.buttons["HomeRecordButton"]
+        XCTAssertTrue(homeRecordButton.waitForExistence(timeout: 5), "Home record button should exist")
+        homeRecordButton.tap()
+
+        let startButton = app.buttons["StartRecordingButton"]
+        XCTAssertTrue(startButton.waitForExistence(timeout: 5), "Start recording button should exist")
+        startButton.tap()
+
+        let stopButton = app.buttons["StopRecordingButton"]
+        XCTAssertTrue(stopButton.waitForExistence(timeout: 10), "Stop recording button should appear")
+
+        // Record for 3 seconds to have enough playback time
+        Thread.sleep(forTimeInterval: 3.0)
+
+        stopButton.tap()
+
+        let playButton = app.buttons["PlayLastRecordingButton"]
+        XCTAssertTrue(playButton.waitForExistence(timeout: 5), "Play button should appear after save")
+
+        // 2. Navigate to Recording List
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        Thread.sleep(forTimeInterval: 0.5)
+
+        let homeListButton = app.buttons["HomeListButton"]
+        XCTAssertTrue(homeListButton.waitForExistence(timeout: 5), "Home list button should exist")
+        homeListButton.tap()
+
+        Thread.sleep(forTimeInterval: 2.0)
+
+        // Screenshot: List before playback
+        let screenshot1 = app.screenshot()
+        let attachment1 = XCTAttachment(screenshot: screenshot1)
+        attachment1.name = "slider_01_before_playback"
+        attachment1.lifetime = .keepAlways
+        add(attachment1)
+
+        // 3. Find and tap play button in the list
+        let playCircleButtons = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", "play.circle.fill"))
+        XCTAssertTrue(playCircleButtons.firstMatch.waitForExistence(timeout: 3), "Play button should exist in the list")
+        playCircleButtons.firstMatch.tap()
+
+        // Wait for playback to start
+        Thread.sleep(forTimeInterval: 1.0)
+
+        // Screenshot: During playback (slider should be visible)
+        let screenshot2 = app.screenshot()
+        let attachment2 = XCTAttachment(screenshot: screenshot2)
+        attachment2.name = "slider_02_during_playback"
+        attachment2.lifetime = .keepAlways
+        add(attachment2)
+
+        // 4. Verify slider is visible during playback
+        let sliders = app.sliders
+        XCTAssertGreaterThan(sliders.count, 0, "Position slider should be visible during playback")
+
+        // 5. Verify time display exists (format: "M:SS")
+        // Time labels should show current position and total duration
+        let timeLabels = app.staticTexts.matching(NSPredicate(format: "label MATCHES %@", "[0-9]:[0-9]{2}"))
+        XCTAssertGreaterThan(timeLabels.count, 0, "Time labels should be displayed during playback")
+
+        // Wait for playback to finish naturally
+        Thread.sleep(forTimeInterval: 3.0)
+
+        // Screenshot: After playback (slider should disappear)
+        let screenshot3 = app.screenshot()
+        let attachment3 = XCTAttachment(screenshot: screenshot3)
+        attachment3.name = "slider_03_after_playback"
+        attachment3.lifetime = .keepAlways
+        add(attachment3)
+    }
+
     /// Test 3: Delete recording functionality
     /// Expected: ~15 seconds execution time
     @MainActor

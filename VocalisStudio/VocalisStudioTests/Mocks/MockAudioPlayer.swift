@@ -8,6 +8,7 @@ final class MockAudioPlayer: AudioPlayerProtocol {
     var pauseCalled = false
     var resumeCalled = false
     var seekCalled = false
+    var seekToTime: TimeInterval = 0.0
     var playURL: URL?
     var playShouldFail = false
     var _isPlaying = false
@@ -58,6 +59,7 @@ final class MockAudioPlayer: AudioPlayerProtocol {
 
     func seek(to time: TimeInterval) {
         seekCalled = true
+        seekToTime = time
         _currentTime = time
     }
 
@@ -67,6 +69,7 @@ final class MockAudioPlayer: AudioPlayerProtocol {
         pauseCalled = false
         resumeCalled = false
         seekCalled = false
+        seekToTime = 0.0
         playURL = nil
         playShouldFail = false
         _isPlaying = false

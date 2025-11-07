@@ -1,7 +1,7 @@
 import Foundation
 
 /// Tempo value object representing duration per note
-public struct Tempo: Equatable {
+public struct Tempo: Equatable, Hashable {
     public let secondsPerNote: Double
 
     public init(secondsPerNote: Double) throws {

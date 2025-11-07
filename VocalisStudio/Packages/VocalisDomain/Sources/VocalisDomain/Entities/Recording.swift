@@ -1,7 +1,7 @@
 import Foundation
 
 /// Recording entity
-public struct Recording: Equatable, Identifiable, Codable {
+public struct Recording: Equatable, Identifiable, Codable, Hashable {
     public let id: RecordingId
     public let fileURL: URL
     public let createdAt: Date
@@ -22,12 +22,20 @@ public struct Recording: Equatable, Identifiable, Codable {
         self.scaleSettings = scaleSettings
     }
 
-    /// Formatted creation date for display
+    /// Formatted creation date for display (compact format)
     public var formattedDate: String {
         let formatter = DateFormatter()
-        formatter.dateStyle = .long
+        formatter.dateStyle = .short
         formatter.timeStyle = .short
         return formatter.string(from: createdAt)
+    }
+
+    /// Display name for the scale used in this recording
+    /// Returns nil when recording was made without scale settings
+    /// Example: "C4 五声音階"
+    public var scaleDisplayName: String? {
+        guard let settings = scaleSettings else { return nil }
+        return "\(settings.startNote.noteName) \(settings.notePattern.displayName)"
     }
 }
 
