@@ -10,6 +10,7 @@ public class RecordingListViewModel: ObservableObject {
     @Published public private(set) var errorMessage: String?
     @Published public private(set) var playingRecordingId: RecordingId?
     @Published public private(set) var currentTime: Double = 0.0
+    @Published public private(set) var currentPlaybackPosition: [RecordingId: TimeInterval] = [:]
 
     private let recordingRepository: RecordingRepositoryProtocol
     private let audioPlayer: AudioPlayerProtocol
@@ -52,17 +53,34 @@ public class RecordingListViewModel: ObservableObject {
 
         do {
             playingRecordingId = recording.id
-            try await audioPlayer.play(url: recording.fileURL)
 
-            // Wait for playback to complete
-            while audioPlayer.isPlaying {
-                try await Task.sleep(nanoseconds: 100_000_000) // 100ms
+            // Start playback without waiting for completion
+            Task {
+                do {
+                    try await audioPlayer.play(url: recording.fileURL)
+                    // Playback finished naturally
+                    await MainActor.run {
+                        if playingRecordingId == recording.id {
+                            playingRecordingId = nil
+                            stopPositionTracking()
+                            // Reset position to beginning
+                            currentPlaybackPosition[recording.id] = 0.0
+                            currentTime = 0.0
+                        }
+                    }
+                } catch {
+                    await MainActor.run {
+                        errorMessage = error.localizedDescription
+                        if playingRecordingId == recording.id {
+                            playingRecordingId = nil
+                            stopPositionTracking()
+                            // Reset position to beginning on error too
+                            currentPlaybackPosition[recording.id] = 0.0
+                            currentTime = 0.0
+                        }
+                    }
+                }
             }
-
-            playingRecordingId = nil
-        } catch {
-            errorMessage = error.localizedDescription
-            playingRecordingId = nil
         }
     }
 
@@ -95,7 +113,11 @@ public class RecordingListViewModel: ObservableObject {
 
         positionTrackingTask = Task { @MainActor in
             while !Task.isCancelled {
-                currentTime = await audioPlayer.currentTime
+                if let recordingId = playingRecordingId {
+                    let position = await audioPlayer.currentTime
+                    currentTime = position
+                    currentPlaybackPosition[recordingId] = position
+                }
                 try? await Task.sleep(nanoseconds: 100_000_000) // 100ms update interval
             }
         }
@@ -111,5 +133,13 @@ public class RecordingListViewModel: ObservableObject {
     public func seekToPosition(_ time: Double) async {
         await audioPlayer.seek(to: time)
         currentTime = time
+    }
+
+    /// Seek to a specific position for a specific recording
+    public func seek(to position: TimeInterval, for recordingId: RecordingId) async {
+        guard playingRecordingId == recordingId else { return }
+        await audioPlayer.seek(to: position)
+        currentPlaybackPosition[recordingId] = position
+        currentTime = position
     }
 }
