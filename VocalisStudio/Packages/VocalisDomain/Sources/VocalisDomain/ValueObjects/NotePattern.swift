@@ -1,7 +1,7 @@
 import Foundation
 
 /// Note pattern for scale generation
-public enum NotePattern: Equatable, Codable {
+public enum NotePattern: Equatable, Codable, Hashable {
     case fiveToneScale  // ドレミファソ (Root, +2, +4, +5, +7)
 
     /// Intervals from the root note (in semitones)

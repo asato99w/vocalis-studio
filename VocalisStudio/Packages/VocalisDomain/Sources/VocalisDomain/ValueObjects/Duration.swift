@@ -1,6 +1,6 @@
 import Foundation
 
-public struct Duration: Equatable, Comparable {
+public struct Duration: Equatable, Comparable, Hashable {
     public let seconds: TimeInterval
 
     public init(seconds: TimeInterval) {
