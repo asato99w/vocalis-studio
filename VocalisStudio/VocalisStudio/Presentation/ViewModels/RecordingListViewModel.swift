@@ -9,9 +9,11 @@ public class RecordingListViewModel: ObservableObject {
     @Published public private(set) var isLoading: Bool = false
     @Published public private(set) var errorMessage: String?
     @Published public private(set) var playingRecordingId: RecordingId?
+    @Published public private(set) var currentTime: Double = 0.0
 
     private let recordingRepository: RecordingRepositoryProtocol
     private let audioPlayer: AudioPlayerProtocol
+    private var positionTrackingTask: Task<Void, Never>?
 
     public init(
         recordingRepository: RecordingRepositoryProtocol,
@@ -85,5 +87,29 @@ public class RecordingListViewModel: ObservableObject {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    /// Start position tracking
+    public func startPositionTracking() async {
+        stopPositionTracking()
+
+        positionTrackingTask = Task { @MainActor in
+            while !Task.isCancelled {
+                currentTime = await audioPlayer.currentTime
+                try? await Task.sleep(nanoseconds: 100_000_000) // 100ms update interval
+            }
+        }
+    }
+
+    /// Stop position tracking
+    public func stopPositionTracking() {
+        positionTrackingTask?.cancel()
+        positionTrackingTask = nil
+    }
+
+    /// Seek to a specific position
+    public func seekToPosition(_ time: Double) async {
+        await audioPlayer.seek(to: time)
+        currentTime = time
     }
 }

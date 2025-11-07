@@ -19,4 +19,12 @@ public enum NotePattern: Equatable, Codable {
         let descending = intervals.dropLast().reversed()
         return ascending + descending
     }
+
+    /// Display name for the pattern in Japanese
+    public var displayName: String {
+        switch self {
+        case .fiveToneScale:
+            return "五声音階"
+        }
+    }
 }

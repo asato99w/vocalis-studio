@@ -29,6 +29,14 @@ public struct Recording: Equatable, Identifiable, Codable {
         formatter.timeStyle = .short
         return formatter.string(from: createdAt)
     }
+
+    /// Display name for the scale used in this recording
+    /// Returns nil when recording was made without scale settings
+    /// Example: "C4 五声音階"
+    public var scaleDisplayName: String? {
+        guard let settings = scaleSettings else { return nil }
+        return "\(settings.startNote.noteName) \(settings.notePattern.displayName)"
+    }
 }
 
 // MARK: - Codable conformance for Duration

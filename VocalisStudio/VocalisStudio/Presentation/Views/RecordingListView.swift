@@ -71,11 +71,22 @@ public struct RecordingListView: View {
                 RecordingRow(
                     recording: recording,
                     isPlaying: viewModel.playingRecordingId == recording.id,
+                    currentTime: viewModel.currentTime,
                     audioPlayer: audioPlayer,
                     analyzeRecordingUseCase: analyzeRecordingUseCase,
                     onTap: {
                         Task {
                             await viewModel.playRecording(recording)
+                            if viewModel.playingRecordingId == recording.id {
+                                await viewModel.startPositionTracking()
+                            } else {
+                                await viewModel.stopPositionTracking()
+                            }
+                        }
+                    },
+                    onSeek: { time in
+                        Task {
+                            await viewModel.seekToPosition(time)
                         }
                     },
                     onDelete: {
@@ -94,9 +105,11 @@ public struct RecordingListView: View {
 private struct RecordingRow: View {
     let recording: Recording
     let isPlaying: Bool
+    let currentTime: Double
     let audioPlayer: AudioPlayerProtocol
     let analyzeRecordingUseCase: AnalyzeRecordingUseCase
     let onTap: () -> Void
+    let onSeek: (Double) -> Void
     let onDelete: () -> Void
 
     @State private var showDeleteConfirmation = false
@@ -110,16 +123,46 @@ private struct RecordingRow: View {
                     .foregroundColor(isPlaying ? ColorPalette.alertActive : ColorPalette.primary)
             }
             .buttonStyle(PlainButtonStyle())
+            .accessibilityLabel(isPlaying ? "stop.circle.fill" : "play.circle.fill")
 
             // Recording info
-            VStack(alignment: .leading, spacing: 4) {
-                Text(recording.formattedDate)
-                    .font(.headline)
-                    .foregroundColor(ColorPalette.text)
+            VStack(alignment: .leading, spacing: 8) {
+                // Date and scale info
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(recording.formattedDate)
+                        .font(.headline)
+                        .foregroundColor(ColorPalette.text)
 
-                Text(recording.duration.formatted)
-                    .font(.subheadline)
-                    .foregroundColor(ColorPalette.text.opacity(0.6))
+                    if let scaleDisplayName = recording.scaleDisplayName {
+                        Text(scaleDisplayName)
+                            .font(.subheadline)
+                            .foregroundColor(ColorPalette.text.opacity(0.6))
+                    }
+                }
+
+                // Position slider (only shown when playing)
+                if isPlaying {
+                    VStack(spacing: 4) {
+                        Slider(
+                            value: Binding(
+                                get: { currentTime },
+                                set: { newValue in onSeek(newValue) }
+                            ),
+                            in: 0...recording.duration.seconds
+                        )
+                        .accentColor(ColorPalette.primary)
+
+                        HStack {
+                            Text(formatTime(currentTime))
+                                .font(.caption)
+                                .foregroundColor(ColorPalette.text.opacity(0.5))
+                            Spacer()
+                            Text(formatTime(recording.duration.seconds))
+                                .font(.caption)
+                                .foregroundColor(ColorPalette.text.opacity(0.5))
+                        }
+                    }
+                }
             }
 
             Spacer()
@@ -162,5 +205,12 @@ private struct RecordingRow: View {
         } message: {
             Text("list.delete_confirmation_message".localized)
         }
+    }
+
+    /// Format time in seconds to MM:SS format
+    private func formatTime(_ seconds: Double) -> String {
+        let minutes = Int(seconds) / 60
+        let remainingSeconds = Int(seconds) % 60
+        return String(format: "%d:%02d", minutes, remainingSeconds)
     }
 }

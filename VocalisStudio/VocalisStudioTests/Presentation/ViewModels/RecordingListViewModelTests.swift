@@ -272,4 +272,51 @@ final class RecordingListViewModelTests: XCTestCase {
         // Then
         XCTAssertTrue(mockRepository.deleteCalled)
     }
+
+    // MARK: - Position Tracking Tests
+
+    func testStartPositionTracking_UpdatesCurrentTime() async {
+        // Given
+        mockAudioPlayer._currentTime = 5.0
+
+        // When
+        await sut.startPositionTracking()
+
+        // Wait for at least one update
+        try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
+
+        // Then
+        XCTAssertEqual(sut.currentTime, 5.0, accuracy: 0.1)
+    }
+
+    func testStopPositionTracking_StopsUpdates() async {
+        // Given
+        await sut.startPositionTracking()
+        mockAudioPlayer._currentTime = 5.0
+
+        // When
+        sut.stopPositionTracking()
+        let timeAfterStop = sut.currentTime
+
+        // Wait to verify no more updates
+        mockAudioPlayer._currentTime = 10.0
+        try? await Task.sleep(nanoseconds: 200_000_000)
+
+        // Then - currentTime should not have changed
+        XCTAssertEqual(sut.currentTime, timeAfterStop)
+    }
+
+    // MARK: - Seek Tests
+
+    func testSeekToPosition_CallsAudioPlayerSeek() async {
+        // Given
+        let targetTime = 30.0
+
+        // When
+        await sut.seekToPosition(targetTime)
+
+        // Then
+        XCTAssertTrue(mockAudioPlayer.seekCalled)
+        XCTAssertEqual(mockAudioPlayer.seekToTime, targetTime, accuracy: 0.01)
+    }
 }
