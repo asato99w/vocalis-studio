@@ -88,7 +88,7 @@
               "locale" : "ja"
             }
           ],
-          "productID" : "com.kazuasato.VocalisStudio.premium.monthly",
+          "productID" : "com.vocalisstudio.premium.monthly",
           "recurringSubscriptionPeriod" : "P1M",
           "referenceName" : "Premium Monthly",
           "subscriptionGroupID" : "21527443",
@@ -113,9 +113,59 @@
               "locale" : "ja"
             }
           ],
-          "productID" : "com.kazuasato.VocalisStudio.premium.yearly",
+          "productID" : "com.vocalisstudio.premium.yearly",
           "recurringSubscriptionPeriod" : "P1Y",
           "referenceName" : "Premium Yearly",
+          "subscriptionGroupID" : "21527443",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "980",
+          "familyShareable" : false,
+          "groupNumber" : 3,
+          "internalID" : "6670890126",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "無制限録音・最大10分",
+              "displayName" : "プレミアムプラス（月額）",
+              "locale" : "ja"
+            }
+          ],
+          "productID" : "com.vocalisstudio.premiumplus.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Premium Plus Monthly",
+          "subscriptionGroupID" : "21527443",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "9800",
+          "familyShareable" : false,
+          "groupNumber" : 4,
+          "internalID" : "6670890127",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "無制限録音・最大10分（年間プラン）",
+              "displayName" : "プレミアムプラス（年額）",
+              "locale" : "ja"
+            }
+          ],
+          "productID" : "com.vocalisstudio.premiumplus.yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Premium Plus Yearly",
           "subscriptionGroupID" : "21527443",
           "type" : "RecurringSubscription"
         }
