@@ -176,7 +176,7 @@ class PitchDetectionMockPitchDetector: PitchDetectorProtocol {
     var startRealtimeDetectionCalled = false
     var stopRealtimeDetectionCalled = false
 
-    func startRealtimeDetection() throws {
+    func startRealtimeDetection() async throws {
         startRealtimeDetectionCalled = true
         isDetecting = true
     }

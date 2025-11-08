@@ -42,29 +42,29 @@ final class RealtimePitchDetectorTests: XCTestCase {
 
     // MARK: - Start/Stop Detection Tests
 
-    func testStartRealtimeDetection_WhenNotDetecting_SetsIsDetectingTrue() throws {
+    func testStartRealtimeDetection_WhenNotDetecting_SetsIsDetectingTrue() async throws {
         // When
-        try sut.startRealtimeDetection()
+        try await sut.startRealtimeDetection()
 
         // Then
         XCTAssertTrue(sut.isDetecting)
     }
 
-    func testStartRealtimeDetection_WhenAlreadyDetecting_DoesNothing() throws {
+    func testStartRealtimeDetection_WhenAlreadyDetecting_DoesNothing() async throws {
         // Given
-        try sut.startRealtimeDetection()
+        try await sut.startRealtimeDetection()
         XCTAssertTrue(sut.isDetecting)
 
         // When - call again
-        try sut.startRealtimeDetection()
+        try await sut.startRealtimeDetection()
 
         // Then - still detecting (no error thrown)
         XCTAssertTrue(sut.isDetecting)
     }
 
-    func testStopRealtimeDetection_WhenDetecting_SetsIsDetectingFalse() throws {
+    func testStopRealtimeDetection_WhenDetecting_SetsIsDetectingFalse() async throws {
         // Given
-        try sut.startRealtimeDetection()
+        try await sut.startRealtimeDetection()
         XCTAssertTrue(sut.isDetecting)
 
         // When

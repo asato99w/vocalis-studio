@@ -40,9 +40,11 @@ final class AudioSessionManagerTests: XCTestCase {
 
         // Then
         XCTAssertEqual(audioSession.category, .playAndRecord)
-        XCTAssertEqual(audioSession.mode, .default)
+        // Mode is dynamically selected based on audio route (.measurement for headphones, .videoRecording for built-in)
+        XCTAssertTrue([AVAudioSession.Mode.measurement, .videoRecording].contains(audioSession.mode))
         XCTAssertTrue(audioSession.categoryOptions.contains(.defaultToSpeaker))
         XCTAssertTrue(audioSession.categoryOptions.contains(.allowBluetooth))
+        XCTAssertTrue(audioSession.categoryOptions.contains(.allowBluetoothA2DP))
     }
 
     func testConfigureForPlayback_SetsCorrectCategory() throws {
@@ -61,8 +63,9 @@ final class AudioSessionManagerTests: XCTestCase {
 
         // Then
         XCTAssertEqual(audioSession.category, .playAndRecord)
-        XCTAssertEqual(audioSession.mode, .default)
-        XCTAssertTrue(audioSession.categoryOptions.contains(.defaultToSpeaker))
+        // Mode is dynamically selected based on audio route (.measurement for headphones, .videoRecording for built-in)
+        XCTAssertTrue([AVAudioSession.Mode.measurement, .videoRecording].contains(audioSession.mode))
+        // Note: .defaultToSpeaker is only included when mode is NOT .measurement
         XCTAssertTrue(audioSession.categoryOptions.contains(.allowBluetooth))
         XCTAssertTrue(audioSession.categoryOptions.contains(.allowBluetoothA2DP))
     }
