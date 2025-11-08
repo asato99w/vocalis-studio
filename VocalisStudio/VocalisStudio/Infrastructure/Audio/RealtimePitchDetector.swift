@@ -193,7 +193,9 @@ public class RealtimePitchDetector: ObservableObject, PitchDetectorProtocol {
             audioEngine.stop()
         }
 
-        // Log both hardware input format and output format for debugging
+        // CRITICAL: Use hardware input format directly to avoid format mismatch
+        // The hardware input format (e.g., 16kHz for Bluetooth HFP) must be used for the tap
+        // Using nil or outputFormat causes error -10868 when formats don't match
         let hardwareInputFormat = inputNode.inputFormat(forBus: 0)
         let outputFormat = inputNode.outputFormat(forBus: 0)
         Logger.pitchDetection.debug("Hardware input format: \(String(describing: hardwareInputFormat))")
@@ -202,19 +204,18 @@ public class RealtimePitchDetector: ObservableObject, PitchDetectorProtocol {
         FileLogger.shared.log(level: "INFO", category: "pitch", message: "Node output format: \(String(describing: outputFormat))")
 
         // Note: Actual sample rate will be determined from the buffer in processAudioBuffer
-        // because we use format=nil in installTap for automatic format conversion
+        // The buffer will have the hardware's native sample rate (e.g., 16kHz for Bluetooth)
 
-        // Install tap on input node
-        // Use nil format to allow automatic format conversion by the system
-        // This prevents crashes when hardware format differs (e.g., Bluetooth at 16kHz vs output format at 48kHz)
-        Logger.pitchDetection.debug("Installing tap on input node with format=nil (automatic conversion)...")
-        FileLogger.shared.log(level: "INFO", category: "pitch", message: "Installing tap with format=nil for automatic conversion")
-        inputNode.installTap(onBus: 0, bufferSize: UInt32(hopSize), format: nil) { [weak self] buffer, _ in
+        // Install tap on input node using HARDWARE INPUT FORMAT
+        // This ensures the tap matches the actual hardware format
+        Logger.pitchDetection.debug("Installing tap with hardware input format...")
+        FileLogger.shared.log(level: "INFO", category: "pitch", message: "Installing tap with hardware input format: \(String(describing: hardwareInputFormat))")
+        inputNode.installTap(onBus: 0, bufferSize: UInt32(hopSize), format: hardwareInputFormat) { [weak self] buffer, _ in
             guard let self = self else { return }
             self.processAudioBuffer(buffer)
         }
         Logger.pitchDetection.debug("✅ Tap installed successfully")
-        FileLogger.shared.log(level: "INFO", category: "pitch", message: "✅ Tap installed successfully")
+        FileLogger.shared.log(level: "INFO", category: "pitch", message: "✅ Tap installed with hardware format")
 
         // Start engine
         Logger.pitchDetection.debug("Starting audio engine...")
