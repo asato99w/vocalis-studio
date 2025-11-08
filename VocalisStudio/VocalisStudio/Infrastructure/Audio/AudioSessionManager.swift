@@ -23,32 +23,36 @@ public class AudioSessionManager {
         let audioSession = AVAudioSession.sharedInstance()
 
         do {
+            // Dynamically select mode based on audio route
+            let mode = selectOptimalMode(for: audioSession)
+
             // .playAndRecord: allows recording and playback simultaneously
-            // .measurement mode: minimizes signal processing for accurate audio measurements
+            // Mode selection:
+            //   - Headphones connected (Bluetooth or wired): .measurement (precision priority)
+            //   - No headphones (built-in speaker/mic): .videoRecording (volume priority)
             // .defaultToSpeaker: plays audio through speaker even when recording
             // .allowBluetooth: supports bluetooth headsets for calls
             // .allowBluetoothA2DP: enables Bluetooth recording (required for Bluetooth microphone)
             try audioSession.setCategory(
                 .playAndRecord,
-                mode: .measurement,
+                mode: mode,
                 options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP]
             )
 
             // Set preferred sample rate (44.1 kHz for high quality)
             try audioSession.setPreferredSampleRate(44100.0)
 
-            // Set input gain to maximum for Bluetooth microphones
+            // Set input gain to maximum for Bluetooth microphones when using .measurement mode
             // .measurement mode doesn't auto-adjust gain, so we set it manually
-            if audioSession.isInputGainSettable {
+            // .videoRecording has auto-gain, so we don't need to set it
+            if mode == .measurement && audioSession.isInputGainSettable {
                 try audioSession.setInputGain(1.0)  // 1.0 = maximum gain
-                Logger.audio.info("Input gain set to maximum (1.0) for better Bluetooth mic sensitivity")
-                FileLogger.shared.log(level: "INFO", category: "audio", message: "Input gain set to 1.0")
-            } else {
-                Logger.audio.info("Input gain not settable on this device")
+                Logger.audio.info("Input gain set to maximum (1.0) for .measurement mode with Bluetooth")
+                FileLogger.shared.log(level: "INFO", category: "audio", message: "Input gain set to 1.0 for .measurement mode")
             }
 
-            Logger.audio.info("Audio session configured for recording: category=playAndRecord, mode=measurement, sampleRate=44100Hz")
-            FileLogger.shared.log(level: "INFO", category: "audio", message: "Audio session configured for recording: category=playAndRecord, mode=measurement, sampleRate=44100Hz")
+            Logger.audio.info("Audio session configured for recording: category=playAndRecord, mode=\(String(describing: mode)), sampleRate=44100Hz")
+            FileLogger.shared.log(level: "INFO", category: "audio", message: "Audio session configured for recording: mode=\(String(describing: mode)), sampleRate=44100Hz")
         } catch {
             Logger.audio.logError(error)
             FileLogger.shared.log(level: "ERROR", category: "audio", message: "Failed to configure audio session for recording: \(error.localizedDescription)")
@@ -84,26 +88,32 @@ public class AudioSessionManager {
         let audioSession = AVAudioSession.sharedInstance()
 
         do {
+            // Dynamically select mode based on audio route
+            let mode = selectOptimalMode(for: audioSession)
+
             // .playAndRecord: recording + playback
-            // .measurement mode: minimizes signal processing for accurate audio measurements
+            // Mode selection:
+            //   - Headphones connected (Bluetooth or wired): .measurement (precision priority)
+            //   - No headphones (built-in speaker/mic): .videoRecording (volume priority)
             // .defaultToSpeaker: plays through speaker
             // .allowBluetooth + .allowBluetoothA2DP: full bluetooth support
             try audioSession.setCategory(
                 .playAndRecord,
-                mode: .measurement,
+                mode: mode,
                 options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP]
             )
 
-            // Set input gain to maximum for Bluetooth microphones
+            // Set input gain to maximum when using .measurement mode
             // .measurement mode doesn't auto-adjust gain, so we set it manually
-            if audioSession.isInputGainSettable {
+            // .videoRecording has auto-gain, so we don't need to set it
+            if mode == .measurement && audioSession.isInputGainSettable {
                 try audioSession.setInputGain(1.0)  // 1.0 = maximum gain
-                Logger.audio.info("Input gain set to maximum (1.0) for better Bluetooth mic sensitivity")
-                FileLogger.shared.log(level: "INFO", category: "audio", message: "Input gain set to 1.0")
+                Logger.audio.info("Input gain set to maximum (1.0) for .measurement mode")
+                FileLogger.shared.log(level: "INFO", category: "audio", message: "Input gain set to 1.0 for .measurement mode")
             }
 
-            Logger.audio.info("Audio session configured for recording and playback: category=playAndRecord, mode=measurement with full Bluetooth support")
-            FileLogger.shared.log(level: "INFO", category: "audio", message: "Audio session configured for recording and playback: mode=measurement")
+            Logger.audio.info("Audio session configured for recording and playback: category=playAndRecord, mode=\(String(describing: mode)) with full Bluetooth support")
+            FileLogger.shared.log(level: "INFO", category: "audio", message: "Audio session configured for recording and playback: mode=\(String(describing: mode))")
         } catch {
             Logger.audio.logError(error)
             FileLogger.shared.log(level: "ERROR", category: "audio", message: "Failed to configure audio session: \(error.localizedDescription)")
@@ -266,5 +276,38 @@ public class AudioSessionManager {
 
     deinit {
         NotificationCenter.default.removeObserver(self)
+    }
+
+    // MARK: - Private Helpers
+
+    /// Select optimal audio session mode based on current audio route
+    /// - Returns: .measurement for headphones (Bluetooth/wired), .videoRecording for built-in speaker/mic
+    private func selectOptimalMode(for audioSession: AVAudioSession) -> AVAudioSession.Mode {
+        let currentRoute = audioSession.currentRoute
+
+        // Check if headphones (Bluetooth or wired) are connected
+        let hasHeadphones = currentRoute.outputs.contains { output in
+            switch output.portType {
+            case .headphones,           // Wired headphones
+                 .bluetoothHFP,         // Bluetooth Hands-Free Profile
+                 .bluetoothA2DP,        // Bluetooth Advanced Audio Distribution Profile
+                 .bluetoothLE:          // Bluetooth Low Energy
+                return true
+            default:
+                return false
+            }
+        }
+
+        let selectedMode: AVAudioSession.Mode = hasHeadphones ? .measurement : .videoRecording
+
+        Logger.audio.info("Audio route detection: hasHeadphones=\(hasHeadphones), selectedMode=\(String(describing: selectedMode))")
+        FileLogger.shared.log(level: "INFO", category: "audio", message: "Audio route: hasHeadphones=\(hasHeadphones) → mode=\(String(describing: selectedMode))")
+
+        // Log detected outputs for debugging
+        let outputTypes = currentRoute.outputs.map { $0.portType.rawValue }.joined(separator: ", ")
+        Logger.audio.debug("Current audio outputs: \(outputTypes)")
+        FileLogger.shared.log(level: "DEBUG", category: "audio", message: "Audio outputs: \(outputTypes)")
+
+        return selectedMode
     }
 }
