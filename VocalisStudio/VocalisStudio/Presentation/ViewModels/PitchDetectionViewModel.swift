@@ -135,7 +135,7 @@ public class PitchDetectionViewModel: ObservableObject {
     public func startPlaybackPitchDetection(url: URL) async throws {
         // Start pitch detector
         // Pitch updates are automatically handled by Combine subscription
-        try pitchDetector.startRealtimeDetection()
+        try await pitchDetector.startRealtimeDetection()
 
         // Monitor audio player to stop detection when playback ends
         pitchDetectionTask = Task { [weak self] in

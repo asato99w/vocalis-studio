@@ -198,7 +198,7 @@ public class RecordingViewModel: ObservableObject {
 
         do {
             // Always start pitch detector AFTER countdown (for realtime pitch visualization)
-            try pitchDetector.startRealtimeDetection()
+            try await pitchDetector.startRealtimeDetection()
             Logger.viewModel.info("✅ Realtime pitch detection started (after countdown)")
             Logger.viewModel.logToFile(level: "INFO", message: "✅ Realtime pitch detection started (after countdown)")
 

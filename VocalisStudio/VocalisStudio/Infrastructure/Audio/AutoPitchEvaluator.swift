@@ -9,7 +9,7 @@ public protocol PitchDetectorProtocol {
     var isDetecting: Bool { get }
     var spectrum: [Float]? { get }
     var detectedPitchPublisher: AnyPublisher<DetectedPitch?, Never> { get }
-    func startRealtimeDetection() throws
+    func startRealtimeDetection() async throws
     func stopRealtimeDetection()
 }
 
@@ -49,7 +49,7 @@ public class AutoPitchEvaluator: ObservableObject {
         try await scalePlayer.loadScale(notes, tempo: tempo)
 
         // Start pitch detection
-        try pitchDetector.startRealtimeDetection()
+        try await pitchDetector.startRealtimeDetection()
 
         // Start playback (muted=false for real audio output to microphone)
         try await scalePlayer.play(muted: false)

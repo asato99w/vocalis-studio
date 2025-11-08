@@ -145,7 +145,7 @@ public class RealtimePitchDetector: ObservableObject, PitchDetectorProtocol {
     }
 
     /// Start real-time pitch detection from microphone
-    public func startRealtimeDetection() throws {
+    public func startRealtimeDetection() async throws {
         FileLogger.shared.log(level: "INFO", category: "pitch", message: "startRealtimeDetection() called")
 
         guard !isDetecting else {

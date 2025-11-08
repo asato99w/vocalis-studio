@@ -30,7 +30,7 @@ final class MockRealtimePitchDetector: ObservableObject, PitchDetectorProtocol {
     // ピッチ検出のシミュレーション用タイマー
     private var pitchSimulationTimer: Timer?
 
-    func startRealtimeDetection() throws {
+    func startRealtimeDetection() async throws {
         startRealtimeDetectionCalled = true
         isDetecting = true
 
