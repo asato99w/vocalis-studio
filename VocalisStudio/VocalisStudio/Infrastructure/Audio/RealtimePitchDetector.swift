@@ -166,6 +166,12 @@ public class RealtimePitchDetector: ObservableObject, PitchDetectorProtocol {
             throw error
         }
 
+        // Wait for audio hardware to stabilize after AudioSession configuration
+        // This is especially important for Bluetooth devices which may need time to adjust sample rates
+        Logger.pitchDetection.debug("Waiting for audio hardware to stabilize...")
+        try? await Task.sleep(nanoseconds: 200_000_000) // 200ms
+        FileLogger.shared.log(level: "INFO", category: "pitch", message: "Audio hardware stabilization delay completed")
+
         // Configure audio engine
         Logger.pitchDetection.debug("Configuring AVAudioEngine...")
         let inputNode = audioEngine.inputNode
@@ -186,8 +192,14 @@ public class RealtimePitchDetector: ObservableObject, PitchDetectorProtocol {
             Logger.pitchDetection.debug("Stopping existing audio engine...")
             audioEngine.stop()
         }
-        let inputFormat = inputNode.outputFormat(forBus: 0)
-        Logger.pitchDetection.debug("Input format: \(String(describing: inputFormat))")
+
+        // Log both hardware input format and output format for debugging
+        let hardwareInputFormat = inputNode.inputFormat(forBus: 0)
+        let outputFormat = inputNode.outputFormat(forBus: 0)
+        Logger.pitchDetection.debug("Hardware input format: \(String(describing: hardwareInputFormat))")
+        FileLogger.shared.log(level: "INFO", category: "pitch", message: "Hardware input format: \(String(describing: hardwareInputFormat))")
+        Logger.pitchDetection.debug("Node output format: \(String(describing: outputFormat))")
+        FileLogger.shared.log(level: "INFO", category: "pitch", message: "Node output format: \(String(describing: outputFormat))")
 
         // Note: Actual sample rate will be determined from the buffer in processAudioBuffer
         // because we use format=nil in installTap for automatic format conversion
@@ -195,12 +207,14 @@ public class RealtimePitchDetector: ObservableObject, PitchDetectorProtocol {
         // Install tap on input node
         // Use nil format to allow automatic format conversion by the system
         // This prevents crashes when hardware format differs (e.g., Bluetooth at 16kHz vs output format at 48kHz)
-        Logger.pitchDetection.debug("Installing tap on input node...")
+        Logger.pitchDetection.debug("Installing tap on input node with format=nil (automatic conversion)...")
+        FileLogger.shared.log(level: "INFO", category: "pitch", message: "Installing tap with format=nil for automatic conversion")
         inputNode.installTap(onBus: 0, bufferSize: UInt32(hopSize), format: nil) { [weak self] buffer, _ in
             guard let self = self else { return }
             self.processAudioBuffer(buffer)
         }
         Logger.pitchDetection.debug("✅ Tap installed successfully")
+        FileLogger.shared.log(level: "INFO", category: "pitch", message: "✅ Tap installed successfully")
 
         // Start engine
         Logger.pitchDetection.debug("Starting audio engine...")
