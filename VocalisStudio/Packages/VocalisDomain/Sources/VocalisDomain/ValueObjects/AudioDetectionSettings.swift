@@ -2,10 +2,10 @@ import Foundation
 
 /// ピッチ検出のオーディオ設定
 public struct AudioDetectionSettings: Equatable, Codable {
-    /// スケール再生音量 (0.0 - 1.0)
+    /// スケール再生音量 (0.0 - 1.5, 1.0が標準音量)
     public let scalePlaybackVolume: Float
 
-    /// 録音再生音量 (0.0 - 1.0)
+    /// 録音再生音量 (0.0 - 1.5, 1.0が標準音量)
     public let recordingPlaybackVolume: Float
 
     /// RMS silence threshold (0.001 - 0.1)
@@ -29,8 +29,9 @@ public struct AudioDetectionSettings: Equatable, Codable {
         scaleSoundType: ScaleSoundType = .default
     ) {
         // Validation: clamp values to valid ranges
-        self.scalePlaybackVolume = max(0.0, min(1.0, scalePlaybackVolume))
-        self.recordingPlaybackVolume = max(0.0, min(1.0, recordingPlaybackVolume))
+        // Volume can go up to 1.5 (150%) to compensate for voiceChat mode suppression
+        self.scalePlaybackVolume = max(0.0, min(1.5, scalePlaybackVolume))
+        self.recordingPlaybackVolume = max(0.0, min(1.5, recordingPlaybackVolume))
         self.rmsSilenceThreshold = max(0.001, min(0.1, rmsSilenceThreshold))
         self.confidenceThreshold = max(0.1, min(1.0, confidenceThreshold))
         self.scaleSoundType = scaleSoundType
