@@ -170,13 +170,21 @@ public class RealtimePitchDetector: ObservableObject, PitchDetectorProtocol {
         Logger.pitchDetection.debug("Configuring AVAudioEngine...")
         let inputNode = audioEngine.inputNode
 
-        // Remove any existing tap to prevent "Tap already exists" crash
-        // This is safe to call even if no tap exists
-        if audioEngine.isRunning {
-            Logger.pitchDetection.debug("Audio engine already running, stopping and removing existing tap...")
+        // CRITICAL: Always remove any existing tap to prevent "Tap already exists" crash
+        // Tap can exist even if engine is not running, so always try to remove
+        do {
             inputNode.removeTap(onBus: 0)
+            Logger.pitchDetection.debug("Removed existing tap")
+            FileLogger.shared.log(level: "INFO", category: "pitch", message: "Removed existing tap before installing new one")
+        } catch {
+            // Ignore error if no tap exists - this is expected on first run
+            Logger.pitchDetection.debug("No existing tap to remove (expected on first run)")
+        }
+
+        // Stop engine if running
+        if audioEngine.isRunning {
+            Logger.pitchDetection.debug("Stopping existing audio engine...")
             audioEngine.stop()
-            FileLogger.shared.log(level: "INFO", category: "pitch", message: "Cleaned up existing audio engine state")
         }
         let inputFormat = inputNode.outputFormat(forBus: 0)
         Logger.pitchDetection.debug("Input format: \(String(describing: inputFormat))")
