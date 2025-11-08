@@ -37,6 +37,16 @@ public class AudioSessionManager {
             // Set preferred sample rate (44.1 kHz for high quality)
             try audioSession.setPreferredSampleRate(44100.0)
 
+            // Set input gain to maximum for Bluetooth microphones
+            // .measurement mode doesn't auto-adjust gain, so we set it manually
+            if audioSession.isInputGainSettable {
+                try audioSession.setInputGain(1.0)  // 1.0 = maximum gain
+                Logger.audio.info("Input gain set to maximum (1.0) for better Bluetooth mic sensitivity")
+                FileLogger.shared.log(level: "INFO", category: "audio", message: "Input gain set to 1.0")
+            } else {
+                Logger.audio.info("Input gain not settable on this device")
+            }
+
             Logger.audio.info("Audio session configured for recording: category=playAndRecord, mode=measurement, sampleRate=44100Hz")
             FileLogger.shared.log(level: "INFO", category: "audio", message: "Audio session configured for recording: category=playAndRecord, mode=measurement, sampleRate=44100Hz")
         } catch {
@@ -83,6 +93,14 @@ public class AudioSessionManager {
                 mode: .measurement,
                 options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP]
             )
+
+            // Set input gain to maximum for Bluetooth microphones
+            // .measurement mode doesn't auto-adjust gain, so we set it manually
+            if audioSession.isInputGainSettable {
+                try audioSession.setInputGain(1.0)  // 1.0 = maximum gain
+                Logger.audio.info("Input gain set to maximum (1.0) for better Bluetooth mic sensitivity")
+                FileLogger.shared.log(level: "INFO", category: "audio", message: "Input gain set to 1.0")
+            }
 
             Logger.audio.info("Audio session configured for recording and playback: category=playAndRecord, mode=measurement with full Bluetooth support")
             FileLogger.shared.log(level: "INFO", category: "audio", message: "Audio session configured for recording and playback: mode=measurement")
