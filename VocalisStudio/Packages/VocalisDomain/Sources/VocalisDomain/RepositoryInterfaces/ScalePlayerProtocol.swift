@@ -49,6 +49,8 @@ public enum ScalePlayerError: LocalizedError, Equatable {
     case notLoaded
     case alreadyPlaying
     case playbackFailed(String)
+    case soundBankNotFound
+    case soundBankLoadFailed(String)
 
     public static func == (lhs: ScalePlayerError, rhs: ScalePlayerError) -> Bool {
         switch (lhs, rhs) {
@@ -57,6 +59,10 @@ public enum ScalePlayerError: LocalizedError, Equatable {
         case (.alreadyPlaying, .alreadyPlaying):
             return true
         case (.playbackFailed(let lhsMsg), .playbackFailed(let rhsMsg)):
+            return lhsMsg == rhsMsg
+        case (.soundBankNotFound, .soundBankNotFound):
+            return true
+        case (.soundBankLoadFailed(let lhsMsg), .soundBankLoadFailed(let rhsMsg)):
             return lhsMsg == rhsMsg
         default:
             return false
@@ -71,6 +77,10 @@ public enum ScalePlayerError: LocalizedError, Equatable {
             return "Already playing. Stop current playback first."
         case .playbackFailed(let message):
             return "Playback failed: \(message)"
+        case .soundBankNotFound:
+            return "Sound bank file (SF2) not found in app bundle."
+        case .soundBankLoadFailed(let message):
+            return "Failed to load sound bank: \(message)"
         }
     }
 }
