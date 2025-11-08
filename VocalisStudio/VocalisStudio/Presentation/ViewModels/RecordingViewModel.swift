@@ -178,25 +178,33 @@ public class RecordingViewModel: ObservableObject {
         // Start recording through state VM (this starts countdown → executeRecording → scale playback)
         await recordingStateVM.startRecording(settings: settings)
 
-        // If settings provided, start pitch detection AFTER countdown completes
-        // Note: Scale playback is handled by StartRecordingWithScaleUseCase inside executeRecording()
-        if let settings = settings {
-            Logger.viewModel.info("✅ Settings present - waiting for countdown completion")
-            Logger.viewModel.logToFile(level: "INFO", message: "✅ Settings present - waiting for countdown completion")
+        // Wait for countdown to complete before starting pitch detection
+        // Note: Scale playback (if settings provided) is handled by StartRecordingWithScaleUseCase inside executeRecording()
+        Logger.viewModel.info("Waiting for countdown completion...")
+        Logger.viewModel.logToFile(level: "INFO", message: "Waiting for countdown completion...")
 
-            // Wait for countdown to complete before starting pitch detection
-            // This ensures scale playback (started in Use Case) is active when we start pitch detection
-            while !recordingStateVM.isCountdownComplete {
-                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 second
+        while !recordingStateVM.isCountdownComplete {
+            // If recording failed and returned to idle, break the loop
+            if recordingStateVM.recordingState == .idle {
+                Logger.viewModel.warning("Recording failed during countdown - skipping pitch detection")
+                Logger.viewModel.logToFile(level: "WARNING", message: "Recording failed during countdown - skipping pitch detection")
+                return
             }
-            Logger.viewModel.info("✅ Countdown complete - starting pitch detection")
-            Logger.viewModel.logToFile(level: "INFO", message: "✅ Countdown complete - starting pitch detection")
+            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 second
+        }
+        Logger.viewModel.info("✅ Countdown complete - starting pitch detection")
+        Logger.viewModel.logToFile(level: "INFO", message: "✅ Countdown complete - starting pitch detection")
 
-            do {
-                // Start pitch detector AFTER countdown
-                try pitchDetector.startRealtimeDetection()
-                Logger.viewModel.info("✅ Realtime pitch detection started (after countdown)")
-                Logger.viewModel.logToFile(level: "INFO", message: "✅ Realtime pitch detection started (after countdown)")
+        do {
+            // Always start pitch detector AFTER countdown (for realtime pitch visualization)
+            try pitchDetector.startRealtimeDetection()
+            Logger.viewModel.info("✅ Realtime pitch detection started (after countdown)")
+            Logger.viewModel.logToFile(level: "INFO", message: "✅ Realtime pitch detection started (after countdown)")
+
+            // If settings provided, start target pitch monitoring
+            if let settings = settings {
+                Logger.viewModel.info("✅ Settings present - starting target pitch monitoring")
+                Logger.viewModel.logToFile(level: "INFO", message: "✅ Settings present - starting target pitch monitoring")
 
                 // NOTE: Audible scale playback is already started by UseCase
                 // No need to start it again via Coordinator
@@ -205,14 +213,14 @@ public class RecordingViewModel: ObservableObject {
                 try await pitchDetectionVM.startTargetPitchMonitoring(settings: settings)
                 Logger.viewModel.info("✅ Target pitch monitoring started")
                 Logger.viewModel.logToFile(level: "INFO", message: "✅ Target pitch monitoring started")
-            } catch {
-                Logger.viewModel.error("❌ Error starting pitch detection: \(error.localizedDescription)")
-                Logger.viewModel.logToFile(level: "ERROR", message: "❌ Error starting pitch detection: \(error.localizedDescription)")
-                errorMessage = error.localizedDescription
+            } else {
+                Logger.viewModel.info("No settings provided - skipping target pitch monitoring (realtime detection only)")
+                Logger.viewModel.logToFile(level: "INFO", message: "No settings provided - skipping target pitch monitoring (realtime detection only)")
             }
-        } else {
-            Logger.viewModel.warning("⚠️ Settings is nil - pitch detection will NOT start")
-            Logger.viewModel.logToFile(level: "WARNING", message: "⚠️ Settings is nil - pitch detection will NOT start")
+        } catch {
+            Logger.viewModel.error("❌ Error starting pitch detection: \(error.localizedDescription)")
+            Logger.viewModel.logToFile(level: "ERROR", message: "❌ Error starting pitch detection: \(error.localizedDescription)")
+            errorMessage = error.localizedDescription
         }
 
         Logger.viewModel.info("RecordingViewModel.startRecording() completed")

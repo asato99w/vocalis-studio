@@ -25,9 +25,19 @@ final class RecordingLimitIntegrationTests: XCTestCase {
         mockStartWithScaleUseCase = MockStartRecordingWithScaleUseCase()
         mockStopUseCase = MockStopRecordingUseCase()
         let mockAudioPlayer = MockAudioPlayer()
-        let mockPitchDetector = RealtimePitchDetector() // Use real class for simplicity
+        let mockPitchDetector = MockRealtimePitchDetector() // Use mock to avoid audio session issues in tests
         let mockScalePlayer = MockScalePlayer()
         let mockUsageTracker = RecordingUsageTracker()
+
+        // Set default executeResult to prevent hangs
+        mockStartUseCase.executeResult = RecordingSession(
+            recordingURL: URL(fileURLWithPath: "/tmp/default_test.m4a"),
+            settings: nil
+        )
+        mockStartWithScaleUseCase.executeResult = RecordingSession(
+            recordingURL: URL(fileURLWithPath: "/tmp/default_scale_test.m4a"),
+            settings: ScaleSettings.mvpDefault
+        )
 
         // Create subscription view model with inline mock dependencies
         let mockGetStatusUseCase = TestGetSubscriptionStatusUseCase()
@@ -52,7 +62,8 @@ final class RecordingLimitIntegrationTests: XCTestCase {
             scalePlaybackCoordinator: ScalePlaybackCoordinator(scalePlayer: mockScalePlayer),
             subscriptionViewModel: subscriptionViewModel,
             usageTracker: mockUsageTracker,
-            limitConfig: TestRecordingLimitConfig() // Use test config with shorter durations
+            limitConfig: TestRecordingLimitConfig(), // Use test config with shorter durations
+            countdownDuration: 0 // Skip countdown for faster test execution
         )
     }
 
@@ -109,15 +120,15 @@ final class RecordingLimitIntegrationTests: XCTestCase {
         // When: Start recording
         await recordingViewModel.startRecording()
 
-        // Wait for countdown to complete
-        try await Task.sleep(nanoseconds: 3_500_000_000)
+        // Wait for recording to start (countdown=0 so immediate)
+        try await Task.sleep(nanoseconds: 100_000_000) // 100ms
 
         // Then: Recording should start
         XCTAssertEqual(recordingViewModel.recordingState, .recording)
 
         // Wait for recording duration limit to be reached (2 seconds + buffer)
-        // Using 3 seconds to ensure the monitoring task has time to detect and stop
-        try await Task.sleep(nanoseconds: 3_000_000_000)
+        // Using 2.5 seconds to ensure the monitoring task has time to detect and stop
+        try await Task.sleep(nanoseconds: 2_500_000_000)
 
         // Then: Recording should have stopped automatically
         XCTAssertEqual(recordingViewModel.recordingState, .idle, "Recording should auto-stop after 2 seconds")
