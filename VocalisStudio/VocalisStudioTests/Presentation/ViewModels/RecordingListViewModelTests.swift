@@ -117,6 +117,9 @@ final class RecordingListViewModelTests: XCTestCase {
         // When
         await sut.playRecording(recording)
 
+        // Wait for playback completion (MockAudioPlayer sleeps 10ms + processing time)
+        try? await Task.sleep(nanoseconds: 30_000_000) // 30ms
+
         // Then - after completion, should be nil
         XCTAssertNil(sut.playingRecordingId)
         XCTAssertTrue(mockAudioPlayer.playCalled)
@@ -131,14 +134,18 @@ final class RecordingListViewModelTests: XCTestCase {
             scaleSettings: ScaleSettings.mvpDefault
         )
 
-        // Simulate already playing
-        mockAudioPlayer._isPlaying = true
-
-        // When
+        // Start playback first
         await sut.playRecording(recording)
 
-        // Then
-        XCTAssertTrue(mockAudioPlayer.playCalled)
+        // When - play the same recording again (should stop and return)
+        await sut.playRecording(recording)
+
+        // Wait for stop to complete
+        try? await Task.sleep(nanoseconds: 30_000_000) // 30ms
+
+        // Then - playingRecordingId should be nil (stopped)
+        XCTAssertNil(sut.playingRecordingId)
+        XCTAssertTrue(mockAudioPlayer.stopCalled)
     }
 
     func testPlayRecording_DifferentRecording_StopsCurrentAndPlaysNew() async {
@@ -154,11 +161,17 @@ final class RecordingListViewModelTests: XCTestCase {
             scaleSettings: ScaleSettings.mvpDefault
         )
 
-        // When - play recordings sequentially
+        // When - play first recording
         await sut.playRecording(recording1)
+
+        // Reset mock to track second playback
         mockAudioPlayer.reset()
 
+        // Play second recording (should stop first and play new)
         await sut.playRecording(recording2)
+
+        // Wait for playback completion
+        try? await Task.sleep(nanoseconds: 30_000_000) // 30ms
 
         // Then
         XCTAssertTrue(mockAudioPlayer.playCalled)
@@ -176,6 +189,9 @@ final class RecordingListViewModelTests: XCTestCase {
 
         // When
         await sut.playRecording(recording)
+
+        // Wait for playback failure to be handled
+        try? await Task.sleep(nanoseconds: 30_000_000) // 30ms
 
         // Then
         XCTAssertNotNil(sut.errorMessage)
@@ -277,13 +293,25 @@ final class RecordingListViewModelTests: XCTestCase {
 
     func testStartPositionTracking_UpdatesCurrentTime() async {
         // Given
+        let recording = Recording(
+            fileURL: URL(fileURLWithPath: "/tmp/test.m4a"),
+            duration: Duration(seconds: 10.0),
+            scaleSettings: ScaleSettings.mvpDefault
+        )
         mockAudioPlayer._currentTime = 5.0
+        mockAudioPlayer.playDurationNanoseconds = 500_000_000 // 500ms to allow position tracking
+
+        // Start playback to set playingRecordingId
+        await sut.playRecording(recording)
+
+        // Wait for playingRecordingId to be set (non-blocking playRecording)
+        try? await Task.sleep(nanoseconds: 10_000_000) // 10ms
 
         // When
         await sut.startPositionTracking()
 
-        // Wait for at least one update
-        try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
+        // Wait for at least one update (position tracking updates every 100ms)
+        try? await Task.sleep(nanoseconds: 150_000_000) // 150ms
 
         // Then
         XCTAssertEqual(sut.currentTime, 5.0, accuracy: 0.1)

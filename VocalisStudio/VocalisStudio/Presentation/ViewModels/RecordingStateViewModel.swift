@@ -139,6 +139,7 @@ public class RecordingStateViewModel: ObservableObject {
         // If countdown is 0, skip countdown and start recording immediately
         if countdownDuration == 0 {
             print("[DIAG] Skipping countdown, executing immediately")
+            isCountdownComplete = true
             await executeRecording(settings: settings)
             return
         }

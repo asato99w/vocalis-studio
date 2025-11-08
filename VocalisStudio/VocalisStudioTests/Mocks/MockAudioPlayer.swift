@@ -14,6 +14,7 @@ final class MockAudioPlayer: AudioPlayerProtocol {
     var _isPlaying = false
     var _currentTime: TimeInterval = 0.0
     var _duration: TimeInterval = 10.0
+    var playDurationNanoseconds: UInt64 = 10_000_000 // 10ms default
 
     var isPlaying: Bool {
         _isPlaying
@@ -37,8 +38,8 @@ final class MockAudioPlayer: AudioPlayerProtocol {
 
         _isPlaying = true
 
-        // Simulate playback completion after a short delay
-        try await Task.sleep(nanoseconds: 10_000_000) // 10ms
+        // Simulate playback completion after configurable delay
+        try await Task.sleep(nanoseconds: playDurationNanoseconds)
         _isPlaying = false
     }
 
