@@ -24,20 +24,20 @@ public class AudioSessionManager {
 
         do {
             // .playAndRecord: allows recording and playback simultaneously
-            // .voiceChat mode: optimized for voice chat with echo cancellation and noise reduction
+            // .measurement mode: minimizes signal processing for accurate audio measurements
             // .defaultToSpeaker: plays audio through speaker even when recording
             // .allowBluetooth: supports bluetooth headsets
             try audioSession.setCategory(
                 .playAndRecord,
-                mode: .voiceChat,
+                mode: .measurement,
                 options: [.defaultToSpeaker, .allowBluetooth]
             )
 
             // Set preferred sample rate (44.1 kHz for high quality)
             try audioSession.setPreferredSampleRate(44100.0)
 
-            Logger.audio.info("Audio session configured for recording: category=playAndRecord, mode=voiceChat, sampleRate=44100Hz")
-            FileLogger.shared.log(level: "INFO", category: "audio", message: "Audio session configured for recording: category=playAndRecord, mode=voiceChat, sampleRate=44100Hz")
+            Logger.audio.info("Audio session configured for recording: category=playAndRecord, mode=measurement, sampleRate=44100Hz")
+            FileLogger.shared.log(level: "INFO", category: "audio", message: "Audio session configured for recording: category=playAndRecord, mode=measurement, sampleRate=44100Hz")
         } catch {
             Logger.audio.logError(error)
             FileLogger.shared.log(level: "ERROR", category: "audio", message: "Failed to configure audio session for recording: \(error.localizedDescription)")
@@ -74,17 +74,17 @@ public class AudioSessionManager {
 
         do {
             // .playAndRecord: recording + playback
-            // .voiceChat mode: optimized for voice chat with echo cancellation and noise reduction
+            // .measurement mode: minimizes signal processing for accurate audio measurements
             // .defaultToSpeaker: plays through speaker
             // .allowBluetooth + .allowBluetoothA2DP: full bluetooth support
             try audioSession.setCategory(
                 .playAndRecord,
-                mode: .voiceChat,
+                mode: .measurement,
                 options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP]
             )
 
-            Logger.audio.info("Audio session configured for recording and playback: category=playAndRecord, mode=voiceChat with full Bluetooth support")
-            FileLogger.shared.log(level: "INFO", category: "audio", message: "Audio session configured for recording and playback: mode=voiceChat")
+            Logger.audio.info("Audio session configured for recording and playback: category=playAndRecord, mode=measurement with full Bluetooth support")
+            FileLogger.shared.log(level: "INFO", category: "audio", message: "Audio session configured for recording and playback: mode=measurement")
         } catch {
             Logger.audio.logError(error)
             FileLogger.shared.log(level: "ERROR", category: "audio", message: "Failed to configure audio session: \(error.localizedDescription)")
