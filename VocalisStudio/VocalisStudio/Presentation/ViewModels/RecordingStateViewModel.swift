@@ -125,7 +125,9 @@ public class RecordingStateViewModel: ObservableObject {
         if !recordingLimit.isCountWithinLimit(self.dailyRecordingCount) {
             print("[DIAG] startRecording REJECTED: count limit reached")
             Logger.viewModel.warning("Recording limit reached: \(self.dailyRecordingCount)")
-            errorMessage = "本日の録音回数の上限に達しました (\(currentTier.displayName)プラン)"
+            let errorMsg = "本日の録音回数の上限に達しました (\(currentTier.displayName)プラン)"
+            errorMessage = errorMsg
+            FileLogger.shared.log(level: "ERROR", category: "recording", message: "❌ Recording rejected - User error message: \(errorMsg)")
             return
         }
 
@@ -228,7 +230,9 @@ public class RecordingStateViewModel: ObservableObject {
         } catch {
             // Handle error
             Logger.viewModel.logError(error)
-            errorMessage = error.localizedDescription
+            let errorMsg = error.localizedDescription
+            errorMessage = errorMsg
+            FileLogger.shared.log(level: "ERROR", category: "recording", message: "❌ Recording failed - User error message: \(errorMsg)")
             recordingState = .idle
             currentSession = nil
             progress = 0.0
@@ -242,7 +246,9 @@ public class RecordingStateViewModel: ObservableObject {
 
         guard let url = lastRecordingURL else {
             Logger.viewModel.warning("Play recording failed: no recording available")
-            errorMessage = "No recording available"
+            let errorMsg = "No recording available"
+            errorMessage = errorMsg
+            FileLogger.shared.log(level: "ERROR", category: "playback", message: "❌ Playback failed - User error message: \(errorMsg)")
             return
         }
 
@@ -346,7 +352,9 @@ public class RecordingStateViewModel: ObservableObject {
         } catch {
             print("[DIAG] executeRecording ERROR: \(error.localizedDescription)")
             Logger.viewModel.logError(error)
-            errorMessage = error.localizedDescription
+            let errorMsg = error.localizedDescription
+            errorMessage = errorMsg
+            FileLogger.shared.log(level: "ERROR", category: "recording", message: "❌ executeRecording failed - User error message: \(errorMsg)")
             recordingState = .idle
             currentSession = nil
             progress = 0.0

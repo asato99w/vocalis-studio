@@ -1,5 +1,6 @@
 import Foundation
 import VocalisDomain
+import OSLog
 
 /// Use case for stopping a recording session
 public protocol StopRecordingUseCaseProtocol {
@@ -54,6 +55,10 @@ public class StopRecordingUseCase: StopRecordingUseCaseProtocol {
         // Clear context
         currentRecordingURL = nil
         currentSettings = nil
+
+        // Reset audio session mode cache to allow fresh mode selection for next recording
+        AudioSessionManager.shared.resetSessionMode()
+        Logger.useCase.info("Audio session mode cache reset after recording stop")
 
         // Return result
         return StopRecordingResult(duration: duration)
