@@ -26,11 +26,12 @@ public class AudioSessionManager {
             // .playAndRecord: allows recording and playback simultaneously
             // .measurement mode: minimizes signal processing for accurate audio measurements
             // .defaultToSpeaker: plays audio through speaker even when recording
-            // .allowBluetooth: supports bluetooth headsets
+            // .allowBluetooth: supports bluetooth headsets for calls
+            // .allowBluetoothA2DP: enables Bluetooth recording (required for Bluetooth microphone)
             try audioSession.setCategory(
                 .playAndRecord,
                 mode: .measurement,
-                options: [.defaultToSpeaker, .allowBluetooth]
+                options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP]
             )
 
             // Set preferred sample rate (44.1 kHz for high quality)
