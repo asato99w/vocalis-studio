@@ -29,7 +29,7 @@ struct AudioSettingsView: View {
                                 Text("\(Int(viewModel.scalePlaybackVolume * 100))%")
                                     .foregroundColor(.secondary)
                             }
-                            Slider(value: $viewModel.scalePlaybackVolume, in: 0...1.5, step: 0.05)
+                            Slider(value: $viewModel.scalePlaybackVolume, in: 0...1, step: 0.05)
                         }
 
                         // Recording Playback Volume
@@ -41,13 +41,13 @@ struct AudioSettingsView: View {
                                 Text("\(Int(viewModel.recordingPlaybackVolume * 100))%")
                                     .foregroundColor(.secondary)
                             }
-                            Slider(value: $viewModel.recordingPlaybackVolume, in: 0...1.5, step: 0.05)
+                            Slider(value: $viewModel.recordingPlaybackVolume, in: 0...1, step: 0.05)
                         }
                     }
                 } header: {
                     Text("音量設定")
                 } footer: {
-                    Text("スケール再生音量と録音再生音量を個別に調整できます（最大150%）")
+                    Text("スケール再生音量と録音再生音量を個別に調整できます")
                 }
 
                 // Detection Sensitivity Section
