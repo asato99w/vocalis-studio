@@ -172,13 +172,14 @@ public class RealtimePitchDetector: ObservableObject, PitchDetectorProtocol {
         let inputFormat = inputNode.outputFormat(forBus: 0)
         Logger.pitchDetection.debug("Input format: \(String(describing: inputFormat))")
 
-        // Store actual sample rate from audio input format
-        actualSampleRate = inputFormat.sampleRate
-        Logger.pitchDetection.debug("Actual sample rate: \(self.actualSampleRate) Hz")
+        // Note: Actual sample rate will be determined from the buffer in processAudioBuffer
+        // because we use format=nil in installTap for automatic format conversion
 
         // Install tap on input node
+        // Use nil format to allow automatic format conversion by the system
+        // This prevents crashes when hardware format differs (e.g., Bluetooth at 16kHz vs output format at 48kHz)
         Logger.pitchDetection.debug("Installing tap on input node...")
-        inputNode.installTap(onBus: 0, bufferSize: UInt32(hopSize), format: inputFormat) { [weak self] buffer, _ in
+        inputNode.installTap(onBus: 0, bufferSize: UInt32(hopSize), format: nil) { [weak self] buffer, _ in
             guard let self = self else { return }
             self.processAudioBuffer(buffer)
         }
@@ -216,7 +217,9 @@ public class RealtimePitchDetector: ObservableObject, PitchDetectorProtocol {
     private func processAudioBuffer(_ buffer: AVAudioPCMBuffer) {
         bufferProcessCount += 1
         if bufferProcessCount == 1 {
-            FileLogger.shared.log(level: "INFO", category: "pitch", message: "processAudioBuffer called for the first time - audio input is working")
+            // Update actual sample rate from buffer format (important when format is nil in installTap)
+            actualSampleRate = buffer.format.sampleRate
+            FileLogger.shared.log(level: "INFO", category: "pitch", message: "processAudioBuffer called for the first time - audio input is working, actual sample rate: \(actualSampleRate) Hz")
         }
         if bufferProcessCount % 100 == 0 {
             Logger.pitchDetection.debug("processAudioBuffer called \(self.bufferProcessCount) times")
