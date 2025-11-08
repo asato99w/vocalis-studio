@@ -178,22 +178,23 @@ public class RecordingViewModel: ObservableObject {
         // Start recording through state VM (this starts countdown → executeRecording → scale playback)
         await recordingStateVM.startRecording(settings: settings)
 
-        // Wait for countdown to complete before starting pitch detection
-        // Note: Scale playback (if settings provided) is handled by StartRecordingWithScaleUseCase inside executeRecording()
-        Logger.viewModel.info("Waiting for countdown completion...")
-        Logger.viewModel.logToFile(level: "INFO", message: "Waiting for countdown completion...")
+        // Wait for recording to actually start (AudioSession configured + recording started)
+        // CRITICAL: Must wait for recordingState == .recording, not just isCountdownComplete
+        // because AudioSession configuration happens AFTER isCountdownComplete is set
+        Logger.viewModel.info("Waiting for recording to start (AudioSession configuration + recording start)...")
+        Logger.viewModel.logToFile(level: "INFO", message: "Waiting for recording to start...")
 
-        while !recordingStateVM.isCountdownComplete {
+        while recordingStateVM.recordingState != .recording {
             // If recording failed and returned to idle, break the loop
             if recordingStateVM.recordingState == .idle {
-                Logger.viewModel.warning("Recording failed during countdown - skipping pitch detection")
-                Logger.viewModel.logToFile(level: "WARNING", message: "Recording failed during countdown - skipping pitch detection")
+                Logger.viewModel.warning("Recording failed to start - skipping pitch detection")
+                Logger.viewModel.logToFile(level: "WARNING", message: "Recording failed to start - skipping pitch detection")
                 return
             }
             try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 second
         }
-        Logger.viewModel.info("✅ Countdown complete - starting pitch detection")
-        Logger.viewModel.logToFile(level: "INFO", message: "✅ Countdown complete - starting pitch detection")
+        Logger.viewModel.info("✅ Recording started (AudioSession configured) - now starting pitch detection")
+        Logger.viewModel.logToFile(level: "INFO", message: "✅ Recording started - starting pitch detection")
 
         do {
             // Always start pitch detector AFTER countdown (for realtime pitch visualization)
