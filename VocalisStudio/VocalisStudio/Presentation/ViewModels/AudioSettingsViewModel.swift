@@ -12,6 +12,7 @@ final class AudioSettingsViewModel: ObservableObject {
     @Published var recordingPlaybackVolume: Float
     @Published var detectionSensitivity: AudioDetectionSettings.DetectionSensitivity
     @Published var confidenceThreshold: Float
+    @Published var scaleSoundType: ScaleSoundType
 
     // MARK: - Private Properties
 
@@ -40,6 +41,7 @@ final class AudioSettingsViewModel: ObservableObject {
         self.recordingPlaybackVolume = settings.recordingPlaybackVolume
         self.detectionSensitivity = settings.sensitivity
         self.confidenceThreshold = settings.confidenceThreshold
+        self.scaleSoundType = settings.scaleSoundType
     }
 
     // MARK: - Public Methods
@@ -66,6 +68,7 @@ final class AudioSettingsViewModel: ObservableObject {
         recordingPlaybackVolume = settings.recordingPlaybackVolume
         detectionSensitivity = settings.sensitivity
         confidenceThreshold = settings.confidenceThreshold
+        scaleSoundType = settings.scaleSoundType
     }
 
     // MARK: - Private Methods
@@ -75,7 +78,8 @@ final class AudioSettingsViewModel: ObservableObject {
             scalePlaybackVolume: scalePlaybackVolume,
             recordingPlaybackVolume: recordingPlaybackVolume,
             rmsSilenceThreshold: detectionSensitivity.rmsThreshold,
-            confidenceThreshold: confidenceThreshold
+            confidenceThreshold: confidenceThreshold,
+            scaleSoundType: scaleSoundType
         )
     }
 }

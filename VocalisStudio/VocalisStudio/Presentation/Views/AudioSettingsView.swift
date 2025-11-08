@@ -64,6 +64,26 @@ struct AudioSettingsView: View {
                     Text("低: 大きい音のみ検出\n標準: バランスの取れた検出\n高: 小さい音も検出")
                 }
 
+                // Scale Sound Type Section
+                Section {
+                    Picker("音源", selection: $viewModel.scaleSoundType) {
+                        ForEach(ScaleSoundType.allCases, id: \.self) { soundType in
+                            HStack {
+                                Text(soundType.icon)
+                                Text(soundType.displayName)
+                            }
+                            .tag(soundType)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                } header: {
+                    Text("スケール再生音")
+                } footer: {
+                    if let description = viewModel.scaleSoundType.description as String? {
+                        Text(description)
+                    }
+                }
+
                 // Confidence Threshold Section
                 Section {
                     VStack(alignment: .leading, spacing: 8) {

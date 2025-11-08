@@ -16,19 +16,24 @@ public struct AudioDetectionSettings: Equatable, Codable {
     /// ピッチ検出の信頼度閾値
     public let confidenceThreshold: Float
 
+    /// スケール再生音タイプ
+    public let scaleSoundType: ScaleSoundType
+
     // MARK: - Initialization
 
     public init(
-        scalePlaybackVolume: Float,
-        recordingPlaybackVolume: Float,
-        rmsSilenceThreshold: Float,
-        confidenceThreshold: Float
+        scalePlaybackVolume: Float = 0.8,
+        recordingPlaybackVolume: Float = 0.8,
+        rmsSilenceThreshold: Float = 0.02,
+        confidenceThreshold: Float = 0.4,
+        scaleSoundType: ScaleSoundType = .default
     ) {
         // Validation: clamp values to valid ranges
         self.scalePlaybackVolume = max(0.0, min(1.0, scalePlaybackVolume))
         self.recordingPlaybackVolume = max(0.0, min(1.0, recordingPlaybackVolume))
         self.rmsSilenceThreshold = max(0.001, min(0.1, rmsSilenceThreshold))
         self.confidenceThreshold = max(0.1, min(1.0, confidenceThreshold))
+        self.scaleSoundType = scaleSoundType
     }
 
     // MARK: - Default Settings
@@ -38,7 +43,8 @@ public struct AudioDetectionSettings: Equatable, Codable {
         scalePlaybackVolume: 0.8,
         recordingPlaybackVolume: 0.8,
         rmsSilenceThreshold: 0.02,
-        confidenceThreshold: 0.4
+        confidenceThreshold: 0.4,
+        scaleSoundType: .acousticGrandPiano
     )
 
     /// シミュレーター用設定 (低感度閾値)
@@ -46,7 +52,8 @@ public struct AudioDetectionSettings: Equatable, Codable {
         scalePlaybackVolume: 0.8,
         recordingPlaybackVolume: 0.8,
         rmsSilenceThreshold: 0.005,
-        confidenceThreshold: 0.3
+        confidenceThreshold: 0.3,
+        scaleSoundType: .acousticGrandPiano
     )
 
     // MARK: - Detection Sensitivity
@@ -85,5 +92,37 @@ public struct AudioDetectionSettings: Equatable, Codable {
     /// 現在の設定に対応する検出感度
     public var sensitivity: DetectionSensitivity {
         DetectionSensitivity(fromRMSThreshold: rmsSilenceThreshold)
+    }
+}
+
+// MARK: - Codable Implementation (Backward Compatibility)
+
+extension AudioDetectionSettings {
+    enum CodingKeys: String, CodingKey {
+        case scalePlaybackVolume
+        case recordingPlaybackVolume
+        case rmsSilenceThreshold
+        case confidenceThreshold
+        case scaleSoundType
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        let scalePlaybackVolume = try container.decode(Float.self, forKey: .scalePlaybackVolume)
+        let recordingPlaybackVolume = try container.decode(Float.self, forKey: .recordingPlaybackVolume)
+        let rmsSilenceThreshold = try container.decode(Float.self, forKey: .rmsSilenceThreshold)
+        let confidenceThreshold = try container.decode(Float.self, forKey: .confidenceThreshold)
+
+        // Backward compatibility: use default if scaleSoundType is missing
+        let scaleSoundType = try container.decodeIfPresent(ScaleSoundType.self, forKey: .scaleSoundType) ?? .acousticGrandPiano
+
+        self.init(
+            scalePlaybackVolume: scalePlaybackVolume,
+            recordingPlaybackVolume: recordingPlaybackVolume,
+            rmsSilenceThreshold: rmsSilenceThreshold,
+            confidenceThreshold: confidenceThreshold,
+            scaleSoundType: scaleSoundType
+        )
     }
 }

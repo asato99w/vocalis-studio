@@ -333,4 +333,108 @@ final class AudioDetectionSettingsTests: XCTestCase {
         // Then
         XCTAssertNotEqual(settings1, settings2)
     }
+
+    // MARK: - ScaleSoundType Tests
+
+    func testDefaultSettingsIncludesScaleSoundType() {
+        // Given: デフォルト設定
+        let settings = AudioDetectionSettings.default
+
+        // Then: scaleSoundTypeが含まれる
+        XCTAssertEqual(settings.scaleSoundType, .acousticGrandPiano)
+    }
+
+    func testCustomScaleSoundTypeInitialization() {
+        // すべての音源タイプで初期化できることを確認
+
+        for soundType in ScaleSoundType.allCases {
+            // When: カスタム音源で初期化
+            let settings = AudioDetectionSettings(
+                scalePlaybackVolume: 0.5,
+                recordingPlaybackVolume: 0.5,
+                rmsSilenceThreshold: 0.02,
+                confidenceThreshold: 0.4,
+                scaleSoundType: soundType
+            )
+
+            // Then: 指定した音源が設定される
+            XCTAssertEqual(settings.scaleSoundType, soundType)
+        }
+    }
+
+    func testScaleSoundTypeEncodingAndDecoding() throws {
+        // Given: カスタム音源を含む設定
+        let originalSettings = AudioDetectionSettings(
+            scalePlaybackVolume: 0.7,
+            recordingPlaybackVolume: 0.6,
+            rmsSilenceThreshold: 0.015,
+            confidenceThreshold: 0.35,
+            scaleSoundType: .flute
+        )
+
+        // When: エンコード
+        let encoder = JSONEncoder()
+        let data = try encoder.encode(originalSettings)
+
+        // When: デコード
+        let decoder = JSONDecoder()
+        let decodedSettings = try decoder.decode(
+            AudioDetectionSettings.self,
+            from: data
+        )
+
+        // Then: すべてのプロパティが正しく復元される
+        XCTAssertEqual(decodedSettings, originalSettings)
+        XCTAssertEqual(decodedSettings.scaleSoundType, .flute)
+    }
+
+    func testBackwardCompatibility() throws {
+        // Given: scaleSoundTypeを含まない古いJSON（既存ユーザーのデータ）
+        let oldJSON = """
+        {
+            "scalePlaybackVolume": 0.5,
+            "recordingPlaybackVolume": 0.5,
+            "rmsSilenceThreshold": 0.02,
+            "confidenceThreshold": 0.4
+        }
+        """
+
+        let data = oldJSON.data(using: .utf8)!
+
+        // When: デコード
+        let decoder = JSONDecoder()
+        let settings = try decoder.decode(
+            AudioDetectionSettings.self,
+            from: data
+        )
+
+        // Then: デフォルト値が使用される
+        XCTAssertEqual(settings.scaleSoundType, .acousticGrandPiano)
+
+        // 他のプロパティは正しくデコードされる
+        XCTAssertEqual(settings.scalePlaybackVolume, 0.5)
+        XCTAssertEqual(settings.recordingPlaybackVolume, 0.5)
+    }
+
+    func testEqualityWithDifferentScaleSoundType() {
+        // Given: 音源のみ異なる設定
+        let settings1 = AudioDetectionSettings(
+            scalePlaybackVolume: 0.5,
+            recordingPlaybackVolume: 0.5,
+            rmsSilenceThreshold: 0.02,
+            confidenceThreshold: 0.4,
+            scaleSoundType: .acousticGrandPiano
+        )
+
+        let settings2 = AudioDetectionSettings(
+            scalePlaybackVolume: 0.5,
+            recordingPlaybackVolume: 0.5,
+            rmsSilenceThreshold: 0.02,
+            confidenceThreshold: 0.4,
+            scaleSoundType: .electricPiano
+        )
+
+        // Then: 等しくない
+        XCTAssertNotEqual(settings1, settings2)
+    }
 }

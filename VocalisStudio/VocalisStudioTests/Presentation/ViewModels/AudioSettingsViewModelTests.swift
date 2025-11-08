@@ -49,6 +49,25 @@ final class AudioSettingsViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.confidenceThreshold, 0.35)
     }
 
+    func testInit_shouldLoadScaleSoundType() {
+        // Given: Repository returns settings with specific sound type
+        let expectedSettings = AudioDetectionSettings(
+            scalePlaybackVolume: 0.8,
+            recordingPlaybackVolume: 0.8,
+            rmsSilenceThreshold: 0.02,
+            confidenceThreshold: 0.4,
+            scaleSoundType: .flute
+        )
+        let customMockRepository = MockAudioSettingsRepository()
+        customMockRepository.settingsToReturn = expectedSettings
+
+        // When: ViewModel is initialized
+        let viewModel = AudioSettingsViewModel(repository: customMockRepository)
+
+        // Then: Scale sound type should be loaded
+        XCTAssertEqual(viewModel.scaleSoundType, .flute)
+    }
+
     // MARK: - Volume Tests
 
     func testSetScalePlaybackVolume_shouldUpdateValue() {
@@ -120,6 +139,24 @@ final class AudioSettingsViewModelTests: XCTestCase {
         XCTAssertEqual(sut.confidenceThreshold, 0.6)
     }
 
+    // MARK: - Scale Sound Type Tests
+
+    func testSetScaleSoundType_shouldUpdateValue() {
+        // When
+        sut.scaleSoundType = .flute
+
+        // Then
+        XCTAssertEqual(sut.scaleSoundType, .flute)
+    }
+
+    func testSetScaleSoundType_shouldNotSaveImmediately() {
+        // When
+        sut.scaleSoundType = .electricPiano
+
+        // Then: Save should not be called yet
+        XCTAssertFalse(mockRepository.saveCalled)
+    }
+
     // MARK: - Save Tests
 
     func testSaveSettings_shouldCallRepositorySave() throws {
@@ -139,6 +176,18 @@ final class AudioSettingsViewModelTests: XCTestCase {
         XCTAssertEqual(mockRepository.savedSettings?.recordingPlaybackVolume, 0.5)
         XCTAssertEqual(mockRepository.savedSettings?.rmsSilenceThreshold, 0.05) // .low = 0.05
         XCTAssertEqual(mockRepository.savedSettings?.confidenceThreshold, 0.5)
+    }
+
+    func testSaveSettings_shouldIncludeScaleSoundType() throws {
+        // Given
+        sut.scaleSoundType = .clarinet
+
+        // When
+        try sut.saveSettings()
+
+        // Then
+        XCTAssertNotNil(mockRepository.savedSettings)
+        XCTAssertEqual(mockRepository.savedSettings?.scaleSoundType, .clarinet)
     }
 
     func testSaveSettings_whenRepositoryThrows_shouldPropagateError() {
@@ -187,6 +236,17 @@ final class AudioSettingsViewModelTests: XCTestCase {
         XCTAssertThrowsError(try sut.resetSettings()) { error in
             XCTAssertEqual(error as? MockAudioSettingsRepository.TestError, .resetFailed)
         }
+    }
+
+    func testResetSettings_shouldRestoreDefaultScaleSoundType() throws {
+        // Given: Change scale sound type
+        sut.scaleSoundType = .vibraphone
+
+        // When: Reset
+        try sut.resetSettings()
+
+        // Then: Should restore default
+        XCTAssertEqual(sut.scaleSoundType, .acousticGrandPiano)
     }
 
     // MARK: - Has Changes Tests
@@ -251,6 +311,33 @@ final class AudioSettingsViewModelTests: XCTestCase {
 
         // Then
         XCTAssertFalse(sut.hasChanges)
+    }
+
+    func testHasChanges_whenScaleSoundTypeChanged_shouldReturnTrue() {
+        // When
+        sut.scaleSoundType = .marimba
+
+        // Then
+        XCTAssertTrue(sut.hasChanges)
+    }
+
+    func testHasChanges_whenOnlyScaleSoundTypeChanged_shouldReturnTrue() {
+        // Given: Ensure no other properties changed
+        let originalVolume = sut.scalePlaybackVolume
+        let originalRecording = sut.recordingPlaybackVolume
+        let originalSensitivity = sut.detectionSensitivity
+        let originalConfidence = sut.confidenceThreshold
+
+        // When: Only change scale sound type
+        sut.scaleSoundType = .acousticGuitar
+
+        // Then
+        XCTAssertTrue(sut.hasChanges)
+        // Verify other properties unchanged
+        XCTAssertEqual(sut.scalePlaybackVolume, originalVolume)
+        XCTAssertEqual(sut.recordingPlaybackVolume, originalRecording)
+        XCTAssertEqual(sut.detectionSensitivity, originalSensitivity)
+        XCTAssertEqual(sut.confidenceThreshold, originalConfidence)
     }
 }
 

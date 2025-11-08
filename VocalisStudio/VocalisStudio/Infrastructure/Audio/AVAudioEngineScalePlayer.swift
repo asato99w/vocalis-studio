@@ -98,37 +98,62 @@ public class AVAudioEngineScalePlayer: ScalePlayerProtocol {
         try await loadSoundBank()
     }
 
-    /// Load audio unit preset for piano sound
+    /// Load SF2 sound bank for specified sound type
+    ///
+    /// Platform Notes:
+    /// - iOS Simulator: DLS file available at /System/Library/.../gs_instruments.dls (legacy support)
+    /// - iOS Device: DLS file NOT available, SF2 file required
+    /// - macOS: DLS file available (legacy support)
+    ///
+    /// Current Implementation Status:
+    /// - TODO: Add SF2 file (GeneralUserGS.sf2) to project as Bundle Resource
+    /// - TODO: Implement SF2 loading logic
+    /// - Temporary: Using DLS on simulator (will be replaced with SF2 for consistency)
     private func loadSoundBank() async throws {
+        // Get current scale sound type from settings
+        let settings = settingsRepository.get()
+        let soundType = settings.scaleSoundType
+
+        // Get MIDI program number (fallback to Acoustic Grand Piano if nil, e.g., sine wave)
+        let program = soundType.midiProgram ?? 0
+
+        // TODO: Load SF2 file from Bundle (works on all platforms)
+        // guard let sf2URL = Bundle.main.url(forResource: "GeneralUserGS", withExtension: "sf2") else {
+        //     Logger.scalePlayer.error("[loadSoundBank] SF2 file not found in bundle")
+        //     throw ScalePlayerError.soundBankNotFound
+        // }
+        //
+        // do {
+        //     try sampler.loadSoundBankInstrument(
+        //         at: sf2URL,
+        //         program: program,
+        //         bankMSB: UInt8(kAUSampler_DefaultMelodicBankMSB),
+        //         bankLSB: UInt8(kAUSampler_DefaultBankLSB)
+        //     )
+        //     Logger.scalePlayer.info("[loadSoundBank] Loaded SF2 program \(program) for \(soundType.displayName)")
+        // } catch {
+        //     Logger.scalePlayer.error("[loadSoundBank] Failed to load SF2: \(error.localizedDescription)")
+        //     throw ScalePlayerError.soundBankLoadFailed(error.localizedDescription)
+        // }
+
+        // TEMPORARY: Use DLS on simulator only (will be removed after SF2 implementation)
+        #if targetEnvironment(simulator)
         do {
-            #if targetEnvironment(simulator)
-            // iOS Simulator: use DLS sound bank (like macOS)
-            // Simulator doesn't have factory presets but can access DLS files
+            let dlsURL = URL(fileURLWithPath: "/System/Library/Components/CoreAudio.component/Contents/Resources/gs_instruments.dls")
             try sampler.loadSoundBankInstrument(
-                at: URL(fileURLWithPath: "/System/Library/Components/CoreAudio.component/Contents/Resources/gs_instruments.dls"),
-                program: 0,
+                at: dlsURL,
+                program: program,
                 bankMSB: UInt8(kAUSampler_DefaultMelodicBankMSB),
                 bankLSB: UInt8(kAUSampler_DefaultBankLSB)
             )
-            #elseif os(iOS)
-            // Real iOS device: use AUAudioUnit factory presets
-            if let pianoPreset = sampler.auAudioUnit.factoryPresets?.first(where: { $0.name.contains("Piano") }) {
-                sampler.auAudioUnit.currentPreset = pianoPreset
-            } else if let firstPreset = sampler.auAudioUnit.factoryPresets?.first {
-                sampler.auAudioUnit.currentPreset = firstPreset
-            }
-            #else
-            // macOS: load DLS sound bank
-            try sampler.loadSoundBankInstrument(
-                at: URL(fileURLWithPath: "/System/Library/Components/CoreAudio.component/Contents/Resources/gs_instruments.dls"),
-                program: 0,
-                bankMSB: UInt8(kAUSampler_DefaultMelodicBankMSB),
-                bankLSB: UInt8(kAUSampler_DefaultBankLSB)
-            )
-            #endif
+            Logger.scalePlayer.info("[loadSoundBank] Simulator: Loaded DLS GM program \(program) for \(soundType.displayName)")
         } catch {
-            // Continue anyway - sampler will use default sound
+            Logger.scalePlayer.error("[loadSoundBank] Simulator: Failed to load DLS: \(error.localizedDescription)")
         }
+        #else
+        // Real device: No sound bank available yet (SF2 implementation pending)
+        Logger.scalePlayer.warning("[loadSoundBank] Real device: SF2 implementation pending, no sound will play")
+        #endif
     }
 
     public func play(muted: Bool = false) async throws {
