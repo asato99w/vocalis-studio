@@ -25,12 +25,17 @@ public final class PurchaseSubscriptionUseCase {
     /// - Parameter tier: Subscription tier to purchase
     /// - Throws: PurchaseError if tier is free, SubscriptionError from repository
     public func execute(tier: SubscriptionTier) async throws {
+        FileLogger.shared.log(level: "INFO", category: "purchase", message: "[usecase] 🛒 PurchaseSubscriptionUseCase.execute() called with tier: \(tier)")
+
         // Cannot purchase free tier
         guard tier != .free else {
+            FileLogger.shared.log(level: "ERROR", category: "purchase", message: "[usecase] ❌ Cannot purchase free tier")
             throw PurchaseError.cannotPurchaseFreeTier
         }
 
+        FileLogger.shared.log(level: "INFO", category: "purchase", message: "[usecase] 🛒 Calling repository.purchaseProduct(productId: \(tier.productId))")
         // Purchase the product
         try await repository.purchaseProduct(productId: tier.productId)
+        FileLogger.shared.log(level: "INFO", category: "purchase", message: "[usecase] ✅ repository.purchaseProduct() completed successfully")
     }
 }

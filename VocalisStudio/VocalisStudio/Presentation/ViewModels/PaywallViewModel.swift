@@ -64,17 +64,25 @@ public final class PaywallViewModel: ObservableObject {
 
     /// Purchase the selected tier
     public func purchaseSelectedTier() async {
+        FileLogger.shared.log(level: "INFO", category: "purchase", message: "[paywall] 🛒 Purchase started for tier: \(selectedTier)")
         isLoading = true
         errorMessage = nil
         isPurchaseSuccessful = false
 
         do {
+            FileLogger.shared.log(level: "INFO", category: "purchase", message: "[paywall] 🛒 Calling purchaseUseCase.execute()")
             try await purchaseUseCase.execute(tier: selectedTier)
+            FileLogger.shared.log(level: "INFO", category: "purchase", message: "[paywall] ✅ Purchase completed successfully")
+
             // Refresh status after successful purchase
+            FileLogger.shared.log(level: "INFO", category: "purchase", message: "[paywall] 🔄 Loading status after purchase")
             await loadStatus()
+            FileLogger.shared.log(level: "INFO", category: "purchase", message: "[paywall] ✅ Status loaded, setting isPurchaseSuccessful=true")
+
             isPurchaseSuccessful = true
             isLoading = false
         } catch {
+            FileLogger.shared.log(level: "ERROR", category: "purchase", message: "[paywall] ❌ Purchase failed: \(error.localizedDescription)")
             errorMessage = error.localizedDescription
             isPurchaseSuccessful = false
             isLoading = false

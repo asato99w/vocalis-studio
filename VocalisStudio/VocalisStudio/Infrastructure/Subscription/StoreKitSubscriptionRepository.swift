@@ -75,31 +75,46 @@ public final class StoreKitSubscriptionRepository: SubscriptionRepositoryProtoco
     }
 
     public func purchaseProduct(productId: String) async throws {
+        FileLogger.shared.log(level: "INFO", category: "purchase", message: "[repo] 🛒 purchaseProduct called with productId: \(productId)")
+
         // Fetch product
+        FileLogger.shared.log(level: "INFO", category: "purchase", message: "[repo] 📦 Fetching products from StoreKit")
         let products = try await productService.fetchProducts(productIds: [productId])
+        FileLogger.shared.log(level: "INFO", category: "purchase", message: "[repo] 📦 Fetched \(products.count) products")
 
         guard let product = products.first else {
+            FileLogger.shared.log(level: "ERROR", category: "purchase", message: "[repo] ❌ Product not found for id: \(productId)")
             throw SubscriptionError.productNotFound
         }
 
+        FileLogger.shared.log(level: "INFO", category: "purchase", message: "[repo] 📦 Product found: \(product.displayName), price: \(product.displayPrice)")
+
         // Purchase product
+        FileLogger.shared.log(level: "INFO", category: "purchase", message: "[repo] 🛒 Calling purchaseService.purchase()")
         let result = try await purchaseService.purchase(product)
+        FileLogger.shared.log(level: "INFO", category: "purchase", message: "[repo] ✅ purchase() returned with result")
 
         switch result {
         case .success(let verification):
+            FileLogger.shared.log(level: "INFO", category: "purchase", message: "[repo] ✅ Purchase result: success")
             // Verify transaction
             guard case .verified = verification else {
+                FileLogger.shared.log(level: "ERROR", category: "purchase", message: "[repo] ❌ Transaction verification failed")
                 throw SubscriptionError.purchaseFailed("Transaction verification failed")
             }
+            FileLogger.shared.log(level: "INFO", category: "purchase", message: "[repo] ✅ Transaction verified successfully")
             // Purchase successful
 
         case .pending:
+            FileLogger.shared.log(level: "INFO", category: "purchase", message: "[repo] ⏳ Purchase result: pending")
             throw SubscriptionError.purchaseFailed("Purchase is pending")
 
         case .userCancelled:
+            FileLogger.shared.log(level: "INFO", category: "purchase", message: "[repo] 🚫 Purchase result: user cancelled")
             throw SubscriptionError.purchaseFailed("User cancelled")
 
         @unknown default:
+            FileLogger.shared.log(level: "ERROR", category: "purchase", message: "[repo] ❌ Purchase result: unknown")
             throw SubscriptionError.unknown
         }
     }

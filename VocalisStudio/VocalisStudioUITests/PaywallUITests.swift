@@ -6,19 +6,31 @@
 //
 
 import XCTest
+import StoreKitTest
 
 final class PaywallUITests: XCTestCase {
 
     var app: XCUIApplication!
+    var session: SKTestSession!
 
     override func setUpWithError() throws {
         continueAfterFailure = false
+
+        // Initialize StoreKit Test session with Configuration.storekit using absolute path
+        let projectPath = "/Users/kazuasato/Documents/dev/music/vocalis_studio/VocalisStudio/VocalisStudio/Configuration.storekit"
+        let configURL = URL(fileURLWithPath: projectPath)
+        session = try SKTestSession(contentsOf: configURL)
+        session.disableDialogs = true  // Disable dialogs for automated testing
+        session.clearTransactions()
+
         app = XCUIApplication()
         app.launchArguments = ["UI-Testing"]
         app.launch()
     }
 
     override func tearDownWithError() throws {
+        session?.clearTransactions()
+        session = nil
         app = nil
     }
 
@@ -251,26 +263,113 @@ final class PaywallUITests: XCTestCase {
         XCTAssertTrue(purchaseButton.exists, "Purchase button should exist")
         purchaseButton.tap()
 
-        // Wait for StoreKit test purchase to complete (StoreKit Testing auto-approves)
-        // In StoreKit Testing environment, purchases complete immediately
-        sleep(2)
+        // Handle StoreKit Testing purchase dialog
+        // Wait for either "Subscribe" or "Buy" button in StoreKit dialog
+        let subscribeButton = app.buttons["Subscribe"]
+        let buyButton = app.buttons["Buy"]
 
-        // Wait for purchase success alert to appear and be auto-handled by XCUITest
-        Thread.sleep(forTimeInterval: 2)
+        if subscribeButton.waitForExistence(timeout: 5) {
+            subscribeButton.tap()
+        } else if buyButton.waitForExistence(timeout: 1) {
+            buyButton.tap()
+        }
+
+        // Wait for transaction to process
+        sleep(3)
+
+        // Handle purchase success alert explicitly
+        let okButton = app.buttons["OK"]
+        if okButton.waitForExistence(timeout: 5) {
+            okButton.tap()
+        }
+
+        // Wait for paywall sheet to dismiss after alert
+        Thread.sleep(forTimeInterval: 1)
 
         // Expected behavior: After purchase, app should return to home/top page
         // Verify we're back on home screen by checking for home-specific elements
 
-        // Check for upgrade banner (should be on home screen)
-        let upgradeBanner = app.buttons.containing(NSPredicate(format: "label CONTAINS[cd] %@", "無制限録音を解放"))
+        // ✅ Verify Premium status by navigating to subscription management
+        // Navigate from Home → Settings → Subscription Management
 
-        // Check for home settings button
+        // Check that we're back on home screen
         let homeSettingsButton = app.buttons["HomeSettingsButton"]
+        XCTAssertTrue(homeSettingsButton.waitForExistence(timeout: 5), "Should return to home screen after purchase")
 
-        // At least one home screen element should be accessible
-        let isOnHomeScreen = upgradeBanner.firstMatch.waitForExistence(timeout: 3) || homeSettingsButton.waitForExistence(timeout: 3)
+        homeSettingsButton.tap()
+        Thread.sleep(forTimeInterval: 0.5)
 
-        XCTAssertTrue(isOnHomeScreen, "After purchase, should return to home/top page but PaywallView sheet is still present (implementation error)")
+        let subscriptionLink = app.buttons.containing(NSPredicate(format: "label CONTAINS[cd] %@", "サブスクリプションを管理"))
+        XCTAssertTrue(subscriptionLink.firstMatch.waitForExistence(timeout: 5), "Subscription management link should exist")
+        subscriptionLink.firstMatch.tap()
+
+        // Wait for subscription management screen to load
+        Thread.sleep(forTimeInterval: 1)
+
+        // Verify Premium status is displayed
+        let premiumStatusText = app.staticTexts.containing(NSPredicate(format: "label CONTAINS[cd] %@", "Premium"))
+        XCTAssertTrue(premiumStatusText.firstMatch.waitForExistence(timeout: 5),
+                     "Should show Premium status in subscription management after purchase")
+
+        // Verify Free tier is NOT shown (since user is now Premium)
+        let freeStatusText = app.staticTexts.containing(NSPredicate(format: "label CONTAINS[cd] %@", "無料"))
+        XCTAssertFalse(freeStatusText.firstMatch.exists,
+                      "Should NOT show Free tier after Premium purchase")
+    }
+
+    // DEBUG TEST: Check what status is shown after purchase
+    func testDEBUG_checkSubscriptionStatusAfterPurchase() throws {
+        // Navigate to paywall
+        navigateToPaywall()
+
+        // Tap purchase button
+        let purchaseButton = app.buttons["購入する"]
+        XCTAssertTrue(purchaseButton.exists)
+        purchaseButton.tap()
+
+        // DEBUG: Print all buttons and alerts after tapping purchase button
+        Thread.sleep(forTimeInterval: 2)
+
+        // Check for error alert
+        let errorAlert = app.alerts["エラー"]
+        if errorAlert.exists {
+            print("=== ERROR ALERT DETECTED ===")
+            for staticText in errorAlert.staticTexts.allElementsBoundByIndex {
+                print("Alert text: '\(staticText.label)'")
+            }
+            // Tap OK to dismiss
+            errorAlert.buttons["OK"].tap()
+            Thread.sleep(forTimeInterval: 1)
+        }
+
+        print("=== ALL BUTTONS AFTER PURCHASE TAP ===")
+        for button in app.buttons.allElementsBoundByIndex {
+            print("Button: '\(button.label)' - identifier: '\(button.identifier)'")
+        }
+        print("=== END BUTTONS ===")
+
+        // Wait for purchase
+        sleep(4)
+
+        // Navigate to subscription management to check status
+        let homeSettingsButton = app.buttons["HomeSettingsButton"]
+        if homeSettingsButton.waitForExistence(timeout: 5) {
+            homeSettingsButton.tap()
+            Thread.sleep(forTimeInterval: 0.5)
+
+            let subscriptionLink = app.buttons.containing(NSPredicate(format: "label CONTAINS[cd] %@", "サブスクリプションを管理"))
+            if subscriptionLink.firstMatch.waitForExistence(timeout: 5) {
+                subscriptionLink.firstMatch.tap()
+                Thread.sleep(forTimeInterval: 1)
+
+                // Print all text elements to see what's displayed
+                print("=== ALL TEXT ELEMENTS IN SUBSCRIPTION MANAGEMENT ===")
+                for element in app.staticTexts.allElementsBoundByIndex {
+                    print("Text: '\(element.label)'")
+                }
+                print("=== END ===")
+            }
+        }
     }
 
     func testDebugMenu_tierSwitch_shouldPersistAcrossScreens() throws {

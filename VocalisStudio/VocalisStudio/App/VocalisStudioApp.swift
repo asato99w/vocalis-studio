@@ -1,6 +1,7 @@
 import SwiftUI
 import VocalisDomain
 import OSLog
+import StoreKit
 
 @available(iOS 15.0, macOS 11.0, *)
 @main
@@ -62,6 +63,40 @@ public struct VocalisStudioApp: App {
             HomeView()
                 .environmentObject(DependencyContainer.shared.subscriptionViewModel)
                 .environment(\.uiTestAnimationsDisabled, animationsDisabled)
+                .task {
+                    await observeTransactionUpdates()
+                }
+        }
+    }
+
+    // MARK: - StoreKit Transaction Observation
+
+    /// Observe StoreKit transaction updates
+    /// This is required for StoreKit 2 to properly handle purchase completions
+    @MainActor
+    private func observeTransactionUpdates() async {
+        FileLogger.shared.log(level: "INFO", category: "storekit", message: "🔄 Starting Transaction.updates observation")
+
+        for await result in Transaction.updates {
+            FileLogger.shared.log(level: "INFO", category: "storekit", message: "🔔 Transaction update received")
+
+            switch result {
+            case .verified(let transaction):
+                FileLogger.shared.log(level: "INFO", category: "storekit", message: "✅ Transaction verified: \(transaction.productID)")
+
+                // Finish the transaction
+                await transaction.finish()
+                FileLogger.shared.log(level: "INFO", category: "storekit", message: "✅ Transaction finished: \(transaction.productID)")
+
+                // Refresh subscription status
+                Task {
+                    await DependencyContainer.shared.subscriptionViewModel.loadStatus()
+                    FileLogger.shared.log(level: "INFO", category: "storekit", message: "🔄 Subscription status refreshed")
+                }
+
+            case .unverified(let transaction, let error):
+                FileLogger.shared.log(level: "ERROR", category: "storekit", message: "❌ Transaction verification failed: \(transaction.productID), error: \(error)")
+            }
         }
     }
 }

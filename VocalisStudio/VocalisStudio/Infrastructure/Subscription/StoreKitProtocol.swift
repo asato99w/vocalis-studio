@@ -42,7 +42,10 @@ public final class StoreKitPurchaseService: StoreKitPurchaseServiceProtocol {
     public init() {}
 
     public func purchase(_ product: Product) async throws -> Product.PurchaseResult {
-        return try await product.purchase()
+        FileLogger.shared.log(level: "INFO", category: "purchase", message: "[storekit] 🛒 Starting product.purchase() for: \(product.id)")
+        let result = try await product.purchase()
+        FileLogger.shared.log(level: "INFO", category: "purchase", message: "[storekit] ✅ product.purchase() completed")
+        return result
     }
 
     public func currentEntitlements() async -> [Transaction] {
