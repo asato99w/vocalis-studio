@@ -44,11 +44,17 @@ public final class SubscriptionViewModel: ObservableObject {
     // MARK: - Public Methods
 
     /// Load current subscription status
-    public func loadStatus() async {
+    /// - Parameter force: If true, clears debug tier and forces reload from StoreKit (for Transaction.updates)
+    public func loadStatus(force: Bool = false) async {
         #if DEBUG
         // Skip loading from StoreKit if debug tier is manually set
-        if isDebugTierSet {
+        // Unless force=true (e.g., when Transaction.updates fires)
+        if isDebugTierSet && !force {
             return
+        }
+        // Clear debug tier flag when force loading
+        if force {
+            isDebugTierSet = false
         }
         #endif
 

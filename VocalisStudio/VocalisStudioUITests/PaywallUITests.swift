@@ -427,4 +427,102 @@ final class PaywallUITests: XCTestCase {
         XCTAssertTrue(currentTierLabel.firstMatch.exists, "Tier should still be Premium in debug menu")
         #endif
     }
+
+    // 🔴 RED TEST: Debug tier should be cleared when Transaction.updates fires
+    // This tests the scenario where:
+    // 1. User sets debug tier manually
+    // 2. Transaction.updates receives purchase completion (not via purchase() method)
+    // 3. observeTransactionUpdates() calls loadStatus() while isDebugTierSet=true
+    // 4. BUG: loadStatus() returns early, debug tier persists
+    func testDebugTier_shouldBeClearedAfterRestorePurchase() throws {
+        #if DEBUG
+        // First make a purchase to have something to restore
+        navigateToPaywall()
+        let purchaseButton = app.buttons["購入する"]
+        XCTAssertTrue(purchaseButton.exists, "Purchase button should exist")
+        purchaseButton.tap()
+        Thread.sleep(forTimeInterval: 3)
+
+        let okButton = app.buttons["OK"]
+        if okButton.waitForExistence(timeout: 5) {
+            okButton.tap()
+        }
+        Thread.sleep(forTimeInterval: 1)
+
+        // Navigate to home
+        let homeSettingsButton = app.buttons["HomeSettingsButton"]
+        XCTAssertTrue(homeSettingsButton.waitForExistence(timeout: 5), "Should return to home")
+
+        // Step 1: Set debug tier to Free via Debug Menu
+        let debugButton = app.staticTexts["Debug"]
+        XCTAssertTrue(debugButton.waitForExistence(timeout: 5), "Debug button should exist")
+        debugButton.tap()
+        Thread.sleep(forTimeInterval: 0.5)
+
+        // Set to Free tier - this sets isDebugTierSet = true
+        let tierPicker = app.segmentedControls.firstMatch
+        XCTAssertTrue(tierPicker.exists, "Tier picker should exist")
+        tierPicker.buttons["Free"].tap()
+        Thread.sleep(forTimeInterval: 1)
+
+        // Verify Free tier is set
+        let freeTierLabel = app.staticTexts.containing(NSPredicate(format: "label CONTAINS[cd] %@", "現在: 無料"))
+        XCTAssertTrue(freeTierLabel.firstMatch.exists, "Should show Free tier in debug menu")
+
+        // Close all navigation to get back to home
+        // Tap back buttons until we reach home screen
+        while app.navigationBars.buttons.count > 0 {
+            let firstButton = app.navigationBars.buttons.element(boundBy: 0)
+            if firstButton.exists {
+                firstButton.tap()
+                Thread.sleep(forTimeInterval: 0.3)
+            } else {
+                break
+            }
+
+            // Check if we're at home screen
+            if app.buttons["HomeSettingsButton"].exists {
+                break
+            }
+        }
+
+        // Step 2: Navigate to Subscription Management and trigger restore
+        let settingsButton2 = app.buttons["HomeSettingsButton"]
+        XCTAssertTrue(settingsButton2.waitForExistence(timeout: 5), "Should be at home screen")
+        settingsButton2.tap()
+        Thread.sleep(forTimeInterval: 0.5)
+
+        let subscriptionLink = app.buttons.containing(NSPredicate(format: "label CONTAINS[cd] %@", "サブスクリプションを管理"))
+        subscriptionLink.firstMatch.tap()
+        Thread.sleep(forTimeInterval: 1)
+
+        // Tap restore button (this will fire Transaction.updates)
+        let restoreButton = app.buttons["購入の復元"]
+        XCTAssertTrue(restoreButton.waitForExistence(timeout: 5), "Restore button should exist")
+        restoreButton.tap()
+        Thread.sleep(forTimeInterval: 3)
+
+        // Handle restore alert
+        if okButton.waitForExistence(timeout: 5) {
+            okButton.tap()
+        }
+        Thread.sleep(forTimeInterval: 2)
+
+        // Step 3: 🔴 BUG VERIFICATION
+        // Without fix: observeTransactionUpdates() calls loadStatus()
+        // but isDebugTierSet=true causes early return
+        // Result: Debug Free tier persists (TEST SHOULD FAIL)
+        //
+        // With fix: loadStatus(force: true) clears isDebugTierSet
+        // Result: Shows actual Premium status (TEST SHOULD PASS)
+
+        let premiumText = app.staticTexts.containing(NSPredicate(format: "label CONTAINS[cd] %@", "Premium"))
+        XCTAssertTrue(premiumText.firstMatch.exists,
+                     "After restore, should show Premium status from StoreKit (NOT debug Free tier)")
+
+        let freeText = app.staticTexts.containing(NSPredicate(format: "label CONTAINS[cd] %@", "無料"))
+        XCTAssertFalse(freeText.firstMatch.exists,
+                      "Debug Free tier should be cleared after Transaction.updates")
+        #endif
+    }
 }

@@ -89,9 +89,10 @@ public struct VocalisStudioApp: App {
                 FileLogger.shared.log(level: "INFO", category: "storekit", message: "✅ Transaction finished: \(transaction.productID)")
 
                 // Refresh subscription status
+                // Use force=true to clear any debug tier override when Transaction.updates fires
                 Task {
-                    await DependencyContainer.shared.subscriptionViewModel.loadStatus()
-                    FileLogger.shared.log(level: "INFO", category: "storekit", message: "🔄 Subscription status refreshed")
+                    await DependencyContainer.shared.subscriptionViewModel.loadStatus(force: true)
+                    FileLogger.shared.log(level: "INFO", category: "storekit", message: "🔄 Subscription status refreshed (debug tier cleared)")
                 }
 
             case .unverified(let transaction, let error):
