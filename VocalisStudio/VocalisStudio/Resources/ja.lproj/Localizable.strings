@@ -62,6 +62,9 @@
 "analysis.pitch_graph_title" = "ピッチ分析グラフ";
 "analysis.target_scale" = "目標音階";
 "analysis.detected_pitch" = "検出ピッチ";
+"analysis.close_expanded_view" = "全画面表示を閉じる";
+"analysis.playing" = "再生中";
+"analysis.paused" = "一時停止中";
 
 // MARK: - SettingsView
 "settings.title" = "設定";

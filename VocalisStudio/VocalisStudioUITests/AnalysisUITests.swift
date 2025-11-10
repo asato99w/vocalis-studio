@@ -145,4 +145,201 @@ final class AnalysisUITests: XCTestCase {
         let deleteButtons = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "DeleteRecordingButton_"))
         XCTAssertTrue(deleteButtons.firstMatch.waitForExistence(timeout: 3), "Should be back at recording list")
     }
+
+    /// Test: Spectrogram expanded view display and close
+    /// Expected: ~15 seconds execution time
+    @MainActor
+    func testSpectrogramExpandDisplay() throws {
+        let app = launchAppWithResetRecordingCount()
+
+        // Navigate to analysis screen (same setup as testAnalysisViewDisplay)
+        navigateToAnalysisScreen(app)
+
+        // Wait for analysis to complete
+        Thread.sleep(forTimeInterval: 3.0)
+
+        // Find and tap on spectrogram view
+        let spectrogramView = app.otherElements["SpectrogramView"]
+        XCTAssertTrue(spectrogramView.waitForExistence(timeout: 5), "Spectrogram view should exist")
+
+        // Tap on the spectrogram view to expand
+        spectrogramView.tap()
+
+        // Wait for expansion animation
+        Thread.sleep(forTimeInterval: 1.0)
+
+        // Screenshot: Expanded spectrogram view
+        let screenshot1 = app.screenshot()
+        let attachment1 = XCTAttachment(screenshot: screenshot1)
+        attachment1.name = "expanded_spectrogram_01"
+        attachment1.lifetime = .keepAlways
+        add(attachment1)
+
+        // Verify close button exists
+        let closeButton = app.buttons["CloseExpandedViewButton"]
+        XCTAssertTrue(closeButton.waitForExistence(timeout: 2), "Close button should exist in expanded view")
+
+        // Tap close button
+        closeButton.tap()
+
+        // Wait for collapse animation
+        Thread.sleep(forTimeInterval: 1.0)
+
+        // Screenshot: After closing expanded view
+        let screenshot2 = app.screenshot()
+        let attachment2 = XCTAttachment(screenshot: screenshot2)
+        attachment2.name = "expanded_spectrogram_02_closed"
+        attachment2.lifetime = .keepAlways
+        add(attachment2)
+
+        // Verify we're back to normal view (spectrogram view should still exist)
+        XCTAssertTrue(spectrogramView.exists, "Should be back to normal view")
+    }
+
+    /// Test: Pitch graph expanded view display and close
+    /// Expected: ~15 seconds execution time
+    @MainActor
+    func testPitchGraphExpandDisplay() throws {
+        let app = launchAppWithResetRecordingCount()
+
+        // Navigate to analysis screen
+        navigateToAnalysisScreen(app)
+
+        // Wait for analysis to complete
+        Thread.sleep(forTimeInterval: 3.0)
+
+        // Find and tap on pitch analysis view
+        let pitchAnalysisView = app.otherElements["PitchAnalysisView"]
+        XCTAssertTrue(pitchAnalysisView.waitForExistence(timeout: 5), "Pitch analysis view should exist")
+
+        // Tap on the pitch analysis view to expand
+        pitchAnalysisView.tap()
+
+        // Wait for expansion animation
+        Thread.sleep(forTimeInterval: 1.0)
+
+        // Screenshot: Expanded pitch graph view
+        let screenshot1 = app.screenshot()
+        let attachment1 = XCTAttachment(screenshot: screenshot1)
+        attachment1.name = "expanded_pitch_graph_01"
+        attachment1.lifetime = .keepAlways
+        add(attachment1)
+
+        // Verify close button exists
+        let closeButton = app.buttons["CloseExpandedViewButton"]
+        XCTAssertTrue(closeButton.waitForExistence(timeout: 2), "Close button should exist in expanded view")
+
+        // Tap close button
+        closeButton.tap()
+
+        // Wait for collapse animation
+        Thread.sleep(forTimeInterval: 1.0)
+
+        // Screenshot: After closing expanded view
+        let screenshot2 = app.screenshot()
+        let attachment2 = XCTAttachment(screenshot: screenshot2)
+        attachment2.name = "expanded_pitch_graph_02_closed"
+        attachment2.lifetime = .keepAlways
+        add(attachment2)
+
+        // Verify we're back to normal view
+        XCTAssertTrue(pitchAnalysisView.exists, "Should be back to normal view")
+    }
+
+    /// Test: Playback control in expanded view
+    /// Expected: ~15 seconds execution time
+    @MainActor
+    func testExpandedViewPlaybackControl() throws {
+        let app = launchAppWithResetRecordingCount()
+
+        // Navigate to analysis screen
+        navigateToAnalysisScreen(app)
+
+        // Wait for analysis to complete
+        Thread.sleep(forTimeInterval: 3.0)
+
+        // Expand pitch analysis view
+        let pitchAnalysisView = app.otherElements["PitchAnalysisView"]
+        XCTAssertTrue(pitchAnalysisView.waitForExistence(timeout: 5), "Pitch analysis view should exist")
+        pitchAnalysisView.tap()
+
+        // Wait for expansion animation
+        Thread.sleep(forTimeInterval: 1.0)
+
+        // Find and tap play button in compact control
+        let playButton = app.buttons["AnalysisPlayPauseButton"]
+        XCTAssertTrue(playButton.waitForExistence(timeout: 2), "Play button should exist in expanded view")
+
+        playButton.tap()
+
+        // Wait for playback to start
+        Thread.sleep(forTimeInterval: 1.0)
+
+        // Screenshot: Playback in expanded view
+        let screenshot1 = app.screenshot()
+        let attachment1 = XCTAttachment(screenshot: screenshot1)
+        attachment1.name = "expanded_playback_01_playing"
+        attachment1.lifetime = .keepAlways
+        add(attachment1)
+
+        // Verify button still exists (state changed to pause)
+        XCTAssertTrue(playButton.exists, "Play/Pause button should still exist during playback")
+
+        // Tap to pause
+        playButton.tap()
+        Thread.sleep(forTimeInterval: 0.5)
+
+        // Screenshot: Paused in expanded view
+        let screenshot2 = app.screenshot()
+        let attachment2 = XCTAttachment(screenshot: screenshot2)
+        attachment2.name = "expanded_playback_02_paused"
+        attachment2.lifetime = .keepAlways
+        add(attachment2)
+
+        // Close expanded view
+        let closeButton = app.buttons["CloseExpandedViewButton"]
+        XCTAssertTrue(closeButton.exists, "Close button should exist")
+        closeButton.tap()
+        Thread.sleep(forTimeInterval: 1.0)
+    }
+
+    // MARK: - Helper Methods
+
+    /// Navigate to analysis screen by creating a recording and navigating to it
+    private func navigateToAnalysisScreen(_ app: XCUIApplication) {
+        // 1. Create a recording
+        let homeRecordButton = app.buttons["HomeRecordButton"]
+        XCTAssertTrue(homeRecordButton.waitForExistence(timeout: 5), "Home record button should exist")
+        homeRecordButton.tap()
+
+        let startButton = app.buttons["StartRecordingButton"]
+        XCTAssertTrue(startButton.waitForExistence(timeout: 5), "Start recording button should exist")
+        startButton.tap()
+
+        let stopButton = app.buttons["StopRecordingButton"]
+        XCTAssertTrue(stopButton.waitForExistence(timeout: 10), "Stop recording button should appear")
+
+        Thread.sleep(forTimeInterval: 1.0)
+        stopButton.tap()
+
+        let playButton = app.buttons["PlayLastRecordingButton"]
+        XCTAssertTrue(playButton.waitForExistence(timeout: 5), "Play button should appear after save")
+
+        // 2. Navigate to Recording List
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        Thread.sleep(forTimeInterval: 0.5)
+
+        let homeListButton = app.buttons["HomeListButton"]
+        XCTAssertTrue(homeListButton.waitForExistence(timeout: 5), "Home list button should exist")
+        homeListButton.tap()
+
+        Thread.sleep(forTimeInterval: 2.0)
+
+        // 3. Navigate to Analysis screen
+        let analysisLinks = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "AnalysisNavigationLink_"))
+        XCTAssertTrue(analysisLinks.firstMatch.waitForExistence(timeout: 5), "Analysis navigation link should exist")
+        analysisLinks.firstMatch.tap()
+
+        Thread.sleep(forTimeInterval: 2.0)
+    }
 }

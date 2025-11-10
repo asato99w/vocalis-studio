@@ -8,6 +8,14 @@ public struct AnalysisView: View {
     @StateObject private var localization = LocalizationManager.shared
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
 
+    // MARK: - Expanded Graph State
+    @State private var expandedGraph: ExpandedGraphType? = nil
+
+    enum ExpandedGraphType {
+        case spectrogram
+        case pitchAnalysis
+    }
+
     public init(
         recording: Recording,
         audioPlayer: AudioPlayerProtocol,
@@ -31,6 +39,13 @@ public struct AnalysisView: View {
                     // Portrait layout
                     portraitLayout
                 }
+            }
+            .opacity(expandedGraph == nil ? 1 : 0)
+
+            // Expanded graph overlay
+            if let expanded = expandedGraph {
+                expandedGraphOverlay(for: expanded)
+                    .transition(.scale.combined(with: .opacity))
             }
 
             // Loading overlay
@@ -122,6 +137,11 @@ public struct AnalysisView: View {
                     spectrogramData: viewModel.analysisResult?.spectrogramData
                 )
                 .frame(maxHeight: .infinity)
+                .onTapGesture {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                        expandedGraph = .spectrogram
+                    }
+                }
 
                 Divider()
 
@@ -132,6 +152,11 @@ public struct AnalysisView: View {
                     scaleSettings: viewModel.analysisResult?.scaleSettings
                 )
                 .frame(maxHeight: .infinity)
+                .onTapGesture {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                        expandedGraph = .pitchAnalysis
+                    }
+                }
             }
             .padding(12)
         }
@@ -157,6 +182,11 @@ public struct AnalysisView: View {
                     spectrogramData: viewModel.analysisResult?.spectrogramData
                 )
                 .frame(height: 200)
+                .onTapGesture {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                        expandedGraph = .spectrogram
+                    }
+                }
 
                 PitchAnalysisView(
                     currentTime: viewModel.currentTime,
@@ -164,8 +194,91 @@ public struct AnalysisView: View {
                     scaleSettings: viewModel.analysisResult?.scaleSettings
                 )
                 .frame(height: 200)
+                .onTapGesture {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                        expandedGraph = .pitchAnalysis
+                    }
+                }
             }
             .padding()
+        }
+    }
+
+    // MARK: - Expanded Graph Overlay
+
+    @ViewBuilder
+    private func expandedGraphOverlay(for type: ExpandedGraphType) -> some View {
+        ZStack(alignment: .topTrailing) {
+            // Background
+            ColorPalette.background
+                .ignoresSafeArea()
+
+            // Graph content
+            VStack(spacing: 0) {
+                // Graph area (maximized)
+                switch type {
+                case .spectrogram:
+                    SpectrogramView(
+                        currentTime: viewModel.currentTime,
+                        spectrogramData: viewModel.analysisResult?.spectrogramData,
+                        isExpanded: true
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                case .pitchAnalysis:
+                    PitchAnalysisView(
+                        currentTime: viewModel.currentTime,
+                        pitchData: viewModel.analysisResult?.pitchData,
+                        scaleSettings: viewModel.analysisResult?.scaleSettings,
+                        isExpanded: true
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+
+                // Compact playback control
+                CompactPlaybackControl(
+                    isPlaying: viewModel.isPlaying,
+                    onPlayPause: { viewModel.togglePlayback() }
+                )
+                .padding()
+                .background(ColorPalette.secondary.opacity(0.9))
+            }
+
+            // Close button (top right)
+            Button(action: {
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                    expandedGraph = nil
+                }
+            }) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.title)
+                    .foregroundColor(ColorPalette.text.opacity(0.8))
+                    .padding()
+            }
+            .accessibilityLabel("analysis.close_expanded_view".localized)
+            .accessibilityIdentifier("CloseExpandedViewButton")
+        }
+    }
+}
+
+// MARK: - Compact Playback Control
+
+struct CompactPlaybackControl: View {
+    let isPlaying: Bool
+    let onPlayPause: () -> Void
+
+    var body: some View {
+        HStack {
+            Button(action: onPlayPause) {
+                Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
+                    .font(.title2)
+                    .foregroundColor(ColorPalette.primary)
+            }
+            .accessibilityIdentifier("AnalysisPlayPauseButton")
+
+            Text(isPlaying ? "analysis.playing".localized : "analysis.paused".localized)
+                .font(.caption)
+                .foregroundColor(ColorPalette.text.opacity(0.6))
         }
     }
 }
@@ -331,12 +444,14 @@ struct PlaybackControl: View {
 struct SpectrogramView: View {
     let currentTime: Double
     let spectrogramData: SpectrogramData?
+    var isExpanded: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("analysis.spectrogram_title".localized)
                 .font(.subheadline)
                 .fontWeight(.semibold)
+                .accessibilityIdentifier("SpectrogramTitle")
 
             ZStack(alignment: .topLeading) {
                 GeometryReader { geometry in
@@ -396,10 +511,18 @@ struct SpectrogramView: View {
             .background(Color.black.opacity(0.1))
             .cornerRadius(8)
         }
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("SpectrogramView")
     }
 
     private func drawSpectrogram(context: GraphicsContext, size: CGSize, data: SpectrogramData) {
-        let timeWindow = 6.0  // Display 6 seconds total (3 sec before, 3 sec after)
+        // Fixed pixel density (pixels per second)
+        // Expanded view: higher density = more detail in same time range
+        let pixelsPerSecond: CGFloat = isExpanded ? 80 : 50
+
+        // Calculate time window based on screen width and density
+        let timeWindow = Double(size.width / pixelsPerSecond)
         let centerX = size.width / 2  // Playback position at center
 
         // Find max magnitude for normalization
@@ -416,7 +539,6 @@ struct SpectrogramView: View {
             guard abs(timeOffset) <= timeWindow / 2 else { continue }
 
             // Calculate x position: center + offset scaled to pixels
-            let pixelsPerSecond = size.width / timeWindow
             let x = centerX + CGFloat(timeOffset) * pixelsPerSecond
 
             let cellWidth = pixelsPerSecond * 0.1  // 0.1 sec per cell
@@ -482,6 +604,7 @@ struct PitchAnalysisView: View {
     let currentTime: Double
     let pitchData: PitchAnalysisData?
     let scaleSettings: ScaleSettings?
+    var isExpanded: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -489,6 +612,7 @@ struct PitchAnalysisView: View {
                 .font(.subheadline)
                 .fontWeight(.semibold)
                 .foregroundColor(ColorPalette.text)
+                .accessibilityIdentifier("PitchGraphTitle")
 
             GeometryReader { geometry in
                 Canvas { context, size in
@@ -503,19 +627,27 @@ struct PitchAnalysisView: View {
             .background(ColorPalette.secondary)
             .cornerRadius(8)
         }
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("PitchAnalysisView")
     }
 
     private func drawPitchGraph(context: GraphicsContext, size: CGSize, data: PitchAnalysisData) {
         let frequencies = data.frequencies
         guard !frequencies.isEmpty else { return }
 
-        // Calculate frequency range
-        let minFreq = frequencies.min() ?? 200.0
-        let maxFreq = frequencies.max() ?? 800.0
+        // Calculate frequency range with expansion
+        let baseMinFreq = frequencies.min() ?? 200.0
+        let baseMaxFreq = frequencies.max() ?? 800.0
+
+        // Expanded view: show wider frequency range
+        let minFreq = isExpanded ? max(100.0, baseMinFreq - 100) : baseMinFreq
+        let maxFreq = isExpanded ? min(2000.0, baseMaxFreq + 200) : baseMaxFreq
         let freqRange = maxFreq - minFreq
         guard freqRange > 0 else { return }
 
-        let timeWindow = 6.0  // Display 6 seconds total (3 sec before, 3 sec after)
+        // Fixed pixel density (pixels per second)
+        let pixelsPerSecond: CGFloat = isExpanded ? 80 : 50
         let leftMargin: CGFloat = 40
         let rightMargin: CGFloat = 10
         let topMargin: CGFloat = 50
@@ -524,6 +656,9 @@ struct PitchAnalysisView: View {
         let graphWidth = size.width - leftMargin - rightMargin
         let graphHeight = size.height - topMargin - bottomMargin
         let centerX = leftMargin + graphWidth / 2  // Playback position at center
+
+        // Calculate time window based on graph width and density
+        let timeWindow = Double(graphWidth / pixelsPerSecond)
 
         // Draw target scale lines if available
         if let settings = scaleSettings {
@@ -535,7 +670,6 @@ struct PitchAnalysisView: View {
         // Draw detected pitch line (only visible range)
         var path = Path()
         var pathStarted = false
-        let pixelsPerSecond = graphWidth / timeWindow
 
         for (index, timestamp) in data.timeStamps.enumerated() {
             let timeOffset = timestamp - currentTime  // Offset from current time
@@ -584,7 +718,7 @@ struct PitchAnalysisView: View {
         // Draw time axis labels
         drawTimeAxis(context: context, leftMargin: leftMargin, topMargin: topMargin,
                     graphWidth: graphWidth, graphHeight: graphHeight, bottomMargin: bottomMargin,
-                    centerTime: currentTime, timeWindow: timeWindow)
+                    centerTime: currentTime, timeWindow: timeWindow, pixelsPerSecond: pixelsPerSecond)
     }
 
     private func drawTargetScaleLines(context: GraphicsContext, leftMargin: CGFloat, topMargin: CGFloat,
@@ -636,7 +770,7 @@ struct PitchAnalysisView: View {
 
     private func drawTimeAxis(context: GraphicsContext, leftMargin: CGFloat, topMargin: CGFloat,
                              graphWidth: CGFloat, graphHeight: CGFloat, bottomMargin: CGFloat,
-                             centerTime: Double, timeWindow: Double) {
+                             centerTime: Double, timeWindow: Double, pixelsPerSecond: CGFloat) {
         // Draw time labels at -3s, 0s (center), +3s
         let timeOffsets: [Double] = [-3, 0, 3]
         let positions: [CGFloat] = [0, 0.5, 1.0]

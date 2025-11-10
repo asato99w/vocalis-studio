@@ -62,6 +62,9 @@
 "analysis.pitch_graph_title" = "Pitch Analysis";
 "analysis.target_scale" = "Target Scale";
 "analysis.detected_pitch" = "Detected Pitch";
+"analysis.close_expanded_view" = "Close Expanded View";
+"analysis.playing" = "Playing";
+"analysis.paused" = "Paused";
 
 // MARK: - SettingsView
 "settings.title" = "Settings";
