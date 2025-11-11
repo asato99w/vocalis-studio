@@ -469,42 +469,49 @@ struct SpectrogramView: View {
                 }
 
                 // Frequency labels (overlay on top)
-                VStack(spacing: 0) {
-                    HStack {
-                        Text("2000Hz")
-                            .font(.caption2)
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 4)
-                            .padding(.vertical, 2)
-                            .background(Color.black.opacity(0.5))
-                            .cornerRadius(4)
+                if let data = spectrogramData {
+                    let frequencyRange = Double(data.frequencyBins.max() ?? 2000.0)
+                    let maxFreq = isExpanded ? 3000.0 : min(2000.0, frequencyRange)
+                    let minFreq = isExpanded ? 100.0 : 200.0
+                    let midFreq = (maxFreq + minFreq) / 2
+
+                    VStack(spacing: 0) {
+                        HStack {
+                            Text("\(Int(maxFreq))Hz")
+                                .font(.caption2)
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 2)
+                                .background(Color.black.opacity(0.5))
+                                .cornerRadius(4)
+                            Spacer()
+                        }
                         Spacer()
-                    }
-                    Spacer()
-                    HStack {
-                        Text("1100Hz")
-                            .font(.caption2)
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 4)
-                            .padding(.vertical, 2)
-                            .background(Color.black.opacity(0.5))
-                            .cornerRadius(4)
+                        HStack {
+                            Text("\(Int(midFreq))Hz")
+                                .font(.caption2)
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 2)
+                                .background(Color.black.opacity(0.5))
+                                .cornerRadius(4)
+                            Spacer()
+                        }
                         Spacer()
+                        HStack {
+                            Text("\(Int(minFreq))Hz")
+                                .font(.caption2)
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 2)
+                                .background(Color.black.opacity(0.5))
+                                .cornerRadius(4)
+                            Spacer()
+                        }
                     }
-                    Spacer()
-                    HStack {
-                        Text("200Hz")
-                            .font(.caption2)
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 4)
-                            .padding(.vertical, 2)
-                            .background(Color.black.opacity(0.5))
-                            .cornerRadius(4)
-                        Spacer()
-                    }
+                    .padding(8)
+                    .allowsHitTesting(false)
                 }
-                .padding(8)
-                .allowsHitTesting(false)
             }
             .background(Color.black.opacity(0.1))
             .cornerRadius(8)
