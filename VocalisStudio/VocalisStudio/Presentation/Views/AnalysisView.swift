@@ -272,7 +272,7 @@ struct CompactPlaybackControl: View {
                     .font(.title2)
                     .foregroundColor(ColorPalette.primary)
             }
-            .accessibilityIdentifier("AnalysisPlayPauseButton")
+            .accessibilityIdentifier("ExpandedAnalysisPlayPauseButton")
 
             Text(isPlaying ? "analysis.playing".localized : "analysis.paused".localized)
                 .font(.caption)

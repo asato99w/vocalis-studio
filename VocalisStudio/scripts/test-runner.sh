@@ -20,7 +20,7 @@ NC='\033[0m' # No Color
 
 # Configuration
 PROJECT="VocalisStudio.xcodeproj"
-DESTINATION="platform=iOS Simulator,name=iPhone 16"
+DESTINATION="platform=iOS Simulator,name=iPhone 16 Clean"
 
 # Functions
 print_usage() {

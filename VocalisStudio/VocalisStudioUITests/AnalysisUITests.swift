@@ -267,7 +267,7 @@ final class AnalysisUITests: XCTestCase {
         Thread.sleep(forTimeInterval: 1.0)
 
         // Find and tap play button in compact control
-        let playButton = app.buttons["AnalysisPlayPauseButton"]
+        let playButton = app.buttons["ExpandedAnalysisPlayPauseButton"]
         XCTAssertTrue(playButton.waitForExistence(timeout: 2), "Play button should exist in expanded view")
 
         playButton.tap()
