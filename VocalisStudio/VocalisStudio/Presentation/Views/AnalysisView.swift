@@ -11,9 +11,11 @@ public struct AnalysisView: View {
     // MARK: - Expanded Graph State
     @State private var expandedGraph: ExpandedGraphType? = nil
 
-    enum ExpandedGraphType {
+    enum ExpandedGraphType: Identifiable {
         case spectrogram
         case pitchAnalysis
+
+        var id: Self { self }
     }
 
     public init(
@@ -39,13 +41,6 @@ public struct AnalysisView: View {
                     // Portrait layout
                     portraitLayout
                 }
-            }
-            .opacity(expandedGraph == nil ? 1 : 0)
-
-            // Expanded graph overlay
-            if let expanded = expandedGraph {
-                expandedGraphOverlay(for: expanded)
-                    .transition(.scale.combined(with: .opacity))
             }
 
             // Loading overlay
@@ -101,6 +96,9 @@ public struct AnalysisView: View {
         }
         .navigationTitle("analysis.title".localized)
         .navigationBarTitleDisplayMode(.inline)
+        .fullScreenCover(item: $expandedGraph) { graphType in
+            expandedGraphFullScreen(for: graphType)
+        }
         .task {
             await viewModel.startAnalysis()
         }
@@ -204,10 +202,10 @@ public struct AnalysisView: View {
         }
     }
 
-    // MARK: - Expanded Graph Overlay
+    // MARK: - Expanded Graph Full Screen
 
     @ViewBuilder
-    private func expandedGraphOverlay(for type: ExpandedGraphType) -> some View {
+    private func expandedGraphFullScreen(for type: ExpandedGraphType) -> some View {
         ZStack(alignment: .topTrailing) {
             // Background
             ColorPalette.background
@@ -518,8 +516,8 @@ struct SpectrogramView: View {
 
     private func drawSpectrogram(context: GraphicsContext, size: CGSize, data: SpectrogramData) {
         // Fixed pixel density (pixels per second)
-        // Expanded view: higher density = more detail in same time range
-        let pixelsPerSecond: CGFloat = isExpanded ? 80 : 50
+        // Expanded view: LOWER density = WIDER time range displayed
+        let pixelsPerSecond: CGFloat = isExpanded ? 30 : 50
 
         // Calculate time window based on screen width and density
         let timeWindow = Double(size.width / pixelsPerSecond)
@@ -582,8 +580,13 @@ struct SpectrogramView: View {
     }
 
     private func drawSpectrogramTimeAxis(context: GraphicsContext, size: CGSize) {
-        // Draw time labels at left (-3s), center (current), right (+3s)
-        let timeOffsets: [Double] = [-3, 0, 3]
+        // Calculate time window based on pixel density
+        let pixelsPerSecond: CGFloat = isExpanded ? 30 : 50
+        let timeWindow = Double(size.width / pixelsPerSecond)
+        let halfWindow = timeWindow / 2
+
+        // Draw time labels at left (-halfWindow), center (current), right (+halfWindow)
+        let timeOffsets: [Double] = [-halfWindow, 0, halfWindow]
         let positions: [CGFloat] = [0.1, 0.5, 0.9]
 
         for (offset, position) in zip(timeOffsets, positions) {
@@ -647,7 +650,8 @@ struct PitchAnalysisView: View {
         guard freqRange > 0 else { return }
 
         // Fixed pixel density (pixels per second)
-        let pixelsPerSecond: CGFloat = isExpanded ? 80 : 50
+        // Expanded view: LOWER density = WIDER time range displayed
+        let pixelsPerSecond: CGFloat = isExpanded ? 30 : 50
         let leftMargin: CGFloat = 40
         let rightMargin: CGFloat = 10
         let topMargin: CGFloat = 50
@@ -771,8 +775,11 @@ struct PitchAnalysisView: View {
     private func drawTimeAxis(context: GraphicsContext, leftMargin: CGFloat, topMargin: CGFloat,
                              graphWidth: CGFloat, graphHeight: CGFloat, bottomMargin: CGFloat,
                              centerTime: Double, timeWindow: Double, pixelsPerSecond: CGFloat) {
-        // Draw time labels at -3s, 0s (center), +3s
-        let timeOffsets: [Double] = [-3, 0, 3]
+        // Calculate half window based on actual time window
+        let halfWindow = timeWindow / 2
+
+        // Draw time labels at -halfWindow, 0s (center), +halfWindow
+        let timeOffsets: [Double] = [-halfWindow, 0, halfWindow]
         let positions: [CGFloat] = [0, 0.5, 1.0]
 
         for (offset, position) in zip(timeOffsets, positions) {
