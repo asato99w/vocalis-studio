@@ -37,9 +37,30 @@
 		E3CE31502EA23C1900481878 /* VocalisStudioUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VocalisStudioUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		E3AB0A632EC1D06F00250DC8 /* Exceptions for "VocalisStudio" folder in "VocalisStudioTests" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Configuration.storekit,
+			);
+			target = D6BF83A82E890B380076B2FC /* VocalisStudioTests */;
+		};
+		E3AB0A642EC1D06F00250DC8 /* Exceptions for "VocalisStudio" folder in "VocalisStudioUITests" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Configuration.storekit,
+			);
+			target = D6BF83B22E890B380076B2FC /* VocalisStudioUITests */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		D6BF839E2E890B370076B2FC /* VocalisStudio */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				E3AB0A632EC1D06F00250DC8 /* Exceptions for "VocalisStudio" folder in "VocalisStudioTests" target */,
+				E3AB0A642EC1D06F00250DC8 /* Exceptions for "VocalisStudio" folder in "VocalisStudioUITests" target */,
+			);
 			path = VocalisStudio;
 			sourceTree = "<group>";
 		};
