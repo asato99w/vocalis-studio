@@ -16,9 +16,12 @@ final class PaywallUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
 
-        // Initialize StoreKit Test session with Configuration.storekit using absolute path
-        let projectPath = "/Users/kazuasato/Documents/dev/music/vocalis_studio/VocalisStudio/VocalisStudio/Configuration.storekit"
-        let configURL = URL(fileURLWithPath: projectPath)
+        // Initialize StoreKit Test session with Configuration.storekit using relative path
+        let testBundle = Bundle(for: type(of: self))
+        guard let configURL = testBundle.url(forResource: "Configuration", withExtension: "storekit") else {
+            XCTFail("Failed to find Configuration.storekit in test bundle")
+            return
+        }
         session = try SKTestSession(contentsOf: configURL)
         session.disableDialogs = true  // Disable dialogs for automated testing
         session.clearTransactions()
