@@ -16,28 +16,16 @@ public struct HomeView: View {
                 ColorPalette.background
                     .ignoresSafeArea()
 
-                VStack(spacing: 40) {
+                VStack(spacing: 32) {
                     Spacer()
 
-                    // App Logo and Title
-                    VStack(spacing: 16) {
-                        // Temporary: Use system icon with design system styling until app icon asset is added
-                        Image(systemName: "waveform.circle.fill")
-                            .font(.system(size: 80))
-                            .foregroundColor(ColorPalette.primary)
-                            .background(
-                                Circle()
-                                    .fill(ColorPalette.secondary)
-                                    .frame(width: 120, height: 120)
-                            )
-                            .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4)
-
-                        Text("app_name".localized)
-                            .font(Typography.headingLarge)
-                            .foregroundColor(ColorPalette.text)
-                    }
-
-                    Spacer()
+                    // App Logo
+                    Image("LogoImage")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 240, height: 240)
+                        .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
+                        .padding(.bottom, 20)
 
                     // Menu Buttons
                     VStack(spacing: 20) {
