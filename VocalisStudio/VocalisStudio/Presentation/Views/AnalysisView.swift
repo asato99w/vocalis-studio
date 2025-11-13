@@ -445,13 +445,21 @@ struct SpectrogramView: View {
     let spectrogramData: SpectrogramData?
     var isExpanded: Bool = false
 
-    // Canvas scroll state
-    // paperTop: Y coordinate of paper top relative to viewport top
+    // Canvas scroll state (2D scrolling)
+    // paperTop: Y coordinate of paper top relative to viewport top (vertical scroll)
     //   - paperTop = 0 (maxPaperTop): paper top aligned with viewport top (cannot push down further)
     //   - paperTop = viewportH - canvasH (minPaperTop): paper bottom aligned with viewport bottom (cannot push up further)
     //   - Initial: paperTop = minPaperTop (bottom-aligned, low frequency visible)
     @State private var paperTop: CGFloat = 0
     @State private var lastPaperTop: CGFloat = 0
+
+    // paperLeft: X coordinate of paper left relative to viewport left (horizontal scroll)
+    //   - paperLeft = viewportW / 2 - currentTime * pixelsPerSecond (playback cursor at center)
+    //   - maxPaperLeft = viewportW / 2 (allows recording start (0s) to be centered)
+    //   - minPaperLeft = viewportW - canvasW (paper right aligned with viewport right - end of recording)
+    @State private var paperLeft: CGFloat = 0
+    @State private var lastPaperLeft: CGFloat = 0
+    @State private var isPaperLeftInitialized: Bool = false  // Flag to track initialization
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -462,21 +470,54 @@ struct SpectrogramView: View {
 
             GeometryReader { geometry in
                 let viewportWidth = geometry.size.width
-                let viewportHeight = geometry.size.height
+                let viewportHeightTotal = geometry.size.height
+
+                // Fixed dimensions
+                let labelColW: CGFloat = 72  // Fixed label column width
+                let timeLabelHeight: CGFloat = 30  // Fixed time label band height
+
+                // Separate label column width from spectrogram viewport width
+                let spectroViewportW = max(0, viewportWidth - labelColW)
+
+                // Spectrogram viewport height (excluding time label band)
+                let viewportHeight = max(0, viewportHeightTotal - timeLabelHeight)
+
                 let maxFreq = getMaxFrequency()
                 let canvasHeight = calculateCanvasHeight(maxFreq: maxFreq, viewportHeight: viewportHeight)
 
-                // Calculate canvas width based on data duration, NOT viewport
-                let pixelsPerSecond: CGFloat = 50  // Fixed density
-                let canvasWidth: CGFloat = {
-                    if let data = spectrogramData, !data.timeStamps.isEmpty {
-                        let dataDuration = data.timeStamps.last ?? 0.0
-                        return max(CGFloat(dataDuration) * pixelsPerSecond, 100)  // min 100px
-                    }
-                    return viewportWidth  // fallback when no data
+                // Calculate duration strictly from min/max timestamps (in seconds)
+                let durationSec: Double = {
+                    guard let ts = spectrogramData?.timeStamps, ts.count >= 2 else { return 0 }
+                    let minT = ts.min() ?? 0
+                    let maxT = ts.max() ?? 0
+                    return max(0, maxT - minT)
                 }()
 
+                // Fixed pixel density (NEVER changes with fullscreen)
+                let pixelsPerSecond: CGFloat = 50
+
+                // Canvas width: data width only (never pad to viewport width)
+                let canvasWidth: CGFloat = CGFloat(durationSec) * pixelsPerSecond
+
                 let cellWidth = pixelsPerSecond * 0.1
+
+                // playheadX: Fixed position at viewport center (red cursor position)
+                let playheadX = spectroViewportW / 2
+
+                // Initialize horizontal scroll position
+                // Initial: paperLeft = -playheadX (paper's left edge touches red line)
+                let _ = {
+                    // Only initialize once when data is available and not yet initialized
+                    if !isPaperLeftInitialized && spectrogramData != nil {
+                        // Initial: paper's left edge (0s) at red line (center)
+                        paperLeft = -playheadX
+                        lastPaperLeft = paperLeft
+                        isPaperLeftInitialized = true
+
+                        FileLogger.shared.log(level: "INFO", category: "paperLeft_init",
+                            message: "📍 paperLeft initialized: \(paperLeft), playheadX=\(playheadX), spectroViewportW=\(spectroViewportW), canvasW=\(canvasWidth), durationSec=\(durationSec)")
+                    }
+                }()
 
                 // Initialize scroll position to bottom when expanded (low frequency visible)
                 let scrollableRange = canvasHeight - viewportHeight
@@ -484,50 +525,95 @@ struct SpectrogramView: View {
                 // Debug log
                 let _ = {
                     FileLogger.shared.log(level: "INFO", category: "viewport_debug",
-                        message: "🔍 VIEWPORT DEBUG: isExpanded=\(isExpanded), viewportW=\(viewportWidth), viewportH=\(viewportHeight), canvasW=\(canvasWidth), canvasH=\(canvasHeight), pixelsPerSecond=\(pixelsPerSecond), cellWidth=\(cellWidth), scrollableRange=\(scrollableRange)")
+                        message: "🔍 VIEWPORT DEBUG: isExpanded=\(isExpanded), viewportW=\(viewportWidth), spectroViewportW=\(spectroViewportW), viewportH=\(viewportHeight), canvasW=\(canvasWidth), canvasH=\(canvasHeight), durationSec=\(durationSec), pixelsPerSecond=\(pixelsPerSecond), paperLeft=\(paperLeft)")
                 }()
 
-                // Canvas: Contains the entire frequency range (0Hz ~ maxFreq)
-                Canvas { context, size in
-                    if let data = spectrogramData, !data.timeStamps.isEmpty {
-                        // Draw everything in canvas coordinates
-                        // size here is the canvas size, not viewport size
+                // HStack: Separate label column (left lane) and spectrogram area (right lane)
+                HStack(spacing: 0) {
+                    // Left lane: Frequency labels column (fixed 72px width)
+                    // - X is fixed (does not move horizontally)
+                    // - Y follows offsetY only (vertical scroll)
+                    Canvas { context, size in
+                        if spectrogramData != nil {
+                            drawFrequencyLabelsOnCanvas(
+                                context: context,
+                                canvasHeight: canvasHeight,
+                                maxFreq: maxFreq
+                            )
+                        }
+                    }
+                    .frame(width: labelColW, height: canvasHeight)
+                    .offset(x: 0, y: -paperTop)  // Y-only tracking (negative = paper moves up)
+                    .frame(width: labelColW, height: viewportHeight)
+                    .clipped()
 
-                        // 1. Draw spectrogram (background) - SCROLLABLE
-                        drawSpectrogramOnCanvas(
-                            context: context,
-                            canvasWidth: size.width,
-                            canvasHeight: canvasHeight,
-                            maxFreq: maxFreq,
-                            data: data
-                        )
+                    // Right lane: VStack containing spectrogram area and time label band
+                    VStack(spacing: 0) {
+                        // Upper: Spectrogram canvas with red playback cursor overlay
+                        ZStack(alignment: .topLeading) {
+                            // Background: Spectrogram canvas (2D scrollable)
+                            Canvas { context, size in
+                                if let data = spectrogramData, !data.timeStamps.isEmpty {
+                                    // Calculate actual data width (duration × pixelsPerSecond)
+                                    let dataWidth = CGFloat(durationSec) * pixelsPerSecond
 
-                        // 2. Draw Y-axis labels (foreground) - SCROLLABLE
-                        drawFrequencyLabelsOnCanvas(
-                            context: context,
-                            canvasHeight: canvasHeight,
-                            maxFreq: maxFreq
-                        )
+                                    // 1. Draw spectrogram (background) - SCROLLABLE
+                                    drawSpectrogramOnCanvas(
+                                        context: context,
+                                        canvasWidth: dataWidth,  // Only draw data width, not padded canvas width
+                                        canvasHeight: canvasHeight,
+                                        maxFreq: maxFreq,
+                                        data: data
+                                    )
 
-                        // 3. Draw time axis and playback position - FIXED (viewport coordinates)
-                        // Save current transform state
-                        var fixedContext = context
-                        // Compensate for scroll offset to keep time axis fixed at viewport bottom
-                        fixedContext.translateBy(x: 0, y: -paperTop)
+                                    // 2. Pad remaining area with weakest color (if canvas is wider than data)
+                                    if size.width > dataWidth {
+                                        let weakestColor = Color(red: 0.1, green: 0.1, blue: 0.2)  // Dark blue - weakest intensity
+                                        let padRect = CGRect(x: dataWidth, y: 0, width: size.width - dataWidth, height: size.height)
+                                        context.fill(Path(padRect), with: .color(weakestColor))
+                                    }
+                                } else {
+                                    drawPlaceholder(context: context, size: size)
+                                }
+                            }
+                            .frame(width: canvasWidth, height: canvasHeight)  // Fixed canvas size based on data
+                            .offset(x: -paperLeft, y: -paperTop)  // 2D scroll (negative = paper moves left/up)
+                            .frame(width: spectroViewportW, height: viewportHeight)  // Viewport window size
+                            .clipped()  // Clip to viewport
 
-                        // Draw time axis at viewport bottom (fixed position)
-                        drawSpectrogramTimeAxis(context: fixedContext, size: CGSize(width: size.width, height: viewportHeight))
+                            // Foreground: Red playback cursor (fixed at playheadX position)
+                            Canvas { context, size in
+                                // Red cursor is always at viewport center (playheadX)
+                                let cursorX = playheadX
 
-                        // Draw playback position line (fixed position)
-                        drawPlaybackPosition(context: fixedContext, size: CGSize(width: size.width, height: viewportHeight))
-                    } else {
-                        drawPlaceholder(context: context, size: size)
+                                context.stroke(
+                                    Path { path in
+                                        path.move(to: CGPoint(x: cursorX, y: 0))
+                                        path.addLine(to: CGPoint(x: cursorX, y: size.height))
+                                    },
+                                    with: .color(.red),
+                                    lineWidth: 2
+                                )
+                            }
+                            .frame(width: spectroViewportW, height: viewportHeight)
+                            .allowsHitTesting(false)
+                        }
+
+                        // Lower: Time label band (separate lane)
+                        // - X follows offsetX only (horizontal scroll)
+                        // - Y is fixed (does not move vertically)
+                        Canvas { context, size in
+                            if spectrogramData != nil {
+                                drawSpectrogramTimeAxis(context: context, size: size, durationSec: durationSec)
+                            }
+                        }
+                        .frame(width: canvasWidth, height: timeLabelHeight)  // Canvas size
+                        .offset(x: -paperLeft, y: 0)  // X-only tracking (negative = paper moves left)
+                        .frame(width: spectroViewportW, height: timeLabelHeight, alignment: .topLeading)  // Clip with topLeading alignment
+                        .clipped()
                     }
                 }
-                .frame(width: canvasWidth, height: canvasHeight)  // Fixed canvas size based on data
-                .offset(y: paperTop)  // Scroll by moving canvas (paperTop: canvas top edge Y coordinate in viewport space)
-                .frame(width: viewportWidth, height: viewportHeight, alignment: .topLeading)  // Viewport window
-                .clipped()  // Viewport clips to visible area
+                .frame(width: viewportWidth, height: viewportHeightTotal)
                 .accessibilityIdentifier("SpectrogramCanvas")
                 .onAppear {
                     // Wait for layout to be ready, then initialize position
@@ -577,6 +663,18 @@ struct SpectrogramView: View {
                         FileLogger.shared.log(level: "INFO", category: "scroll_init",
                             message: "📍 Reinit on expand: paperTop=\(paperTop), viewportH=\(viewportH), canvasH=\(canvasH)")
                     }
+                }
+                .onChange(of: currentTime) { _, newTime in
+                    // Update paperLeft to keep currentTime position under red line (playheadX)
+                    // Formula: paperLeft = min(currentTime * pps - playheadX, canvasW - playheadX)
+                    let playheadX = spectroViewportW / 2
+                    let paperLeft_target = CGFloat(newTime) * pixelsPerSecond - playheadX
+                    let paperLeft_max = canvasWidth - playheadX
+                    paperLeft = min(paperLeft_target, paperLeft_max)
+                    // No lower clamp (allow negative values for initial state)
+
+                    FileLogger.shared.log(level: "DEBUG", category: "playback_scroll",
+                        message: "⏩ Playback scroll: currentTime=\(newTime), paperLeft=\(paperLeft), target=\(paperLeft_target), max=\(paperLeft_max), playheadX=\(playheadX)")
                 }
                 .gesture(
                     DragGesture()
@@ -835,7 +933,8 @@ struct SpectrogramView: View {
     }
 
     private func drawPlaybackPosition(context: GraphicsContext, size: CGSize) {
-        // Draw playback position line at center
+        // Draw playback cursor at viewport center (fixed position)
+        // This is drawn in viewport coordinates, so always at center
         let centerX = size.width / 2
 
         context.stroke(
@@ -843,29 +942,32 @@ struct SpectrogramView: View {
                 path.move(to: CGPoint(x: centerX, y: 0))
                 path.addLine(to: CGPoint(x: centerX, y: size.height))
             },
-            with: .color(.white),
+            with: .color(.red),  // Red cursor for visibility
             lineWidth: 2
         )
     }
 
-    private func drawSpectrogramTimeAxis(context: GraphicsContext, size: CGSize) {
-        // Fixed time axis density (isExpanded only affects viewport, not drawing parameters)
+    private func drawSpectrogramTimeAxis(context: GraphicsContext, size: CGSize, durationSec: Double) {
+        // Draw time axis with labels at fixed canvas coordinates
+        // Only draw from 0 to durationSec (never beyond recording duration)
         let pixelsPerSecond: CGFloat = 50
-        let timeWindow = Double(size.width / pixelsPerSecond)
-        let halfWindow = timeWindow / 2
 
-        // Draw time labels at left (-halfWindow), center (current), right (+halfWindow)
-        let timeOffsets: [Double] = [-halfWindow, 0, halfWindow]
-        let positions: [CGFloat] = [0.1, 0.5, 0.9]
+        // Draw labels at 1-second intervals from 0 to durationSec
+        let labelInterval: Double = 1.0  // 1 second
+        var time: Double = 0
 
-        for (offset, position) in zip(timeOffsets, positions) {
-            let time = currentTime + offset
-            guard time >= 0 else { continue }
+        while time <= durationSec {
+            let x = CGFloat(time) * pixelsPerSecond
+            let y = size.height / 2  // Center vertically in label band
 
-            let x = size.width * position
-            let y = size.height - 5
-            let text = Text(String(format: "%.1fs", time)).font(.caption2).foregroundColor(.white)
-            context.draw(text, at: CGPoint(x: x, y: y))
+            let text = Text(String(format: "%.0fs", time))
+                .font(.caption)
+                .foregroundColor(.gray)
+
+            // Draw with leading (left) anchor so text doesn't get cut off at edges
+            context.draw(text, at: CGPoint(x: x, y: y), anchor: .leading)
+
+            time += labelInterval
         }
     }
 }

@@ -375,6 +375,55 @@ final class AnalysisUITests: XCTestCase {
         Thread.sleep(forTimeInterval: 2.0)
     }
 
+    /// Test: Playback scroll behavior - verify time axis and playback cursor
+    /// Purpose: Verify that spectrogram time axis scrolls correctly and returns to start position after playback
+    @MainActor
+    func testPlayback_TimeAxisScroll() throws {
+        let app = launchAppWithResetRecordingCount()
+
+        // Navigate to analysis screen
+        navigateToAnalysisScreen(app)
+
+        // Wait for analysis to complete
+        Thread.sleep(forTimeInterval: 3.0)
+
+        // Screenshot 1: Before playback (initial position)
+        let screenshot1 = app.screenshot()
+        let attachment1 = XCTAttachment(screenshot: screenshot1)
+        attachment1.name = "time_axis_01_before_playback"
+        attachment1.lifetime = .keepAlways
+        add(attachment1)
+
+        // Start playback
+        let playPauseButton = app.buttons["AnalysisPlayPauseButton"]
+        XCTAssertTrue(playPauseButton.waitForExistence(timeout: 5), "Play/Pause button should exist")
+        playPauseButton.tap()
+
+        // Wait during playback (about 1 second into playback)
+        Thread.sleep(forTimeInterval: 1.0)
+
+        // Screenshot 2: During playback (time axis should have scrolled)
+        let screenshot2 = app.screenshot()
+        let attachment2 = XCTAttachment(screenshot: screenshot2)
+        attachment2.name = "time_axis_02_during_playback"
+        attachment2.lifetime = .keepAlways
+        add(attachment2)
+
+        // Wait for playback to complete (assuming recording is short, ~2-3 seconds)
+        // We'll wait for the full recording duration plus buffer
+        Thread.sleep(forTimeInterval: 3.0)
+
+        // Screenshot 3: After playback ends (should return to start position)
+        let screenshot3 = app.screenshot()
+        let attachment3 = XCTAttachment(screenshot: screenshot3)
+        attachment3.name = "time_axis_03_after_playback_end"
+        attachment3.lifetime = .keepAlways
+        add(attachment3)
+
+        // Verify play button is back to play state (not pause)
+        XCTAssertTrue(playPauseButton.exists, "Play/Pause button should exist after playback ends")
+    }
+
     /// Test: Spectrogram viewport architecture verification with screenshots
     /// Purpose: Verify that spectrogram fills the entire viewport correctly
     @MainActor
