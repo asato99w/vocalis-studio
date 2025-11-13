@@ -604,12 +604,10 @@ struct SpectrogramView: View {
                         // - Y is fixed (does not move vertically)
                         Canvas { context, size in
                             if spectrogramData != nil {
-                                drawSpectrogramTimeAxis(context: context, size: size, durationSec: durationSec)
+                                drawSpectrogramTimeAxisWithOffset(context: context, size: size, durationSec: durationSec, offsetX: paperLeft)
                             }
                         }
-                        .frame(width: canvasWidth, height: timeLabelHeight)  // Canvas size
-                        .offset(x: -paperLeft, y: 0)  // X-only tracking (negative = paper moves left)
-                        .frame(width: spectroViewportW, height: timeLabelHeight, alignment: .topLeading)  // Clip with topLeading alignment
+                        .frame(width: spectroViewportW, height: timeLabelHeight)
                         .clipped()
                     }
                 }
@@ -966,6 +964,34 @@ struct SpectrogramView: View {
 
             // Draw with leading (left) anchor so text doesn't get cut off at edges
             context.draw(text, at: CGPoint(x: x, y: y), anchor: .leading)
+
+            time += labelInterval
+        }
+    }
+
+    private func drawSpectrogramTimeAxisWithOffset(context: GraphicsContext, size: CGSize, durationSec: Double, offsetX: CGFloat) {
+        // Draw time axis with labels, considering offsetX for horizontal scrolling
+        // Only draw labels that are visible within the viewport
+        let pixelsPerSecond: CGFloat = 50
+        let labelInterval: Double = 1.0  // 1 second
+        var time: Double = 0
+
+        while time <= durationSec {
+            // Calculate x position considering offsetX (paperLeft)
+            // offsetX is negative initially, so we subtract it to shift labels left
+            let x = CGFloat(time) * pixelsPerSecond - offsetX
+
+            // Only draw if label is within visible viewport (with some margin for partial labels)
+            if x >= -50 && x <= size.width + 50 {
+                let y = size.height / 2  // Center vertically in label band
+
+                let text = Text(String(format: "%.0fs", time))
+                    .font(.caption)
+                    .foregroundColor(.gray)
+
+                // Draw with leading (left) anchor so text doesn't get cut off at edges
+                context.draw(text, at: CGPoint(x: x, y: y), anchor: .leading)
+            }
 
             time += labelInterval
         }
