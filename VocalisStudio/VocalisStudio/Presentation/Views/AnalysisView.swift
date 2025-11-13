@@ -493,7 +493,7 @@ struct SpectrogramView: View {
                         // Draw everything in canvas coordinates
                         // size here is the canvas size, not viewport size
 
-                        // 1. Draw spectrogram (background)
+                        // 1. Draw spectrogram (background) - SCROLLABLE
                         drawSpectrogramOnCanvas(
                             context: context,
                             canvasWidth: size.width,
@@ -502,18 +502,24 @@ struct SpectrogramView: View {
                             data: data
                         )
 
-                        // 2. Draw time axis
-                        drawSpectrogramTimeAxis(context: context, size: size)
-
-                        // 3. Draw playback position line
-                        drawPlaybackPosition(context: context, size: size)
-
-                        // 4. Draw Y-axis labels (foreground)
+                        // 2. Draw Y-axis labels (foreground) - SCROLLABLE
                         drawFrequencyLabelsOnCanvas(
                             context: context,
                             canvasHeight: canvasHeight,
                             maxFreq: maxFreq
                         )
+
+                        // 3. Draw time axis and playback position - FIXED (viewport coordinates)
+                        // Save current transform state
+                        var fixedContext = context
+                        // Compensate for scroll offset to keep time axis fixed at viewport bottom
+                        fixedContext.translateBy(x: 0, y: -paperTop)
+
+                        // Draw time axis at viewport bottom (fixed position)
+                        drawSpectrogramTimeAxis(context: fixedContext, size: CGSize(width: size.width, height: viewportHeight))
+
+                        // Draw playback position line (fixed position)
+                        drawPlaybackPosition(context: fixedContext, size: CGSize(width: size.width, height: viewportHeight))
                     } else {
                         drawPlaceholder(context: context, size: size)
                     }
