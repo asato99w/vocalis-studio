@@ -168,12 +168,44 @@ final class AnalysisUITests: XCTestCase {
         // Wait for expansion animation
         Thread.sleep(forTimeInterval: 1.0)
 
-        // Screenshot: Expanded spectrogram view
+        // Screenshot 1: Initial expanded view (should show bottom - low frequency, 0Hz side)
         let screenshot1 = app.screenshot()
         let attachment1 = XCTAttachment(screenshot: screenshot1)
-        attachment1.name = "expanded_spectrogram_01"
+        attachment1.name = "expanded_spectrogram_01_initial_bottom"
         attachment1.lifetime = .keepAlways
         add(attachment1)
+
+        // Test scrolling: Find the expanded spectrogram content area
+        // Use coordinate-based swipe since SpectrogramCanvas might not be directly interactable
+        let screenBounds = app.frame
+        let centerX = screenBounds.width / 2
+        let centerY = screenBounds.height / 2
+
+        // Swipe down (finger moves down, content scrolls up to reveal top frequencies)
+        let startPoint1 = app.coordinate(withNormalizedOffset: CGVector(dx: centerX / screenBounds.width, dy: 0.3))
+        let endPoint1 = app.coordinate(withNormalizedOffset: CGVector(dx: centerX / screenBounds.width, dy: 0.7))
+        startPoint1.press(forDuration: 0.1, thenDragTo: endPoint1)
+        Thread.sleep(forTimeInterval: 0.5)
+
+        // Screenshot 2: After scrolling up (should show higher frequencies)
+        let screenshot2 = app.screenshot()
+        let attachment2 = XCTAttachment(screenshot: screenshot2)
+        attachment2.name = "expanded_spectrogram_02_scrolled_up"
+        attachment2.lifetime = .keepAlways
+        add(attachment2)
+
+        // Swipe up (finger moves up, content scrolls down back to bottom)
+        let startPoint2 = app.coordinate(withNormalizedOffset: CGVector(dx: centerX / screenBounds.width, dy: 0.7))
+        let endPoint2 = app.coordinate(withNormalizedOffset: CGVector(dx: centerX / screenBounds.width, dy: 0.3))
+        startPoint2.press(forDuration: 0.1, thenDragTo: endPoint2)
+        Thread.sleep(forTimeInterval: 0.5)
+
+        // Screenshot 3: After scrolling back down (should show bottom again)
+        let screenshot3 = app.screenshot()
+        let attachment3 = XCTAttachment(screenshot: screenshot3)
+        attachment3.name = "expanded_spectrogram_03_scrolled_back_down"
+        attachment3.lifetime = .keepAlways
+        add(attachment3)
 
         // Verify close button exists
         let closeButton = app.buttons["CloseExpandedViewButton"]
@@ -185,12 +217,12 @@ final class AnalysisUITests: XCTestCase {
         // Wait for collapse animation
         Thread.sleep(forTimeInterval: 1.0)
 
-        // Screenshot: After closing expanded view
-        let screenshot2 = app.screenshot()
-        let attachment2 = XCTAttachment(screenshot: screenshot2)
-        attachment2.name = "expanded_spectrogram_02_closed"
-        attachment2.lifetime = .keepAlways
-        add(attachment2)
+        // Screenshot 4: After closing expanded view
+        let screenshot4 = app.screenshot()
+        let attachment4 = XCTAttachment(screenshot: screenshot4)
+        attachment4.name = "expanded_spectrogram_04_closed"
+        attachment4.lifetime = .keepAlways
+        add(attachment4)
 
         // Verify we're back to normal view (spectrogram view should still exist)
         XCTAssertTrue(spectrogramView.exists, "Should be back to normal view")
@@ -341,5 +373,71 @@ final class AnalysisUITests: XCTestCase {
         analysisLinks.firstMatch.tap()
 
         Thread.sleep(forTimeInterval: 2.0)
+    }
+
+    /// Test: Spectrogram viewport architecture verification with screenshots
+    /// Purpose: Verify that spectrogram fills the entire viewport correctly
+    @MainActor
+    func testSpectrogramViewport_Screenshots() throws {
+        let app = launchAppWithResetRecordingCount()
+
+        // Navigate to analysis screen
+        navigateToAnalysisScreen(app)
+
+        // Wait for spectrogram to appear
+        let spectrogramView = app.otherElements["SpectrogramView"]
+        XCTAssertTrue(spectrogramView.waitForExistence(timeout: 5), "Spectrogram view should exist")
+
+        // Wait for analysis to complete (check if "分析中..." disappears)
+        let analysisInProgress = app.staticTexts["分析中..."]
+        if analysisInProgress.exists {
+            // Wait up to 30 seconds for analysis to complete
+            let analysisCompleted = !analysisInProgress.waitForExistence(timeout: 0.5)
+            if !analysisCompleted {
+                // Wait for analysis progress to finish
+                var waitTime = 0.0
+                while analysisInProgress.exists && waitTime < 30.0 {
+                    Thread.sleep(forTimeInterval: 0.5)
+                    waitTime += 0.5
+                }
+            }
+        }
+
+        // Additional wait for data to stabilize
+        Thread.sleep(forTimeInterval: 2.0)
+
+        // Screenshot 1: Initial state
+        let screenshot1 = app.screenshot()
+        let attachment1 = XCTAttachment(screenshot: screenshot1)
+        attachment1.name = "spectrogram_01_initial_state"
+        attachment1.lifetime = .keepAlways
+        add(attachment1)
+
+        // Perform vertical scroll (simulate drag down)
+        let spectrogramCenter = spectrogramView.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        let spectrogramBottom = spectrogramView.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.8))
+        spectrogramCenter.press(forDuration: 0.1, thenDragTo: spectrogramBottom)
+
+        Thread.sleep(forTimeInterval: 1.0)
+
+        // Screenshot 2: After scrolling down (showing lower frequencies)
+        let screenshot2 = app.screenshot()
+        let attachment2 = XCTAttachment(screenshot: screenshot2)
+        attachment2.name = "spectrogram_02_scrolled_down"
+        attachment2.lifetime = .keepAlways
+        add(attachment2)
+
+        // Scroll up to show higher frequencies
+        let spectrogramTop = spectrogramView.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2))
+        spectrogramBottom.press(forDuration: 0.1, thenDragTo: spectrogramTop)
+
+        Thread.sleep(forTimeInterval: 1.0)
+
+        // Screenshot 3: After scrolling up (showing higher frequencies)
+        let screenshot3 = app.screenshot()
+        let attachment3 = XCTAttachment(screenshot: screenshot3)
+        attachment3.name = "spectrogram_03_scrolled_up"
+        attachment3.lifetime = .keepAlways
+        add(attachment3)
     }
 }

@@ -1,5 +1,6 @@
 import SwiftUI
 import VocalisDomain
+import os.log
 
 /// Analysis screen - displays spectrogram and pitch analysis for a recording
 public struct AnalysisView: View {
@@ -444,6 +445,14 @@ struct SpectrogramView: View {
     let spectrogramData: SpectrogramData?
     var isExpanded: Bool = false
 
+    // Canvas scroll state
+    // paperTop: Y coordinate of paper top relative to viewport top
+    //   - paperTop = 0 (maxPaperTop): paper top aligned with viewport top (cannot push down further)
+    //   - paperTop = viewportH - canvasH (minPaperTop): paper bottom aligned with viewport bottom (cannot push up further)
+    //   - Initial: paperTop = minPaperTop (bottom-aligned, low frequency visible)
+    @State private var paperTop: CGFloat = 0
+    @State private var lastPaperTop: CGFloat = 0
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("analysis.spectrogram_title".localized)
@@ -451,67 +460,144 @@ struct SpectrogramView: View {
                 .fontWeight(.semibold)
                 .accessibilityIdentifier("SpectrogramTitle")
 
-            ZStack(alignment: .topLeading) {
-                GeometryReader { geometry in
-                    Canvas { context, size in
-                        if let data = spectrogramData, !data.timeStamps.isEmpty {
-                            drawSpectrogram(context: context, size: size, data: data)
-                        } else {
-                            drawPlaceholder(context: context, size: size)
-                        }
+            GeometryReader { geometry in
+                let viewportWidth = geometry.size.width
+                let viewportHeight = geometry.size.height
+                let maxFreq = getMaxFrequency()
+                let canvasHeight = calculateCanvasHeight(maxFreq: maxFreq, viewportHeight: viewportHeight)
 
-                        // Draw playback position line
+                // Calculate canvas width based on data duration, NOT viewport
+                let pixelsPerSecond: CGFloat = 50  // Fixed density
+                let canvasWidth: CGFloat = {
+                    if let data = spectrogramData, !data.timeStamps.isEmpty {
+                        let dataDuration = data.timeStamps.last ?? 0.0
+                        return max(CGFloat(dataDuration) * pixelsPerSecond, 100)  // min 100px
+                    }
+                    return viewportWidth  // fallback when no data
+                }()
+
+                let cellWidth = pixelsPerSecond * 0.1
+
+                // Initialize scroll position to bottom when expanded (low frequency visible)
+                let scrollableRange = canvasHeight - viewportHeight
+
+                // Debug log
+                let _ = {
+                    FileLogger.shared.log(level: "INFO", category: "viewport_debug",
+                        message: "🔍 VIEWPORT DEBUG: isExpanded=\(isExpanded), viewportW=\(viewportWidth), viewportH=\(viewportHeight), canvasW=\(canvasWidth), canvasH=\(canvasHeight), pixelsPerSecond=\(pixelsPerSecond), cellWidth=\(cellWidth), scrollableRange=\(scrollableRange)")
+                }()
+
+                // Canvas: Contains the entire frequency range (0Hz ~ maxFreq)
+                Canvas { context, size in
+                    if let data = spectrogramData, !data.timeStamps.isEmpty {
+                        // Draw everything in canvas coordinates
+                        // size here is the canvas size, not viewport size
+
+                        // 1. Draw spectrogram (background)
+                        drawSpectrogramOnCanvas(
+                            context: context,
+                            canvasWidth: size.width,
+                            canvasHeight: canvasHeight,
+                            maxFreq: maxFreq,
+                            data: data
+                        )
+
+                        // 2. Draw time axis
+                        drawSpectrogramTimeAxis(context: context, size: size)
+
+                        // 3. Draw playback position line
                         drawPlaybackPosition(context: context, size: size)
 
-                        // Draw time axis
-                        drawSpectrogramTimeAxis(context: context, size: size)
+                        // 4. Draw Y-axis labels (foreground)
+                        drawFrequencyLabelsOnCanvas(
+                            context: context,
+                            canvasHeight: canvasHeight,
+                            maxFreq: maxFreq
+                        )
+                    } else {
+                        drawPlaceholder(context: context, size: size)
                     }
                 }
+                .frame(width: canvasWidth, height: canvasHeight)  // Fixed canvas size based on data
+                .offset(y: paperTop)  // Scroll by moving canvas (paperTop: canvas top edge Y coordinate in viewport space)
+                .frame(width: viewportWidth, height: viewportHeight, alignment: .topLeading)  // Viewport window
+                .clipped()  // Viewport clips to visible area
+                .accessibilityIdentifier("SpectrogramCanvas")
+                .onAppear {
+                    // Wait for layout to be ready, then initialize position
+                    DispatchQueue.main.async {
+                        if isExpanded {
+                            // Strict definitions
+                            let viewportH = viewportHeight
+                            let canvasH = canvasHeight
+                            let maxPaperTop: CGFloat = 0
+                            let minPaperTop = viewportH - canvasH
 
-                // Frequency labels (overlay on top)
-                if let data = spectrogramData {
-                    let frequencyRange = Double(data.frequencyBins.max() ?? 2000.0)
-                    let maxFreq = isExpanded ? 3000.0 : min(2000.0, frequencyRange)
-                    let minFreq = isExpanded ? 100.0 : 200.0
-                    let midFreq = (maxFreq + minFreq) / 2
+                            // Initial placement: bottom-aligned (downside fixed)
+                            paperTop = minPaperTop
 
-                    VStack(spacing: 0) {
-                        HStack {
-                            Text("\(Int(maxFreq))Hz")
-                                .font(.caption2)
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 4)
-                                .padding(.vertical, 2)
-                                .background(Color.black.opacity(0.5))
-                                .cornerRadius(4)
-                            Spacer()
-                        }
-                        Spacer()
-                        HStack {
-                            Text("\(Int(midFreq))Hz")
-                                .font(.caption2)
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 4)
-                                .padding(.vertical, 2)
-                                .background(Color.black.opacity(0.5))
-                                .cornerRadius(4)
-                            Spacer()
-                        }
-                        Spacer()
-                        HStack {
-                            Text("\(Int(minFreq))Hz")
-                                .font(.caption2)
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 4)
-                                .padding(.vertical, 2)
-                                .background(Color.black.opacity(0.5))
-                                .cornerRadius(4)
-                            Spacer()
+                            // Clamp (mandatory after any movement)
+                            paperTop = max(minPaperTop, min(maxPaperTop, paperTop))
+
+                            lastPaperTop = paperTop
+
+                            os_log(.debug, log: OSLog(subsystem: "com.kazuasato.VocalisStudio", category: "scroll_init"),
+                                   "📍 Initial: paperTop=%{public}f, minPaperTop=%{public}f, maxPaperTop=%{public}f",
+                                   paperTop, minPaperTop, maxPaperTop)
+                            FileLogger.shared.log(level: "INFO", category: "scroll_init",
+                                message: "📍 Initial placement: paperTop=\(paperTop), viewportH=\(viewportH), canvasH=\(canvasH)")
                         }
                     }
-                    .padding(8)
-                    .allowsHitTesting(false)
                 }
+                .onChange(of: isExpanded) { _, newValue in
+                    // Re-initialize position when expanding (for non-fullScreenCover transitions)
+                    if newValue {
+                        let viewportH = viewportHeight
+                        let canvasH = canvasHeight
+                        let maxPaperTop: CGFloat = 0
+                        let minPaperTop = viewportH - canvasH
+
+                        // Initial placement: bottom-aligned
+                        paperTop = minPaperTop
+
+                        // Clamp (mandatory)
+                        paperTop = max(minPaperTop, min(maxPaperTop, paperTop))
+
+                        lastPaperTop = paperTop
+
+                        os_log(.debug, log: OSLog(subsystem: "com.kazuasato.VocalisStudio", category: "scroll_init"),
+                               "📍 onChange reinit: paperTop=%{public}f, minPaperTop=%{public}f",
+                               paperTop, minPaperTop)
+                        FileLogger.shared.log(level: "INFO", category: "scroll_init",
+                            message: "📍 Reinit on expand: paperTop=\(paperTop), viewportH=\(viewportH), canvasH=\(canvasH)")
+                    }
+                }
+                .gesture(
+                    DragGesture()
+                        .onChanged { value in
+                            let translation = value.translation
+
+                            // Detect vertical-dominant drag
+                            let angle = atan2(abs(translation.height), abs(translation.width))
+
+                            if angle > .pi / 4 {
+                                // Strict definitions
+                                let viewportH = viewportHeight
+                                let canvasH = canvasHeight
+                                let maxPaperTop: CGFloat = 0
+                                let minPaperTop = viewportH - canvasH
+
+                                // Calculate candidate position
+                                let candidate = lastPaperTop + translation.height
+
+                                // Clamp immediately (mandatory after any movement)
+                                paperTop = max(minPaperTop, min(maxPaperTop, candidate))
+                            }
+                        }
+                        .onEnded { _ in
+                            lastPaperTop = paperTop
+                        }
+                )
             }
             .background(Color.black.opacity(0.1))
             .cornerRadius(8)
@@ -521,47 +607,217 @@ struct SpectrogramView: View {
         .accessibilityIdentifier("SpectrogramView")
     }
 
-    private func drawSpectrogram(context: GraphicsContext, size: CGSize, data: SpectrogramData) {
-        // Fixed pixel density (pixels per second)
-        // Expanded view: LOWER density = WIDER time range displayed
-        let pixelsPerSecond: CGFloat = isExpanded ? 30 : 50
+    // MARK: - Canvas Architecture - Phase 1: Core Functions
 
-        // Calculate time window based on screen width and density
-        let timeWindow = Double(size.width / pixelsPerSecond)
-        let centerX = size.width / 2  // Playback position at center
+    /// Calculate canvas height based on frequency range
+    /// Canvas contains entire frequency range (0Hz ~ maxFreq)
+    /// - Parameters:
+    ///   - maxFreq: Maximum frequency in Hz (UI display limit, not data limit)
+    ///   - viewportHeight: Unused (kept for API compatibility), canvas size is data-driven
+    /// - Returns: Canvas height in points
+    private func calculateCanvasHeight(maxFreq: Double, viewportHeight: CGFloat) -> CGFloat {
+        // Fixed pixel density per kHz (isExpanded only affects viewport, not canvas drawing)
+        let basePixelsPerKHz: CGFloat = 60.0
+        let canvasHeight = CGFloat(maxFreq / 1000.0) * basePixelsPerKHz
 
-        // Find max magnitude for normalization
+        // Apply maximum limit to prevent excessive memory usage
+        let maxHeight: CGFloat = 10000.0
+
+        return min(maxHeight, canvasHeight)
+    }
+
+    /// Convert frequency (Hz) to Canvas Y coordinate
+    /// Canvas coordinate system: Y=0 at top (maxFreq), Y=canvasHeight at bottom (0Hz)
+    /// - Parameters:
+    ///   - frequency: Frequency in Hz
+    ///   - canvasHeight: Total canvas height in points
+    ///   - maxFreq: Maximum frequency in Hz
+    /// - Returns: Y coordinate in canvas space
+    private func frequencyToCanvasY(frequency: Double, canvasHeight: CGFloat, maxFreq: Double) -> CGFloat {
+        let ratio = (maxFreq - frequency) / maxFreq
+        return CGFloat(ratio) * canvasHeight
+    }
+
+    /// Get maximum frequency for display (fixed UI limit)
+    /// - Returns: Fixed maximum frequency for UI display (8kHz)
+    /// - Note: This is a UI design decision, not data-driven.
+    ///         Keeping display range fixed provides stable UI and predictable scrolling.
+    private func getMaxFrequency() -> Double {
+        // Expanded view shows wider frequency range for scroll testing
+        return isExpanded ? 12000.0 : 8000.0  // Normal: 8kHz, Expanded: 12kHz (for scroll testing)
+    }
+
+    // MARK: - Canvas Architecture - Phase 1: Y-Axis Label Drawing
+
+    /// Draw frequency labels on canvas (canvas coordinate system)
+    /// Labels are drawn at fixed intervals across entire canvas
+    /// - Parameters:
+    ///   - context: Graphics context
+    ///   - canvasHeight: Total canvas height
+    ///   - maxFreq: Maximum frequency
+    private func drawFrequencyLabelsOnCanvas(
+        context: GraphicsContext,
+        canvasHeight: CGFloat,
+        maxFreq: Double
+    ) {
+        // Fixed label interval in canvas coordinate system
+        let labelInterval: Double = 1000.0  // 1kHz
+        let textHeight: CGFloat = 16
+        let textWidth: CGFloat = 45
+
+        // Clipping margin to prevent labels from being cut off at edges
+        let clipMargin = textHeight / 2
+
+        var frequency: Double = 0
+        while frequency <= maxFreq {
+            // Calculate canvas Y position
+            let canvasY = frequencyToCanvasY(
+                frequency: frequency,
+                canvasHeight: canvasHeight,
+                maxFreq: maxFreq
+            )
+
+            // Clamp label position to prevent cutoff at top/bottom edges
+            let clampedY = max(clipMargin, min(canvasHeight - clipMargin, canvasY))
+
+            // Create label text
+            let labelText: String
+            if frequency >= 1000 {
+                let kHz = frequency / 1000.0
+                labelText = kHz.truncatingRemainder(dividingBy: 1.0) == 0 ?
+                    "\(Int(kHz))k" : String(format: "%.1fk", kHz)
+            } else {
+                labelText = "\(Int(frequency))Hz"
+            }
+
+            let text = Text(labelText)
+                .font(.caption2)
+                .foregroundColor(.white)
+
+            // Draw background with clamped position
+            let backgroundRect = CGRect(
+                x: 5,
+                y: clampedY - textHeight / 2,
+                width: textWidth,
+                height: textHeight
+            )
+
+            context.fill(
+                Path(roundedRect: backgroundRect, cornerRadius: 4),
+                with: .color(.black.opacity(0.6))
+            )
+
+            // Draw text with clamped position
+            context.draw(
+                text,
+                at: CGPoint(x: 5 + textWidth / 2, y: clampedY)
+            )
+
+            frequency += labelInterval
+        }
+    }
+
+    // MARK: - Canvas Architecture - Phase 2: Spectrogram Drawing
+
+    /// Draw spectrogram on canvas (canvas coordinate system)
+    /// - Parameters:
+    ///   - context: Graphics context
+    ///   - canvasWidth: Canvas width
+    ///   - canvasHeight: Canvas height
+    ///   - maxFreq: Maximum frequency
+    ///   - data: Spectrogram data
+    private func drawSpectrogramOnCanvas(
+        context: GraphicsContext,
+        canvasWidth: CGFloat,
+        canvasHeight: CGFloat,
+        maxFreq: Double,
+        data: SpectrogramData
+    ) {
+        // Fixed time axis density (isExpanded only affects viewport, not drawing parameters)
+        let pixelsPerSecond: CGFloat = 50
+        let timeWindow = Double(canvasWidth / pixelsPerSecond)
+        let centerX = canvasWidth / 2
         let maxMagnitude = data.magnitudes.flatMap { $0 }.max() ?? 1.0
 
-        let freqBinCount = data.frequencyBins.count
-        let cellHeight = size.height / CGFloat(freqBinCount)
+        // Calculate cell dimensions
+        let cellWidth = pixelsPerSecond * 0.1
 
-        // Draw cells for visible time range
-        for (timeIndex, timestamp) in data.timeStamps.enumerated() {
-            let timeOffset = timestamp - currentTime  // Offset from current time
+        // Determine the highest frequency bin we have data for
+        let maxDataFreq = data.frequencyBins.last.map { Double($0) } ?? 0.0
 
-            // Only draw if within visible time window (-3 to +3 seconds from current)
-            guard abs(timeOffset) <= timeWindow / 2 else { continue }
+        // Calculate number of bins needed to cover entire canvas (0Hz to maxFreq)
+        let avgBinWidth: Double
+        if data.frequencyBins.count >= 2 {
+            avgBinWidth = Double(data.frequencyBins[1] - data.frequencyBins[0])
+        } else {
+            avgBinWidth = 100.0  // fallback
+        }
 
-            // Calculate x position: center + offset scaled to pixels
-            let x = centerX + CGFloat(timeOffset) * pixelsPerSecond
+        let totalBinsNeeded = Int(ceil(maxFreq / avgBinWidth))
 
-            let cellWidth = pixelsPerSecond * 0.1  // 0.1 sec per cell
+        // Draw all frequency bins (including areas with no data)
+        for binIndex in 0..<totalBinsNeeded {
+            let binFreqLow = Double(binIndex) * avgBinWidth
+            let binFreqHigh = Double(binIndex + 1) * avgBinWidth
 
-            guard timeIndex < data.magnitudes.count else { continue }
-            let magnitudeFrame = data.magnitudes[timeIndex]
+            // Skip if this bin is entirely above maxFreq
+            guard binFreqLow < maxFreq else { break }
 
-            for (freqIndex, magnitude) in magnitudeFrame.enumerated() {
+            // Find corresponding data bin index (if exists)
+            let dataFreqIndex = data.frequencyBins.firstIndex { Double($0) >= binFreqLow }
+
+            // Convert frequency range to canvas Y coordinates
+            let yTop = frequencyToCanvasY(
+                frequency: min(binFreqHigh, maxFreq),
+                canvasHeight: canvasHeight,
+                maxFreq: maxFreq
+            )
+            let yBottom = frequencyToCanvasY(
+                frequency: binFreqLow,
+                canvasHeight: canvasHeight,
+                maxFreq: maxFreq
+            )
+            let cellHeight = yBottom - yTop
+
+            // Draw cells for this frequency bin across time
+            for (timeIndex, timestamp) in data.timeStamps.enumerated() {
+                let timeOffset = timestamp - currentTime
+                guard abs(timeOffset) <= timeWindow / 2 else { continue }
+
+                let x = centerX + CGFloat(timeOffset) * pixelsPerSecond
+
+                // Get magnitude from data (if exists)
+                let magnitude: Float
+                if let dataIdx = dataFreqIndex,
+                   timeIndex < data.magnitudes.count,
+                   dataIdx < data.magnitudes[timeIndex].count {
+                    magnitude = data.magnitudes[timeIndex][dataIdx]
+                } else {
+                    magnitude = 0.0  // No data - use weakest color
+                }
+
+                // Color calculation with proper weakest color
                 let normalizedMagnitude = CGFloat(magnitude / maxMagnitude)
-                let hue = 0.6 - normalizedMagnitude * 0.6 // Blue (low) to red (high)
-                let color = Color(hue: hue, saturation: 0.8, brightness: 0.9 * normalizedMagnitude + 0.1)
 
-                let rect = CGRect(
-                    x: x,
-                    y: size.height - CGFloat(freqIndex + 1) * cellHeight,
-                    width: cellWidth,
-                    height: cellHeight
-                )
+                // Gradient: blue-purple (hue ~0.6) for weak → green-yellow (hue ~0.0) for strong
+                let hue = 0.6 - normalizedMagnitude * 0.6
+
+                // For magnitude = 0, show visible weak color (not black)
+                // saturation: keep constant for consistent color
+                // brightness: ensure minimum visibility even at magnitude = 0
+                let saturation: CGFloat = 0.8
+                let brightness: CGFloat
+                if normalizedMagnitude < 0.01 {
+                    // Weakest color: clearly visible dark blue-purple
+                    brightness = 0.3
+                } else {
+                    // Scale brightness for stronger signals
+                    brightness = 0.3 + 0.6 * normalizedMagnitude
+                }
+
+                let color = Color(hue: hue, saturation: saturation, brightness: brightness)
+
+                let rect = CGRect(x: x, y: yTop, width: cellWidth, height: cellHeight)
                 context.fill(Path(rect), with: .color(color))
             }
         }
@@ -587,8 +843,8 @@ struct SpectrogramView: View {
     }
 
     private func drawSpectrogramTimeAxis(context: GraphicsContext, size: CGSize) {
-        // Calculate time window based on pixel density
-        let pixelsPerSecond: CGFloat = isExpanded ? 30 : 50
+        // Fixed time axis density (isExpanded only affects viewport, not drawing parameters)
+        let pixelsPerSecond: CGFloat = 50
         let timeWindow = Double(size.width / pixelsPerSecond)
         let halfWindow = timeWindow / 2
 
