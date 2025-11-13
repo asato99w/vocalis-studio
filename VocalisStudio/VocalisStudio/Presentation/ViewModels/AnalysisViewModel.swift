@@ -112,22 +112,34 @@ public class AnalysisViewModel: ObservableObject {
 
         isPlaying = true
 
-        // Start audio playback
-        Task { [weak self] in
-            guard let self = self else { return }
-            do {
-                try await self.audioPlayer.play(url: self.recording.fileURL)
-                // Playback finished
-                await MainActor.run {
-                    self.pause()
-                    self.currentTime = self.duration
-                }
-            } catch {
-                self.logger.error("Audio playback failed: \(error.localizedDescription)")
-                await MainActor.run {
-                    self.pause()
+        // Check if we're resuming from a paused position or starting fresh
+        let startTime = currentTime
+        let isResuming = startTime > 0.01  // Small threshold to handle floating point precision
+
+        if isResuming {
+            // Resume from current position
+            audioPlayer.resume()
+            logger.debug("Playback resumed from time: \(startTime)")
+        } else {
+            // Start fresh playback from beginning
+            Task { [weak self] in
+                guard let self = self else { return }
+                do {
+                    try await self.audioPlayer.play(url: self.recording.fileURL)
+
+                    // Playback finished
+                    await MainActor.run {
+                        self.pause()
+                        self.currentTime = self.duration
+                    }
+                } catch {
+                    self.logger.error("Audio playback failed: \(error.localizedDescription)")
+                    await MainActor.run {
+                        self.pause()
+                    }
                 }
             }
+            logger.debug("Playback started from beginning")
         }
 
         // Start playback timer to update currentTime
@@ -144,8 +156,6 @@ public class AnalysisViewModel: ObservableObject {
                 }
             }
         }
-
-        logger.debug("Playback started")
     }
 
     private func pause() {
