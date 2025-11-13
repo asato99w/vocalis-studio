@@ -504,20 +504,6 @@ struct SpectrogramView: View {
                 // playheadX: Fixed position at viewport center (red cursor position)
                 let playheadX = spectroViewportW / 2
 
-                // Initialize horizontal scroll position
-                // Initial: paperLeft = -playheadX (paper's left edge touches red line)
-                let _ = {
-                    // Only initialize once when data is available and not yet initialized
-                    if !isPaperLeftInitialized && spectrogramData != nil {
-                        // Initial: paper's left edge (0s) at red line (center)
-                        paperLeft = -playheadX
-                        lastPaperLeft = paperLeft
-                        isPaperLeftInitialized = true
-
-                        FileLogger.shared.log(level: "INFO", category: "paperLeft_init",
-                            message: "📍 paperLeft initialized: \(paperLeft), playheadX=\(playheadX), spectroViewportW=\(spectroViewportW), canvasW=\(canvasWidth), durationSec=\(durationSec)")
-                    }
-                }()
 
                 // Initialize scroll position to bottom when expanded (low frequency visible)
                 let scrollableRange = canvasHeight - viewportHeight
@@ -603,8 +589,8 @@ struct SpectrogramView: View {
                         // - X follows offsetX only (horizontal scroll)
                         // - Y is fixed (does not move vertically)
                         Canvas { context, size in
-                            if spectrogramData != nil {
-                                drawSpectrogramTimeAxisWithOffset(context: context, size: size, durationSec: durationSec, offsetX: paperLeft)
+                            if spectrogramData != nil && isPaperLeftInitialized {
+                                drawSpectrogramTimeAxisWithOffset(context: context, size: size, durationSec: durationSec, offsetX: paperLeft, spectroViewportW: spectroViewportW, canvasWidth: canvasWidth, currentTime: currentTime)
                             }
                         }
                         .frame(width: spectroViewportW, height: timeLabelHeight)
@@ -613,6 +599,21 @@ struct SpectrogramView: View {
                 }
                 .frame(width: viewportWidth, height: viewportHeightTotal)
                 .accessibilityIdentifier("SpectrogramCanvas")
+                .task(id: spectrogramData) {
+                    // Initialize horizontal scroll position when spectrogramData is loaded
+                    if !isPaperLeftInitialized && spectrogramData != nil {
+                        // Wait for layout
+                        try? await Task.sleep(nanoseconds: 10_000_000) // 10ms
+                        let playheadX_init = spectroViewportW / 2
+                        // Initial: paper's left edge (0s) at red line (center)
+                        paperLeft = -playheadX_init
+                        lastPaperLeft = paperLeft
+                        isPaperLeftInitialized = true
+
+                        FileLogger.shared.log(level: "INFO", category: "paperLeft_init",
+                            message: "📍 paperLeft initialized: \(paperLeft), playheadX=\(playheadX_init), spectroViewportW=\(spectroViewportW)")
+                    }
+                }
                 .onAppear {
                     // Wait for layout to be ready, then initialize position
                     DispatchQueue.main.async {
@@ -837,9 +838,14 @@ struct SpectrogramView: View {
     ) {
         // Fixed time axis density (isExpanded only affects viewport, not drawing parameters)
         let pixelsPerSecond: CGFloat = 50
-        let timeWindow = Double(canvasWidth / pixelsPerSecond)
-        let centerX = canvasWidth / 2
         let maxMagnitude = data.magnitudes.flatMap { $0 }.max() ?? 1.0
+
+        // Use first timestamp as origin (0s position on canvas)
+        let firstTimestamp = data.timeStamps.first ?? 0.0
+
+        // Debug: Log basic spectrogram data info
+        FileLogger.shared.log(level: "DEBUG", category: "spectrogram_debug",
+            message: "🎨 SPECTROGRAM: frames=\(data.timeStamps.count), first_t=\(String(format: "%.3f", firstTimestamp)), last_t=\(String(format: "%.3f", data.timeStamps.last ?? 0.0)), pps=\(pixelsPerSecond)")
 
         // Calculate cell dimensions
         let cellWidth = pixelsPerSecond * 0.1
@@ -883,10 +889,9 @@ struct SpectrogramView: View {
 
             // Draw cells for this frequency bin across time
             for (timeIndex, timestamp) in data.timeStamps.enumerated() {
-                let timeOffset = timestamp - currentTime
-                guard abs(timeOffset) <= timeWindow / 2 else { continue }
-
-                let x = centerX + CGFloat(timeOffset) * pixelsPerSecond
+                // Convert timestamp to canvas X coordinate relative to first timestamp (0s position)
+                // No filtering - draw all data across entire canvas
+                let x = CGFloat(timestamp - firstTimestamp) * pixelsPerSecond
 
                 // Get magnitude from data (if exists)
                 let magnitude: Float
@@ -969,12 +974,31 @@ struct SpectrogramView: View {
         }
     }
 
-    private func drawSpectrogramTimeAxisWithOffset(context: GraphicsContext, size: CGSize, durationSec: Double, offsetX: CGFloat) {
+    private func drawSpectrogramTimeAxisWithOffset(context: GraphicsContext, size: CGSize, durationSec: Double, offsetX: CGFloat, spectroViewportW: CGFloat, canvasWidth: CGFloat, currentTime: Double) {
         // Draw time axis with labels, considering offsetX for horizontal scrolling
         // Only draw labels that are visible within the viewport
         let pixelsPerSecond: CGFloat = 50
         let labelInterval: Double = 1.0  // 1 second
         var time: Double = 0
+
+        // Debug log for acceptance criteria verification
+        let playheadX = spectroViewportW / 2
+        let label0sX = 0 * pixelsPerSecond - offsetX
+        let expectedPaperLeft = -playheadX
+
+        FileLogger.shared.log(level: "DEBUG", category: "time_axis_verification",
+            message: """
+            📐 TIME AXIS VERIFICATION:
+            - paperLeft (offsetX): \(offsetX)
+            - playheadX: \(playheadX)
+            - Expected paperLeft (initial): \(expectedPaperLeft)
+            - 0s label x-coord: \(label0sX)
+            - Should 0s be at playheadX? \(abs(label0sX - playheadX) < 1.0)
+            - currentTime: \(currentTime)
+            - currentTime label x-coord: \(CGFloat(currentTime) * pixelsPerSecond - offsetX)
+            - Should currentTime be at playheadX? \(abs((CGFloat(currentTime) * pixelsPerSecond - offsetX) - playheadX) < 1.0)
+            - canvasWidth: \(canvasWidth), spectroViewportW: \(spectroViewportW)
+            """)
 
         while time <= durationSec {
             // Calculate x position considering offsetX (paperLeft)

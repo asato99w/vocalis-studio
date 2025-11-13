@@ -362,6 +362,77 @@ Canvas { context, size in
 
 ---
 
+## 受け入れ基準のログ検証式
+
+**重要**: スクリーンショットによる目視確認は不正確なため、以下の数式をログ出力で定量的に検証する。
+
+### 検証項目と期待値
+
+#### 1. 初期表示（currentTime = 0）
+
+**検証1-1**: 0sラベルが赤線真下に表示
+```
+paperLeft = -playheadX  (Expected)
+0sラベルのx座標 = 0 * pps - paperLeft = playheadX  (Expected)
+許容誤差: ±1.0 px
+```
+
+**検証1-2**: 赤線より左側にグレー余白が存在
+```
+paperLeft < 0  (Expected: 負の値)
+```
+
+**検証1-3**: 赤線より右側にスペクトログラムが表示
+```
+canvasWidth > playheadX  (Expected)
+```
+
+#### 2. 再生中（例: currentTime = 1.0s）
+
+**検証2-1**: 赤線の真下に currentTime のラベルが位置
+```
+paperLeft = currentTime * pps - playheadX  (Expected)
+currentTimeラベルのx座標 = currentTime * pps - paperLeft = playheadX  (Expected)
+許容誤差: ±1.0 px
+```
+
+#### 3. 録音終端（currentTime = durationSec）
+
+**検証3-1**: 録音終端のラベルが赤線真下に表示
+```
+paperLeft = min(durationSec * pps - playheadX, canvasW - playheadX)  (Expected)
+durationSecラベルのx座標 = durationSec * pps - paperLeft = playheadX  (Expected)
+許容誤差: ±1.0 px
+```
+
+### ログ出力内容
+
+以下の値を毎フレーム（または重要なタイミングで）ログ出力する：
+
+```
+📐 TIME AXIS VERIFICATION:
+- paperLeft (offsetX): <実際の値>
+- playheadX: <実際の値>
+- Expected paperLeft: <currentTime * pps - playheadX>
+- 0s label x-coord: <0 * pps - paperLeft>
+- Should 0s be at playheadX? <|0sラベルx - playheadX| < 1.0>
+- currentTime: <実際の値>
+- currentTime label x-coord: <currentTime * pps - paperLeft>
+- Should currentTime be at playheadX? <|currentTimeラベルx - playheadX| < 1.0>
+- canvasWidth: <実際の値>, spectroViewportW: <実際の値>
+```
+
+### 合格判定
+
+以下の条件を**すべて**満たす必要がある：
+
+1. **初期状態**: `|0sラベルx - playheadX| < 1.0` が `true`
+2. **初期状態**: `paperLeft < 0` が `true`
+3. **再生中**: `|currentTimeラベルx - playheadX| < 1.0` が `true`（任意の currentTime で）
+4. **録音終端**: `|durationSecラベルx - playheadX| < 1.0` が `true`
+
+---
+
 ## 実装チェックポイント
 
 ### 1. paperLeftの初期化
