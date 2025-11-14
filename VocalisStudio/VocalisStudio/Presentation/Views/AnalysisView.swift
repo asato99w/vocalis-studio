@@ -478,12 +478,16 @@ struct SpectrogramView: View {
 
                 // Calculate canvas width based on data duration, NOT viewport
                 let pixelsPerSecond: CGFloat = 50  // Fixed density
+                // Add extra space at the beginning of canvas to ensure frequency labels
+                // are always within canvas bounds even at initial scroll position
+                let canvasLeftPadding: CGFloat = viewportWidth / 2  // Same as playhead offset
                 let canvasWidth: CGFloat = {
                     if let data = spectrogramData, !data.timeStamps.isEmpty {
                         let dataDuration = data.timeStamps.last ?? 0.0
-                        return max(CGFloat(dataDuration) * pixelsPerSecond, 100)  // min 100px
+                        let dataWidth = CGFloat(dataDuration) * pixelsPerSecond
+                        return max(dataWidth + canvasLeftPadding, 100)  // Include left padding
                     }
-                    return viewportWidth  // fallback when no data
+                    return viewportWidth + canvasLeftPadding  // fallback with padding
                 }()
 
                 let cellWidth = pixelsPerSecond * 0.1
@@ -504,12 +508,19 @@ struct SpectrogramView: View {
                         // size here is the canvas size, not viewport size
 
                         // 1. Draw spectrogram (background) - SCROLLABLE
+                        // DEBUG: Draw yellow background for left padding area to visualize canvas expansion
+                        context.fill(
+                            Path(CGRect(x: 0, y: 0, width: canvasLeftPadding, height: canvasHeight)),
+                            with: .color(.yellow.opacity(0.3))
+                        )
+
                         drawSpectrogramOnCanvas(
                             context: context,
                             canvasWidth: size.width,
                             canvasHeight: canvasHeight,
                             maxFreq: maxFreq,
-                            data: data
+                            data: data,
+                            leftPadding: canvasLeftPadding
                         )
 
                         // 2. Draw Y-axis labels - Y-SCROLLABLE, X-FIXED
@@ -528,7 +539,11 @@ struct SpectrogramView: View {
                         // Compensate for Y scroll offset to keep labels at viewport bottom
                         var timeAxisContext = context
                         timeAxisContext.translateBy(x: 0, y: -paperTop)
-                        drawSpectrogramTimeAxis(context: timeAxisContext, size: CGSize(width: size.width, height: viewportHeight))
+                        drawSpectrogramTimeAxis(
+                            context: timeAxisContext,
+                            size: CGSize(width: size.width, height: viewportHeight),
+                            leftPadding: canvasLeftPadding
+                        )
 
                         // 4. Draw playback position (red line) - FULLY FIXED
                         // Compensate for both X and Y scroll offsets
@@ -775,12 +790,14 @@ struct SpectrogramView: View {
     ///   - canvasHeight: Canvas height
     ///   - maxFreq: Maximum frequency
     ///   - data: Spectrogram data
+    ///   - leftPadding: Left padding in canvas to offset data start position
     private func drawSpectrogramOnCanvas(
         context: GraphicsContext,
         canvasWidth: CGFloat,
         canvasHeight: CGFloat,
         maxFreq: Double,
-        data: SpectrogramData
+        data: SpectrogramData,
+        leftPadding: CGFloat
     ) {
         // Fixed time axis density (isExpanded only affects viewport, not drawing parameters)
         let pixelsPerSecond: CGFloat = 50
@@ -831,6 +848,7 @@ struct SpectrogramView: View {
             for (timeIndex, timestamp) in data.timeStamps.enumerated() {
                 // X coordinate in Canvas coordinate system
                 // x = timestamp × pixelsPerSecond (Canvas absolute coordinate)
+                // Canvas offset handles scrolling, so data always starts at 0
                 let x = CGFloat(timestamp) * pixelsPerSecond
 
                 // Get magnitude from data (if exists)
@@ -889,21 +907,23 @@ struct SpectrogramView: View {
         )
     }
 
-    private func drawSpectrogramTimeAxis(context: GraphicsContext, size: CGSize) {
+    private func drawSpectrogramTimeAxis(context: GraphicsContext, size: CGSize, leftPadding: CGFloat) {
         // Fixed time axis density (same as spectrogram)
         let pixelsPerSecond: CGFloat = 50
 
-        // Calculate recording duration from canvas width
-        let durationSec = Double(size.width / pixelsPerSecond)
+        // Calculate recording duration from canvas width (excluding left padding)
+        let durationSec = Double((size.width - leftPadding) / pixelsPerSecond)
 
         // Draw time labels at 1-second intervals (0s, 1s, 2s, ...)
-        // X coordinate: timestamp × pixelsPerSecond (Canvas coordinate system - same formula as spectrogram)
+        // X coordinate: timestamp × pixelsPerSecond + leftPadding (Canvas coordinate system - same formula as spectrogram)
         // Y coordinate: size.height - 20 (viewport bottom with padding)
         let labelInterval: Double = 1.0  // seconds
         let labelCount = Int(ceil(durationSec / labelInterval))
 
         for i in 0...labelCount {
             let timestamp = Double(i) * labelInterval
+            // X coordinate in Canvas coordinate system
+            // Canvas offset handles scrolling, so labels always start at 0
             let x = CGFloat(timestamp) * pixelsPerSecond
             let y = size.height - 20  // Fixed at viewport bottom with 20px padding
 
