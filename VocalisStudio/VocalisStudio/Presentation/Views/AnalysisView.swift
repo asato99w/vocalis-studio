@@ -138,7 +138,8 @@ public struct AnalysisView: View {
                         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                             expandedGraph = .spectrogram
                         }
-                    }
+                    },
+                    onPlayPause: { viewModel.togglePlayback() }
                 )
                 .frame(maxHeight: .infinity)
 
@@ -153,7 +154,8 @@ public struct AnalysisView: View {
                         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                             expandedGraph = .pitchAnalysis
                         }
-                    }
+                    },
+                    onPlayPause: { viewModel.togglePlayback() }
                 )
                 .frame(maxHeight: .infinity)
             }
@@ -183,7 +185,8 @@ public struct AnalysisView: View {
                         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                             expandedGraph = .spectrogram
                         }
-                    }
+                    },
+                    onPlayPause: { viewModel.togglePlayback() }
                 )
                 .frame(height: 200)
 
@@ -195,7 +198,8 @@ public struct AnalysisView: View {
                         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                             expandedGraph = .pitchAnalysis
                         }
-                    }
+                    },
+                    onPlayPause: { viewModel.togglePlayback() }
                 )
                 .frame(height: 200)
             }
@@ -225,7 +229,8 @@ public struct AnalysisView: View {
                             withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                                 expandedGraph = nil
                             }
-                        }
+                        },
+                        onPlayPause: { viewModel.togglePlayback() }
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
 
@@ -239,7 +244,8 @@ public struct AnalysisView: View {
                             withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                                 expandedGraph = nil
                             }
-                        }
+                        },
+                        onPlayPause: { viewModel.togglePlayback() }
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
@@ -442,6 +448,7 @@ struct SpectrogramView: View {
     var isExpanded: Bool = false
     var onExpand: (() -> Void)? = nil
     var onCollapse: (() -> Void)? = nil
+    var onPlayPause: (() -> Void)? = nil
 
     // Canvas scroll state (2D scrolling)
 
@@ -687,6 +694,9 @@ struct SpectrogramView: View {
         .contentShape(Rectangle())
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("SpectrogramView")
+        .onTapGesture {
+            onPlayPause?()
+        }
     }
 
     // MARK: - Canvas Architecture - Phase 1: Core Functions
@@ -964,6 +974,7 @@ struct PitchAnalysisView: View {
     var isExpanded: Bool = false
     var onExpand: (() -> Void)? = nil
     var onCollapse: (() -> Void)? = nil
+    var onPlayPause: (() -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -1016,6 +1027,9 @@ struct PitchAnalysisView: View {
         .contentShape(Rectangle())
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("PitchAnalysisView")
+        .onTapGesture {
+            onPlayPause?()
+        }
     }
 
     private func drawPitchGraph(context: GraphicsContext, size: CGSize, data: PitchAnalysisData) {
