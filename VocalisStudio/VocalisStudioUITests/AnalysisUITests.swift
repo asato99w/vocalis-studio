@@ -158,12 +158,12 @@ final class AnalysisUITests: XCTestCase {
         // Wait for analysis to complete
         Thread.sleep(forTimeInterval: 3.0)
 
-        // Find and tap on spectrogram view
-        let spectrogramView = app.otherElements["SpectrogramView"]
-        XCTAssertTrue(spectrogramView.waitForExistence(timeout: 5), "Spectrogram view should exist")
+        // Find and tap on spectrogram expand button
+        let expandButton = app.buttons["SpectrogramExpandButton"]
+        XCTAssertTrue(expandButton.waitForExistence(timeout: 5), "Spectrogram expand button should exist")
 
-        // Tap on the spectrogram view to expand
-        spectrogramView.tap()
+        // Tap expand button
+        expandButton.tap()
 
         // Wait for expansion animation
         Thread.sleep(forTimeInterval: 1.0)
@@ -207,12 +207,12 @@ final class AnalysisUITests: XCTestCase {
         attachment3.lifetime = .keepAlways
         add(attachment3)
 
-        // Verify close button exists
-        let closeButton = app.buttons["CloseExpandedViewButton"]
-        XCTAssertTrue(closeButton.waitForExistence(timeout: 2), "Close button should exist in expanded view")
+        // Verify collapse button exists
+        let collapseButton = app.buttons["SpectrogramCollapseButton"]
+        XCTAssertTrue(collapseButton.waitForExistence(timeout: 2), "Collapse button should exist in expanded view")
 
-        // Tap close button
-        closeButton.tap()
+        // Tap collapse button
+        collapseButton.tap()
 
         // Wait for collapse animation
         Thread.sleep(forTimeInterval: 1.0)
@@ -225,6 +225,7 @@ final class AnalysisUITests: XCTestCase {
         add(attachment4)
 
         // Verify we're back to normal view (spectrogram view should still exist)
+        let spectrogramView = app.otherElements["SpectrogramView"]
         XCTAssertTrue(spectrogramView.exists, "Should be back to normal view")
     }
 
@@ -240,12 +241,12 @@ final class AnalysisUITests: XCTestCase {
         // Wait for analysis to complete
         Thread.sleep(forTimeInterval: 3.0)
 
-        // Find and tap on pitch analysis view
-        let pitchAnalysisView = app.otherElements["PitchAnalysisView"]
-        XCTAssertTrue(pitchAnalysisView.waitForExistence(timeout: 5), "Pitch analysis view should exist")
+        // Find and tap on pitch graph expand button
+        let expandButton = app.buttons["PitchGraphExpandButton"]
+        XCTAssertTrue(expandButton.waitForExistence(timeout: 5), "Pitch graph expand button should exist")
 
-        // Tap on the pitch analysis view to expand
-        pitchAnalysisView.tap()
+        // Tap expand button
+        expandButton.tap()
 
         // Wait for expansion animation
         Thread.sleep(forTimeInterval: 1.0)
@@ -257,12 +258,12 @@ final class AnalysisUITests: XCTestCase {
         attachment1.lifetime = .keepAlways
         add(attachment1)
 
-        // Verify close button exists
-        let closeButton = app.buttons["CloseExpandedViewButton"]
-        XCTAssertTrue(closeButton.waitForExistence(timeout: 2), "Close button should exist in expanded view")
+        // Verify collapse button exists
+        let collapseButton = app.buttons["PitchGraphCollapseButton"]
+        XCTAssertTrue(collapseButton.waitForExistence(timeout: 2), "Collapse button should exist in expanded view")
 
-        // Tap close button
-        closeButton.tap()
+        // Tap collapse button
+        collapseButton.tap()
 
         // Wait for collapse animation
         Thread.sleep(forTimeInterval: 1.0)
@@ -275,6 +276,7 @@ final class AnalysisUITests: XCTestCase {
         add(attachment2)
 
         // Verify we're back to normal view
+        let pitchAnalysisView = app.otherElements["PitchAnalysisView"]
         XCTAssertTrue(pitchAnalysisView.exists, "Should be back to normal view")
     }
 
@@ -291,9 +293,9 @@ final class AnalysisUITests: XCTestCase {
         Thread.sleep(forTimeInterval: 3.0)
 
         // Expand pitch analysis view
-        let pitchAnalysisView = app.otherElements["PitchAnalysisView"]
-        XCTAssertTrue(pitchAnalysisView.waitForExistence(timeout: 5), "Pitch analysis view should exist")
-        pitchAnalysisView.tap()
+        let expandButton = app.buttons["PitchGraphExpandButton"]
+        XCTAssertTrue(expandButton.waitForExistence(timeout: 5), "Pitch graph expand button should exist")
+        expandButton.tap()
 
         // Wait for expansion animation
         Thread.sleep(forTimeInterval: 1.0)
@@ -329,9 +331,9 @@ final class AnalysisUITests: XCTestCase {
         add(attachment2)
 
         // Close expanded view
-        let closeButton = app.buttons["CloseExpandedViewButton"]
-        XCTAssertTrue(closeButton.exists, "Close button should exist")
-        closeButton.tap()
+        let collapseButton = app.buttons["PitchGraphCollapseButton"]
+        XCTAssertTrue(collapseButton.exists, "Collapse button should exist")
+        collapseButton.tap()
         Thread.sleep(forTimeInterval: 1.0)
     }
 

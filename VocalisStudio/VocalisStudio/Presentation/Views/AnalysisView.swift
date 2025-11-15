@@ -133,14 +133,14 @@ public struct AnalysisView: View {
                 // Spectrogram (top half)
                 SpectrogramView(
                     currentTime: viewModel.currentTime,
-                    spectrogramData: viewModel.analysisResult?.spectrogramData
+                    spectrogramData: viewModel.analysisResult?.spectrogramData,
+                    onExpand: {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                            expandedGraph = .spectrogram
+                        }
+                    }
                 )
                 .frame(maxHeight: .infinity)
-                .onTapGesture {
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                        expandedGraph = .spectrogram
-                    }
-                }
 
                 Divider()
 
@@ -148,14 +148,14 @@ public struct AnalysisView: View {
                 PitchAnalysisView(
                     currentTime: viewModel.currentTime,
                     pitchData: viewModel.analysisResult?.pitchData,
-                    scaleSettings: viewModel.analysisResult?.scaleSettings
+                    scaleSettings: viewModel.analysisResult?.scaleSettings,
+                    onExpand: {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                            expandedGraph = .pitchAnalysis
+                        }
+                    }
                 )
                 .frame(maxHeight: .infinity)
-                .onTapGesture {
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                        expandedGraph = .pitchAnalysis
-                    }
-                }
             }
             .padding(12)
         }
@@ -178,26 +178,26 @@ public struct AnalysisView: View {
 
                 SpectrogramView(
                     currentTime: viewModel.currentTime,
-                    spectrogramData: viewModel.analysisResult?.spectrogramData
+                    spectrogramData: viewModel.analysisResult?.spectrogramData,
+                    onExpand: {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                            expandedGraph = .spectrogram
+                        }
+                    }
                 )
                 .frame(height: 200)
-                .onTapGesture {
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                        expandedGraph = .spectrogram
-                    }
-                }
 
                 PitchAnalysisView(
                     currentTime: viewModel.currentTime,
                     pitchData: viewModel.analysisResult?.pitchData,
-                    scaleSettings: viewModel.analysisResult?.scaleSettings
+                    scaleSettings: viewModel.analysisResult?.scaleSettings,
+                    onExpand: {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                            expandedGraph = .pitchAnalysis
+                        }
+                    }
                 )
                 .frame(height: 200)
-                .onTapGesture {
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                        expandedGraph = .pitchAnalysis
-                    }
-                }
             }
             .padding()
         }
@@ -207,7 +207,7 @@ public struct AnalysisView: View {
 
     @ViewBuilder
     private func expandedGraphFullScreen(for type: ExpandedGraphType) -> some View {
-        ZStack(alignment: .topTrailing) {
+        ZStack {
             // Background
             ColorPalette.background
                 .ignoresSafeArea()
@@ -220,7 +220,12 @@ public struct AnalysisView: View {
                     SpectrogramView(
                         currentTime: viewModel.currentTime,
                         spectrogramData: viewModel.analysisResult?.spectrogramData,
-                        isExpanded: true
+                        isExpanded: true,
+                        onCollapse: {
+                            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                                expandedGraph = nil
+                            }
+                        }
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
 
@@ -229,7 +234,12 @@ public struct AnalysisView: View {
                         currentTime: viewModel.currentTime,
                         pitchData: viewModel.analysisResult?.pitchData,
                         scaleSettings: viewModel.analysisResult?.scaleSettings,
-                        isExpanded: true
+                        isExpanded: true,
+                        onCollapse: {
+                            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                                expandedGraph = nil
+                            }
+                        }
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
@@ -242,20 +252,6 @@ public struct AnalysisView: View {
                 .padding()
                 .background(ColorPalette.secondary.opacity(0.9))
             }
-
-            // Close button (top right)
-            Button(action: {
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                    expandedGraph = nil
-                }
-            }) {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.title)
-                    .foregroundColor(ColorPalette.text.opacity(0.8))
-                    .padding()
-            }
-            .accessibilityLabel("analysis.close_expanded_view".localized)
-            .accessibilityIdentifier("CloseExpandedViewButton")
         }
     }
 }
@@ -444,6 +440,8 @@ struct SpectrogramView: View {
     let currentTime: Double
     let spectrogramData: SpectrogramData?
     var isExpanded: Bool = false
+    var onExpand: (() -> Void)? = nil
+    var onCollapse: (() -> Void)? = nil
 
     // Canvas scroll state (2D scrolling)
 
@@ -662,6 +660,33 @@ struct SpectrogramView: View {
         .contentShape(Rectangle())
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("SpectrogramView")
+        .overlay(alignment: .topTrailing) {
+            if !isExpanded, let onExpand = onExpand {
+                Button(action: onExpand) {
+                    Image(systemName: "arrow.up.left.and.arrow.down.right")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.white)
+                        .padding(8)
+                        .background(Color.black.opacity(0.6))
+                        .cornerRadius(6)
+                }
+                .padding(8)
+                .accessibilityLabel("フルスクリーン")
+                .accessibilityIdentifier("SpectrogramExpandButton")
+            } else if isExpanded, let onCollapse = onCollapse {
+                Button(action: onCollapse) {
+                    Image(systemName: "arrow.down.right.and.arrow.up.left")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.white)
+                        .padding(8)
+                        .background(Color.black.opacity(0.6))
+                        .cornerRadius(6)
+                }
+                .padding(8)
+                .accessibilityLabel("閉じる")
+                .accessibilityIdentifier("SpectrogramCollapseButton")
+            }
+        }
     }
 
     // MARK: - Canvas Architecture - Phase 1: Core Functions
@@ -937,6 +962,8 @@ struct PitchAnalysisView: View {
     let pitchData: PitchAnalysisData?
     let scaleSettings: ScaleSettings?
     var isExpanded: Bool = false
+    var onExpand: (() -> Void)? = nil
+    var onCollapse: (() -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -962,6 +989,33 @@ struct PitchAnalysisView: View {
         .contentShape(Rectangle())
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("PitchAnalysisView")
+        .overlay(alignment: .topTrailing) {
+            if !isExpanded, let onExpand = onExpand {
+                Button(action: onExpand) {
+                    Image(systemName: "arrow.up.left.and.arrow.down.right")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.white)
+                        .padding(8)
+                        .background(Color.black.opacity(0.6))
+                        .cornerRadius(6)
+                }
+                .padding(8)
+                .accessibilityLabel("フルスクリーン")
+                .accessibilityIdentifier("PitchGraphExpandButton")
+            } else if isExpanded, let onCollapse = onCollapse {
+                Button(action: onCollapse) {
+                    Image(systemName: "arrow.down.right.and.arrow.up.left")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.white)
+                        .padding(8)
+                        .background(Color.black.opacity(0.6))
+                        .cornerRadius(6)
+                }
+                .padding(8)
+                .accessibilityLabel("閉じる")
+                .accessibilityIdentifier("PitchGraphCollapseButton")
+            }
+        }
     }
 
     private func drawPitchGraph(context: GraphicsContext, size: CGSize, data: PitchAnalysisData) {
