@@ -139,7 +139,8 @@ public struct AnalysisView: View {
                             expandedGraph = .spectrogram
                         }
                     },
-                    onPlayPause: { viewModel.togglePlayback() }
+                    onPlayPause: { viewModel.togglePlayback() },
+                    onSeek: { time in viewModel.seek(to: time) }
                 )
                 .frame(maxHeight: .infinity)
 
@@ -186,7 +187,8 @@ public struct AnalysisView: View {
                             expandedGraph = .spectrogram
                         }
                     },
-                    onPlayPause: { viewModel.togglePlayback() }
+                    onPlayPause: { viewModel.togglePlayback() },
+                    onSeek: { time in viewModel.seek(to: time) }
                 )
                 .frame(height: 200)
 
@@ -230,7 +232,8 @@ public struct AnalysisView: View {
                                 expandedGraph = nil
                             }
                         },
-                        onPlayPause: { viewModel.togglePlayback() }
+                        onPlayPause: { viewModel.togglePlayback() },
+                        onSeek: { time in viewModel.seek(to: time) }
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
 
@@ -441,6 +444,7 @@ struct SpectrogramView: View {
     var onExpand: (() -> Void)? = nil
     var onCollapse: (() -> Void)? = nil
     var onPlayPause: (() -> Void)? = nil
+    var onSeek: ((Double) -> Void)? = nil
 
     // Canvas scroll state (2D scrolling)
 
@@ -645,11 +649,11 @@ struct SpectrogramView: View {
                         .onChanged { value in
                             let translation = value.translation
 
-                            // Detect vertical-dominant drag
+                            // Detect drag direction
                             let angle = atan2(abs(translation.height), abs(translation.width))
 
                             if angle > .pi / 4 {
-                                // Strict definitions
+                                // Vertical-dominant drag: frequency axis scrolling
                                 let viewportH = viewportHeight
                                 let canvasH = canvasHeight
                                 let maxPaperTop: CGFloat = 0
@@ -660,6 +664,15 @@ struct SpectrogramView: View {
 
                                 // Clamp immediately (mandatory after any movement)
                                 paperTop = max(minPaperTop, min(maxPaperTop, candidate))
+                            } else if let onSeek = onSeek {
+                                // Horizontal-dominant drag: time axis seeking
+                                // Calculate time change from horizontal translation (reduced sensitivity)
+                                let seekSensitivity = 3.0  // Lower sensitivity: 3x more drag needed
+                                let timeChange = -Double(translation.width) / (Double(pixelsPerSecond) * seekSensitivity)
+                                let newTime = max(0, currentTime + timeChange)
+
+                                // Seek to new time
+                                onSeek(newTime)
                             }
                         }
                         .onEnded { _ in
