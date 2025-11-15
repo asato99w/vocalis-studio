@@ -249,14 +249,6 @@ public struct AnalysisView: View {
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-
-                // Compact playback control
-                CompactPlaybackControl(
-                    isPlaying: viewModel.isPlaying,
-                    onPlayPause: { viewModel.togglePlayback() }
-                )
-                .padding()
-                .background(ColorPalette.secondary.opacity(0.9))
             }
         }
     }
