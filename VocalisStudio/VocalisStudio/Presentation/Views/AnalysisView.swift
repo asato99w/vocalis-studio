@@ -557,7 +557,7 @@ struct SpectrogramView: View {
                 .overlay(alignment: .topTrailing) {
                     if !isExpanded, let onExpand = onExpand {
                         Button(action: onExpand) {
-                            Image(systemName: "arrow.up.right.and.arrow.down.left")
+                            Image(systemName: "arrow.down.left.and.arrow.up.right")
                                 .font(.system(size: 14, weight: .medium))
                                 .foregroundColor(.white)
                                 .padding(8)
@@ -569,7 +569,7 @@ struct SpectrogramView: View {
                         .accessibilityIdentifier("SpectrogramExpandButton")
                     } else if isExpanded, let onCollapse = onCollapse {
                         Button(action: onCollapse) {
-                            Image(systemName: "arrow.down.left.and.arrow.up.right")
+                            Image(systemName: "arrow.up.right.and.arrow.down.left")
                                 .font(.system(size: 14, weight: .medium))
                                 .foregroundColor(.white)
                                 .padding(8)
@@ -985,7 +985,7 @@ struct PitchAnalysisView: View {
                 .overlay(alignment: .topTrailing) {
                     if !isExpanded, let onExpand = onExpand {
                         Button(action: onExpand) {
-                            Image(systemName: "arrow.up.right.and.arrow.down.left")
+                            Image(systemName: "arrow.down.left.and.arrow.up.right")
                                 .font(.system(size: 14, weight: .medium))
                                 .foregroundColor(.white)
                                 .padding(8)
@@ -997,7 +997,7 @@ struct PitchAnalysisView: View {
                         .accessibilityIdentifier("PitchGraphExpandButton")
                     } else if isExpanded, let onCollapse = onCollapse {
                         Button(action: onCollapse) {
-                            Image(systemName: "arrow.down.left.and.arrow.up.right")
+                            Image(systemName: "arrow.up.right.and.arrow.down.left")
                                 .font(.system(size: 14, weight: .medium))
                                 .foregroundColor(.white)
                                 .padding(8)
