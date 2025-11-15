@@ -554,6 +554,33 @@ struct SpectrogramView: View {
                 .frame(width: viewportWidth, height: viewportHeight, alignment: .topLeading)  // Viewport window
                 .clipped()  // Viewport clips to visible area
                 .accessibilityIdentifier("SpectrogramCanvas")
+                .overlay(alignment: .topTrailing) {
+                    if !isExpanded, let onExpand = onExpand {
+                        Button(action: onExpand) {
+                            Image(systemName: "arrow.up.right.and.arrow.down.left")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.white)
+                                .padding(8)
+                                .background(Color.black.opacity(0.6))
+                                .cornerRadius(6)
+                        }
+                        .padding(8)
+                        .accessibilityLabel("フルスクリーン")
+                        .accessibilityIdentifier("SpectrogramExpandButton")
+                    } else if isExpanded, let onCollapse = onCollapse {
+                        Button(action: onCollapse) {
+                            Image(systemName: "arrow.down.left.and.arrow.up.right")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.white)
+                                .padding(8)
+                                .background(Color.black.opacity(0.6))
+                                .cornerRadius(6)
+                        }
+                        .padding(8)
+                        .accessibilityLabel("閉じる")
+                        .accessibilityIdentifier("SpectrogramCollapseButton")
+                    }
+                }
                 .onAppear {
                     // Wait for layout to be ready, then initialize position
                     DispatchQueue.main.async {
@@ -660,33 +687,6 @@ struct SpectrogramView: View {
         .contentShape(Rectangle())
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("SpectrogramView")
-        .overlay(alignment: .topTrailing) {
-            if !isExpanded, let onExpand = onExpand {
-                Button(action: onExpand) {
-                    Image(systemName: "arrow.up.left.and.arrow.down.right")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.white)
-                        .padding(8)
-                        .background(Color.black.opacity(0.6))
-                        .cornerRadius(6)
-                }
-                .padding(8)
-                .accessibilityLabel("フルスクリーン")
-                .accessibilityIdentifier("SpectrogramExpandButton")
-            } else if isExpanded, let onCollapse = onCollapse {
-                Button(action: onCollapse) {
-                    Image(systemName: "arrow.down.right.and.arrow.up.left")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.white)
-                        .padding(8)
-                        .background(Color.black.opacity(0.6))
-                        .cornerRadius(6)
-                }
-                .padding(8)
-                .accessibilityLabel("閉じる")
-                .accessibilityIdentifier("SpectrogramCollapseButton")
-            }
-        }
     }
 
     // MARK: - Canvas Architecture - Phase 1: Core Functions
@@ -982,6 +982,33 @@ struct PitchAnalysisView: View {
                     }
                     drawLegend(context: context, size: size)
                 }
+                .overlay(alignment: .topTrailing) {
+                    if !isExpanded, let onExpand = onExpand {
+                        Button(action: onExpand) {
+                            Image(systemName: "arrow.up.right.and.arrow.down.left")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.white)
+                                .padding(8)
+                                .background(Color.black.opacity(0.6))
+                                .cornerRadius(6)
+                        }
+                        .padding(8)
+                        .accessibilityLabel("フルスクリーン")
+                        .accessibilityIdentifier("PitchGraphExpandButton")
+                    } else if isExpanded, let onCollapse = onCollapse {
+                        Button(action: onCollapse) {
+                            Image(systemName: "arrow.down.left.and.arrow.up.right")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.white)
+                                .padding(8)
+                                .background(Color.black.opacity(0.6))
+                                .cornerRadius(6)
+                        }
+                        .padding(8)
+                        .accessibilityLabel("閉じる")
+                        .accessibilityIdentifier("PitchGraphCollapseButton")
+                    }
+                }
             }
             .background(ColorPalette.secondary)
             .cornerRadius(8)
@@ -989,33 +1016,6 @@ struct PitchAnalysisView: View {
         .contentShape(Rectangle())
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("PitchAnalysisView")
-        .overlay(alignment: .topTrailing) {
-            if !isExpanded, let onExpand = onExpand {
-                Button(action: onExpand) {
-                    Image(systemName: "arrow.up.left.and.arrow.down.right")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.white)
-                        .padding(8)
-                        .background(Color.black.opacity(0.6))
-                        .cornerRadius(6)
-                }
-                .padding(8)
-                .accessibilityLabel("フルスクリーン")
-                .accessibilityIdentifier("PitchGraphExpandButton")
-            } else if isExpanded, let onCollapse = onCollapse {
-                Button(action: onCollapse) {
-                    Image(systemName: "arrow.down.right.and.arrow.up.left")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.white)
-                        .padding(8)
-                        .background(Color.black.opacity(0.6))
-                        .cornerRadius(6)
-                }
-                .padding(8)
-                .accessibilityLabel("閉じる")
-                .accessibilityIdentifier("PitchGraphCollapseButton")
-            }
-        }
     }
 
     private func drawPitchGraph(context: GraphicsContext, size: CGSize, data: PitchAnalysisData) {
