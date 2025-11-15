@@ -460,8 +460,9 @@ struct SpectrogramView: View {
     //   - Formula: canvasOffsetX = playheadX - currentTimeCanvasX
     //   - Initial (currentTime=0): canvasOffsetX = playheadX (positive, canvas shifts right, 0s at center)
     //   - During playback: canvasOffsetX decreases (canvas shifts left, spectrogram flows left)
-    // NOTE: Initial value set to viewport center for proper alignment before async initialization
-    @State private var canvasOffsetX: CGFloat = UIScreen.main.bounds.width / 2
+    // NOTE: With data positioned at leftPadding, initial offset = 0 aligns Canvas left edge with screen left edge
+    // This puts 0s data (at Canvas x=leftPadding) at screen center (playheadX)
+    @State private var canvasOffsetX: CGFloat = 0
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -508,12 +509,6 @@ struct SpectrogramView: View {
                         // size here is the canvas size, not viewport size
 
                         // 1. Draw spectrogram (background) - SCROLLABLE
-                        // DEBUG: Draw yellow background for left padding area to visualize canvas expansion
-                        context.fill(
-                            Path(CGRect(x: 0, y: 0, width: canvasLeftPadding, height: canvasHeight)),
-                            with: .color(.yellow.opacity(0.3))
-                        )
-
                         drawSpectrogramOnCanvas(
                             context: context,
                             canvasWidth: size.width,
@@ -581,7 +576,7 @@ struct SpectrogramView: View {
 
                             // X-axis scroll initialization
                             let playheadX = viewportWidth / 2
-                            let currentTimeCanvasX = CGFloat(currentTime) * pixelsPerSecond
+                            let currentTimeCanvasX = CGFloat(currentTime) * pixelsPerSecond + canvasLeftPadding
                             canvasOffsetX = playheadX - currentTimeCanvasX
 
                             os_log(.debug, log: OSLog(subsystem: "com.kazuasato.VocalisStudio", category: "scroll_init"),
@@ -611,7 +606,7 @@ struct SpectrogramView: View {
 
                         // X-axis scroll re-initialization
                         let playheadX = viewportWidth / 2
-                        let currentTimeCanvasX = CGFloat(currentTime) * pixelsPerSecond
+                        let currentTimeCanvasX = CGFloat(currentTime) * pixelsPerSecond + canvasLeftPadding
                         canvasOffsetX = playheadX - currentTimeCanvasX
 
                         os_log(.debug, log: OSLog(subsystem: "com.kazuasato.VocalisStudio", category: "scroll_init"),
@@ -650,7 +645,7 @@ struct SpectrogramView: View {
                 .onChange(of: currentTime) { _, newTime in
                     // Update canvasOffsetX to keep currentTime position under red line (playheadX)
                     let playheadX = viewportWidth / 2
-                    let currentTimeCanvasX = CGFloat(newTime) * pixelsPerSecond
+                    let currentTimeCanvasX = CGFloat(newTime) * pixelsPerSecond + canvasLeftPadding
                     canvasOffsetX = playheadX - currentTimeCanvasX
 
                     // Calculate label position in viewport coordinates for verification
@@ -847,9 +842,9 @@ struct SpectrogramView: View {
             // Draw cells for this frequency bin across time
             for (timeIndex, timestamp) in data.timeStamps.enumerated() {
                 // X coordinate in Canvas coordinate system
-                // x = timestamp × pixelsPerSecond (Canvas absolute coordinate)
-                // Canvas offset handles scrolling, so data always starts at 0
-                let x = CGFloat(timestamp) * pixelsPerSecond
+                // x = timestamp × pixelsPerSecond + leftPadding (Canvas absolute coordinate)
+                // Data starts at leftPadding to leave space for frequency labels
+                let x = CGFloat(timestamp) * pixelsPerSecond + leftPadding
 
                 // Get magnitude from data (if exists)
                 let magnitude: Float
@@ -923,8 +918,8 @@ struct SpectrogramView: View {
         for i in 0...labelCount {
             let timestamp = Double(i) * labelInterval
             // X coordinate in Canvas coordinate system
-            // Canvas offset handles scrolling, so labels always start at 0
-            let x = CGFloat(timestamp) * pixelsPerSecond
+            // Labels start at leftPadding to align with spectrogram data
+            let x = CGFloat(timestamp) * pixelsPerSecond + leftPadding
             let y = size.height - 20  // Fixed at viewport bottom with 20px padding
 
             let text = Text(String(format: "%.0fs", timestamp))
