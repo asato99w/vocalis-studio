@@ -446,6 +446,9 @@ struct SpectrogramView: View {
     var onPlayPause: (() -> Void)? = nil
     var onSeek: ((Double) -> Void)? = nil
 
+    // MARK: - Dependencies
+    private let coordinateSystem = SpectrogramCoordinateSystem()
+
     // Canvas scroll state (2D scrolling)
 
     // Y-axis scroll (vertical - frequency axis)
@@ -475,8 +478,8 @@ struct SpectrogramView: View {
             GeometryReader { geometry in
                 let viewportWidth = geometry.size.width
                 let viewportHeight = geometry.size.height
-                let maxFreq = getMaxFrequency()
-                let canvasHeight = calculateCanvasHeight(maxFreq: maxFreq, viewportHeight: viewportHeight)
+                let maxFreq = coordinateSystem.getMaxFrequency()
+                let canvasHeight = coordinateSystem.calculateCanvasHeight(maxFreq: maxFreq, viewportHeight: viewportHeight)
 
                 // Calculate canvas width based on data duration, NOT viewport
                 let pixelsPerSecond: CGFloat = 300  // Ultra-high density for time axis zoom (6x from 50)
@@ -702,47 +705,6 @@ struct SpectrogramView: View {
         }
     }
 
-    // MARK: - Canvas Architecture - Phase 1: Core Functions
-
-    /// Calculate canvas height based on frequency range
-    /// Canvas contains entire frequency range (0Hz ~ maxFreq)
-    /// - Parameters:
-    ///   - maxFreq: Maximum frequency in Hz (UI display limit, not data limit)
-    ///   - viewportHeight: Unused (kept for API compatibility), canvas size is data-driven
-    /// - Returns: Canvas height in points
-    private func calculateCanvasHeight(maxFreq: Double, viewportHeight: CGFloat) -> CGFloat {
-        // Pixel density maintained for detailed frequency analysis (9.6x from original 60pt/kHz)
-        // With maxFreq=6kHz: 6 × 576 = 3456pt canvas (full data range 0-6kHz displayed)
-        let basePixelsPerKHz: CGFloat = 576.0
-        let canvasHeight = CGFloat(maxFreq / 1000.0) * basePixelsPerKHz
-
-        // Apply maximum limit to prevent excessive memory usage
-        let maxHeight: CGFloat = 10000.0
-
-        return min(maxHeight, canvasHeight)
-    }
-
-    /// Convert frequency (Hz) to Canvas Y coordinate
-    /// Canvas coordinate system: Y=0 at top (maxFreq), Y=canvasHeight at bottom (0Hz)
-    /// - Parameters:
-    ///   - frequency: Frequency in Hz
-    ///   - canvasHeight: Total canvas height in points
-    ///   - maxFreq: Maximum frequency in Hz
-    /// - Returns: Y coordinate in canvas space
-    private func frequencyToCanvasY(frequency: Double, canvasHeight: CGFloat, maxFreq: Double) -> CGFloat {
-        let ratio = (maxFreq - frequency) / maxFreq
-        return CGFloat(ratio) * canvasHeight
-    }
-
-    /// Get maximum frequency for display (fixed UI limit)
-    /// - Returns: Fixed maximum frequency for UI display (8kHz)
-    /// - Note: This is a UI design decision, not data-driven.
-    ///         Keeping display range fixed provides stable UI and predictable scrolling.
-    private func getMaxFrequency() -> Double {
-        // Both views show full analyzed range (6kHz) to display all frequency data
-        return 6000.0  // Both Normal and Expanded: 6kHz (matches data range)
-    }
-
     // MARK: - Canvas Architecture - Phase 1: Y-Axis Label Drawing
 
     /// Draw frequency labels on canvas (canvas coordinate system)
@@ -770,7 +732,7 @@ struct SpectrogramView: View {
         var frequency: Double = labelInterval
         while frequency <= maxFreq {
             // Calculate canvas Y position
-            let canvasY = frequencyToCanvasY(
+            let canvasY = coordinateSystem.frequencyToCanvasY(
                 frequency: frequency,
                 canvasHeight: canvasHeight,
                 maxFreq: maxFreq
@@ -860,12 +822,12 @@ struct SpectrogramView: View {
             let dataFreqIndex = data.frequencyBins.firstIndex { Double($0) >= binFreqLow }
 
             // Convert frequency range to canvas Y coordinates
-            let yTop = frequencyToCanvasY(
+            let yTop = coordinateSystem.frequencyToCanvasY(
                 frequency: min(binFreqHigh, maxFreq),
                 canvasHeight: canvasHeight,
                 maxFreq: maxFreq
             )
-            let yBottom = frequencyToCanvasY(
+            let yBottom = coordinateSystem.frequencyToCanvasY(
                 frequency: binFreqLow,
                 canvasHeight: canvasHeight,
                 maxFreq: maxFreq
