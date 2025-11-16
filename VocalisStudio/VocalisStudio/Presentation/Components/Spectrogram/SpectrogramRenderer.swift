@@ -8,11 +8,6 @@ public class SpectrogramRenderer {
 
     private let coordinateSystem: SpectrogramCoordinateSystem
 
-    // MARK: - Constants
-
-    private let frequencyLabelInterval: Double = 100.0
-    private let timeLabelInterval: Double = 0.5
-
     // MARK: - Initialization
 
     public init(coordinateSystem: SpectrogramCoordinateSystem) {
@@ -43,7 +38,7 @@ public class SpectrogramRenderer {
         let clipMargin = textHeight / 2
 
         // Start from labelInterval (skip 0Hz label)
-        var frequency: Double = frequencyLabelInterval
+        var frequency: Double = SpectrogramConstants.frequencyLabelInterval
         while frequency <= maxFreq {
             // Calculate canvas Y position
             let canvasY = coordinateSystem.frequencyToCanvasY(
@@ -81,7 +76,7 @@ public class SpectrogramRenderer {
                 at: CGPoint(x: 5 + textWidth / 2, y: clampedY)
             )
 
-            frequency += frequencyLabelInterval
+            frequency += SpectrogramConstants.frequencyLabelInterval
         }
     }
 
@@ -108,7 +103,7 @@ public class SpectrogramRenderer {
         let maxMagnitude = data.magnitudes.flatMap { $0 }.max() ?? 1.0
 
         // Calculate cell dimensions
-        let cellWidth = pixelsPerSecond * 0.1
+        let cellWidth = pixelsPerSecond * CGFloat(SpectrogramConstants.cellTimeWidthMultiplier)
 
         // Determine the highest frequency bin we have data for
         let maxDataFreq = data.frequencyBins.last.map { Double($0) } ?? 0.0
@@ -168,19 +163,19 @@ public class SpectrogramRenderer {
                 let normalizedMagnitude = CGFloat(magnitude / maxMagnitude)
 
                 // Gradient: blue-purple (hue ~0.6) for weak → green-yellow (hue ~0.0) for strong
-                let hue = 0.6 - normalizedMagnitude * 0.6
+                let hue = SpectrogramConstants.weakestSignalHue - normalizedMagnitude * SpectrogramConstants.weakestSignalHue
 
                 // For magnitude = 0, show visible weak color (not black)
                 // saturation: keep constant for consistent color
                 // brightness: ensure minimum visibility even at magnitude = 0
-                let saturation: CGFloat = 0.8
+                let saturation = SpectrogramConstants.colorSaturation
                 let brightness: CGFloat
-                if normalizedMagnitude < 0.01 {
+                if normalizedMagnitude < SpectrogramConstants.minMagnitudeThreshold {
                     // Weakest color: clearly visible dark blue-purple
-                    brightness = 0.3
+                    brightness = SpectrogramConstants.minBrightness
                 } else {
                     // Scale brightness for stronger signals
-                    brightness = 0.3 + 0.6 * normalizedMagnitude
+                    brightness = SpectrogramConstants.minBrightness + (SpectrogramConstants.maxBrightness - SpectrogramConstants.minBrightness) * normalizedMagnitude
                 }
 
                 let color = Color(hue: hue, saturation: saturation, brightness: brightness)
@@ -237,10 +232,10 @@ public class SpectrogramRenderer {
         // Draw time labels at 0.5-second intervals (0s, 0.5s, 1.0s, 1.5s, 2.0s, ...)
         // X coordinate: timestamp × pixelsPerSecond + leftPadding (Canvas coordinate system - same formula as spectrogram)
         // Y coordinate: size.height - 10 (viewport bottom with 10px padding - lower position)
-        let labelCount = Int(ceil(durationSec / timeLabelInterval))
+        let labelCount = Int(ceil(durationSec / SpectrogramConstants.timeLabelInterval))
 
         for i in 0...labelCount {
-            let timestamp = Double(i) * timeLabelInterval
+            let timestamp = Double(i) * SpectrogramConstants.timeLabelInterval
             // X coordinate in Canvas coordinate system
             // Labels start at leftPadding to align with spectrogram data
             let x = CGFloat(timestamp) * pixelsPerSecond + leftPadding
