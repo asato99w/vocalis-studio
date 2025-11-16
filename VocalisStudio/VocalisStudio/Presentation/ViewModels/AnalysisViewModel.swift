@@ -127,10 +127,10 @@ public class AnalysisViewModel: ObservableObject {
                 do {
                     try await self.audioPlayer.play(url: self.recording.fileURL)
 
-                    // Playback finished
+                    // Playback finished - reset to beginning
                     await MainActor.run {
                         self.pause()
-                        self.currentTime = self.duration
+                        self.currentTime = 0.0  // Reset to beginning after completion
                     }
                 } catch {
                     self.logger.error("Audio playback failed: \(error.localizedDescription)")
@@ -147,12 +147,15 @@ public class AnalysisViewModel: ObservableObject {
             guard let self = self else { return }
 
             Task { @MainActor in
+                // Only update if still playing (avoid race with completion handler)
+                guard self.isPlaying else { return }
+
                 // Sync currentTime with audio player
                 self.currentTime = self.audioPlayer.currentTime
 
                 if self.currentTime >= self.duration {
                     self.pause()
-                    self.currentTime = self.duration
+                    self.currentTime = 0.0  // Reset to beginning after completion
                 }
             }
         }

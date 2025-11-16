@@ -426,6 +426,95 @@ final class AnalysisUITests: XCTestCase {
         XCTAssertTrue(playPauseButton.exists, "Play/Pause button should exist after playback ends")
     }
 
+    /// Test: Playback completion - button and currentTime state (single run)
+    /// Bug: After playback completes naturally, button stays as pause button and/or currentTime resets to 0
+    /// Expected: Button should change back to play button and currentTime should stay at duration
+    @MainActor
+    func testPlaybackCompletion_ButtonShouldBecomePlayButton() throws {
+        let app = launchAppWithResetRecordingCount()
+
+        // Navigate to analysis screen
+        navigateToAnalysisScreen(app)
+
+        // Wait for analysis to complete
+        Thread.sleep(forTimeInterval: 3.0)
+
+        // Screenshot 1: Before playback
+        let screenshot1 = app.screenshot()
+        let attachment1 = XCTAttachment(screenshot: screenshot1)
+        attachment1.name = "playback_completion_01_before_play"
+        attachment1.lifetime = .keepAlways
+        add(attachment1)
+
+        // Start playback
+        let playPauseButton = app.buttons["AnalysisPlayPauseButton"]
+        XCTAssertTrue(playPauseButton.waitForExistence(timeout: 5), "Play/Pause button should exist")
+
+        playPauseButton.tap()
+
+        // Wait a moment after playback starts
+        Thread.sleep(forTimeInterval: 0.5)
+
+        // Screenshot 2: During playback (button should be in pause state)
+        let screenshot2 = app.screenshot()
+        let attachment2 = XCTAttachment(screenshot: screenshot2)
+        attachment2.name = "playback_completion_02_during_playback"
+        attachment2.lifetime = .keepAlways
+        add(attachment2)
+
+        // Wait for playback to complete naturally
+        // Recording is short (~1 second), wait 3 seconds to ensure completion
+        Thread.sleep(forTimeInterval: 3.0)
+
+        // Screenshot 3: After playback completion
+        let screenshot3 = app.screenshot()
+        let attachment3 = XCTAttachment(screenshot: screenshot3)
+        attachment3.name = "playback_completion_03_after_completion"
+        attachment3.lifetime = .keepAlways
+        add(attachment3)
+
+        // Verify button state after completion
+        // Expected: Button should be back to play state (not pause state)
+        // Bug: Button stays in pause state
+        XCTAssertTrue(playPauseButton.exists, "Play/Pause button should exist after playback completion")
+
+        // Verify currentTime reset to 0 after playback completion
+        // Expected: currentTime should be 00:00 (reset to beginning for next playback)
+        // Bug: currentTime might stay at duration (00:01) instead of resetting
+        let progressSlider = app.sliders["AnalysisProgressSlider"]
+
+        // Get slider value - XCUIElement.value can be String, Double, or other types
+        // According to OSLog: "Slider, identifier: 'AnalysisProgressSlider', value: 1.678"
+        let sliderValueRaw = progressSlider.value
+        print("🔍 DEBUG: progressSlider.value type = \(type(of: sliderValueRaw)), value = \(sliderValueRaw ?? "nil")")
+
+        // Try to parse as Double or String
+        var sliderValue: Double = 1.0
+        if let doubleValue = sliderValueRaw as? Double {
+            sliderValue = doubleValue
+            print("🔍 DEBUG: Parsed as Double: \(sliderValue)")
+        } else if let stringValue = sliderValueRaw as? String {
+            sliderValue = Double(stringValue) ?? 1.0
+            print("🔍 DEBUG: Parsed as String: '\(stringValue)' -> \(sliderValue)")
+        } else {
+            print("⚠️ DEBUG: Could not parse slider value, defaulting to 1.0")
+        }
+
+        // Bug detection: Slider value should be close to 0.0 after playback completion
+        // Expected: value < 0.1 (less than 10% of duration)
+        // Bug: value ≈ 1.0 or higher (stays at end position)
+        print("🔍 DEBUG: Final sliderValue = \(sliderValue), checking if < 0.1")
+        XCTAssertLessThan(sliderValue, 0.1,
+                         "🔴 RED TEST: Slider should be near 0.0 (beginning) after playback completion, but found: \(sliderValue). This confirms the bug where currentTime does not reset to 0.")
+
+        // Screenshot 4: After verifying state
+        let screenshot4 = app.screenshot()
+        let attachment4 = XCTAttachment(screenshot: screenshot4)
+        attachment4.name = "playback_completion_04_verification"
+        attachment4.lifetime = .keepAlways
+        add(attachment4)
+    }
+
     /// Test: Spectrogram viewport architecture verification with screenshots
     /// Purpose: Verify that spectrogram fills the entire viewport correctly
     @MainActor

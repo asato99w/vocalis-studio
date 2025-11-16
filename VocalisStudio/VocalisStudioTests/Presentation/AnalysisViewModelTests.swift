@@ -278,6 +278,49 @@ final class AnalysisViewModelTests: XCTestCase {
         XCTAssertNil(sut.analysisResult)
     }
 
+    // MARK: - Playback Completion Tests
+
+    /// Test: After playback completes, isPlaying should become false
+    /// Expected: isPlaying = false after completion
+    @MainActor
+    func testPlaybackCompletion_ShouldSetIsPlayingToFalse() async {
+        // Given: Ready state
+        mockUseCase.resultToReturn = createTestAnalysisResult()
+        await sut.startAnalysis()
+
+        // Configure quick playback (50ms total)
+        mockAudioPlayer.playDurationNanoseconds = 50_000_000
+
+        // When: Start playback
+        sut.togglePlayback()
+        XCTAssertTrue(sut.isPlaying, "Should be playing initially")
+
+        // Wait for playback to complete + timer processing time
+        try? await Task.sleep(nanoseconds: 150_000_000) // 150ms
+
+        // Then: isPlaying should be false
+        XCTAssertFalse(sut.isPlaying, "isPlaying should be false after playback completion")
+    }
+
+    /// Test: After playback completes, currentTime should reset to 0 (beginning)
+    /// Expected: currentTime = 0.0 after completion (ready to play again from start)
+    @MainActor
+    func testPlaybackCompletion_ShouldResetCurrentTimeToZero() async {
+        // Given: Ready state
+        mockUseCase.resultToReturn = createTestAnalysisResult()
+        await sut.startAnalysis()
+
+        mockAudioPlayer.playDurationNanoseconds = 50_000_000
+
+        // When: Start playback and wait for completion
+        sut.togglePlayback()
+        try? await Task.sleep(nanoseconds: 150_000_000)
+
+        // Then: currentTime should be reset to 0 (beginning)
+        XCTAssertEqual(sut.currentTime, 0.0, accuracy: 0.1,
+                      "currentTime should be reset to 0.0 (beginning) after completion")
+    }
+
 }
 
 // MARK: - Mock Objects
