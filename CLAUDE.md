@@ -368,6 +368,94 @@ When debugging issues (especially UI tests or runtime bugs), **ALWAYS attempt to
 - **`docs/PROJECT_OVERVIEW.md`**: Business requirements and project vision
 - **`docs/ROADMAP.md`**: Development milestones and feature priorities
 
+## UI Test Execution - Critical Reference Documents
+
+**⚠️ MANDATORY: Always consult these documents when working with UI tests**
+
+### 1. Test Scheme Management
+**File**: `VocalisStudio/claudedocs/test-scheme-management.md`
+
+**When to reference**:
+- Before running any UI tests
+- When selecting test execution scope (UI-only, Unit-only, All)
+- When encountering test execution errors
+
+**Key points**:
+- Use `./VocalisStudio/scripts/test-runner.sh ui` for UI tests only
+- Use `./VocalisStudio/scripts/test-runner.sh unit` for Unit tests only
+- Use `./VocalisStudio/scripts/test-runner.sh all` for all tests
+- Default scheme is `VocalisStudio-UIOnly` (UI tests only)
+
+### 2. Log Capture Guide
+**File**: `VocalisStudio/claudedocs/log_capture_guide_v2.md`
+
+**When to reference**:
+- When debugging UI test failures
+- When investigating runtime issues
+- Before attempting to retrieve logs from simulators
+
+**Key points**:
+- **FileLogger** (推奨): Reliable for post-test analysis
+- **OSLog**: For real-time debugging (must retrieve within 2 minutes)
+- Always report log retrieval failures to user immediately
+
+### 3. Screenshot Extraction
+**File**: `VocalisStudio/claudedocs/UITEST_SCREENSHOT_EXTRACTION.md`
+
+**When to reference**:
+- After UI test execution to verify visual state
+- When debugging UI layout issues
+- When validating UI changes
+
+**Key points**:
+- Screenshots are stored in `.xcresult` bundle
+- Use `xcrun xcresulttool` to extract screenshots
+- Always check screenshots for visual verification of UI tests
+
+### 4. UI Test Failure Investigation Report
+**File**: `VocalisStudio/claudedocs/UI_TEST_FAILURE_INVESTIGATION_REPORT.md`
+
+**When to reference**:
+- **ALWAYS before running UI tests** (critical best practices)
+- When encountering simulator crashes
+- When tests fail unexpectedly
+
+**Critical best practices from this document**:
+
+#### Simulator Configuration (MANDATORY)
+```bash
+# ✅ ALWAYS use UUID specification + parallel testing disabled
+SIMULATOR_ID=$(xcrun simctl list devices | grep "iPhone 16 (" | grep -v Clone | head -1 | grep -o '[0-9A-F-]\{36\}')
+
+xcodebuild test \
+  -project VocalisStudio.xcodeproj \
+  -scheme VocalisStudio-UIOnly \
+  -destination "id=$SIMULATOR_ID" \
+  -parallel-testing-enabled NO \
+  -allowProvisioningUpdates
+```
+
+#### Why these settings are mandatory:
+- **UUID specification**: Prevents simulator selection ambiguity
+- **`-parallel-testing-enabled NO`**: Prevents clone simulator creation (major source of crashes)
+- Clone simulators are unstable on macOS Sonoma and cause frequent crashes
+
+#### Common error patterns:
+- "Simulator device failed to launch" → Enable `-parallel-testing-enabled NO`
+- "Clone 1 of iPhone 16" appears → xcodebuild auto-created clone, use parallel disable
+- "(ipc/mig) server died" → Simulator process crash, use UUID + parallel disable
+
+#### Test execution checklist:
+- [ ] Simulator specified by UUID (not name)
+- [ ] Parallel testing disabled (`-parallel-testing-enabled NO`)
+- [ ] Provisioning updates allowed (`-allowProvisioningUpdates`)
+- [ ] Correct scheme selected (UIOnly for UI tests)
+
+**Never**:
+- ❌ Use simulator name specification: `-destination 'platform=iOS Simulator,name=iPhone 16'`
+- ❌ Run UI tests with parallel testing enabled (creates unstable clone simulators)
+- ❌ Proceed with UI implementation without running tests first
+
 ## Current Implementation Status
 
 The project has basic recording functionality implemented with:

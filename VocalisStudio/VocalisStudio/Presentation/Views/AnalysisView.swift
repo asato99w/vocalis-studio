@@ -766,7 +766,8 @@ struct SpectrogramView: View {
         // Clipping margin to prevent labels from being cut off at edges
         let clipMargin = textHeight / 2
 
-        var frequency: Double = 0
+        // Start from labelInterval (skip 0Hz label)
+        var frequency: Double = labelInterval
         while frequency <= maxFreq {
             // Calculate canvas Y position
             let canvasY = frequencyToCanvasY(
@@ -952,7 +953,7 @@ struct SpectrogramView: View {
             // X coordinate in Canvas coordinate system
             // Labels start at leftPadding to align with spectrogram data
             let x = CGFloat(timestamp) * pixelsPerSecond + leftPadding
-            let y = size.height - 20  // Fixed at viewport bottom with 20px padding
+            let y = size.height - 10  // Fixed at viewport bottom with 10px padding (lower position)
 
             let text = Text(String(format: "%.1fs", timestamp))
                 .font(.caption2)
