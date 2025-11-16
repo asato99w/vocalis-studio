@@ -711,9 +711,9 @@ struct SpectrogramView: View {
     ///   - viewportHeight: Unused (kept for API compatibility), canvas size is data-driven
     /// - Returns: Canvas height in points
     private func calculateCanvasHeight(maxFreq: Double, viewportHeight: CGFloat) -> CGFloat {
-        // Pixel density maintained for detailed frequency analysis (14.4x from original 60pt/kHz)
-        // With maxFreq=6kHz: 6 × 864 = 5184pt canvas (full data range 0-6kHz displayed)
-        let basePixelsPerKHz: CGFloat = 864.0
+        // Pixel density maintained for detailed frequency analysis (9.6x from original 60pt/kHz)
+        // With maxFreq=6kHz: 6 × 576 = 3456pt canvas (full data range 0-6kHz displayed)
+        let basePixelsPerKHz: CGFloat = 576.0
         let canvasHeight = CGFloat(maxFreq / 1000.0) * basePixelsPerKHz
 
         // Apply maximum limit to prevent excessive memory usage
