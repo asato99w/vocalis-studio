@@ -479,7 +479,7 @@ struct SpectrogramView: View {
                 let canvasHeight = calculateCanvasHeight(maxFreq: maxFreq, viewportHeight: viewportHeight)
 
                 // Calculate canvas width based on data duration, NOT viewport
-                let pixelsPerSecond: CGFloat = 50  // Fixed density
+                let pixelsPerSecond: CGFloat = 300  // Ultra-high density for time axis zoom (6x from 50)
                 // Add extra space at the beginning of canvas to ensure frequency labels
                 // are always within canvas bounds even at initial scroll position
                 let canvasLeftPadding: CGFloat = viewportWidth / 2  // Same as playhead offset
@@ -587,32 +587,30 @@ struct SpectrogramView: View {
                 .onAppear {
                     // Wait for layout to be ready, then initialize position
                     DispatchQueue.main.async {
-                        if isExpanded {
-                            // Y-axis scroll initialization
-                            let viewportH = viewportHeight
-                            let canvasH = canvasHeight
-                            let maxPaperTop: CGFloat = 0
-                            let minPaperTop = viewportH - canvasH
+                        // Y-axis scroll initialization (both Normal and Expanded views)
+                        let viewportH = viewportHeight
+                        let canvasH = canvasHeight
+                        let maxPaperTop: CGFloat = 0
+                        let minPaperTop = viewportH - canvasH
 
-                            // Initial placement: bottom-aligned (downside fixed)
-                            paperTop = minPaperTop
+                        // Initial placement: bottom-aligned (low frequency visible)
+                        paperTop = minPaperTop
 
-                            // Clamp (mandatory after any movement)
-                            paperTop = max(minPaperTop, min(maxPaperTop, paperTop))
+                        // Clamp (mandatory after any movement)
+                        paperTop = max(minPaperTop, min(maxPaperTop, paperTop))
 
-                            lastPaperTop = paperTop
+                        lastPaperTop = paperTop
 
-                            // X-axis scroll initialization
-                            let playheadX = viewportWidth / 2
-                            let currentTimeCanvasX = CGFloat(currentTime) * pixelsPerSecond + canvasLeftPadding
-                            canvasOffsetX = playheadX - currentTimeCanvasX
+                        // X-axis scroll initialization
+                        let playheadX = viewportWidth / 2
+                        let currentTimeCanvasX = CGFloat(currentTime) * pixelsPerSecond + canvasLeftPadding
+                        canvasOffsetX = playheadX - currentTimeCanvasX
 
-                            os_log(.debug, log: OSLog(subsystem: "com.kazuasato.VocalisStudio", category: "scroll_init"),
-                                   "📍 Initial: paperTop=%{public}f, minPaperTop=%{public}f, maxPaperTop=%{public}f, canvasOffsetX=%{public}f",
-                                   paperTop, minPaperTop, maxPaperTop, canvasOffsetX)
-                            FileLogger.shared.log(level: "INFO", category: "scroll_init",
-                                message: "📍 Initial placement: paperTop=\(paperTop), viewportH=\(viewportH), canvasH=\(canvasH), canvasOffsetX=\(canvasOffsetX), playheadX=\(playheadX), currentTime=\(currentTime)")
-                        }
+                        os_log(.debug, log: OSLog(subsystem: "com.kazuasato.VocalisStudio", category: "scroll_init"),
+                               "📍 Initial: paperTop=%{public}f, minPaperTop=%{public}f, maxPaperTop=%{public}f, canvasOffsetX=%{public}f",
+                               paperTop, minPaperTop, maxPaperTop, canvasOffsetX)
+                        FileLogger.shared.log(level: "INFO", category: "scroll_init",
+                            message: "📍 Initial placement: paperTop=\(paperTop), viewportH=\(viewportH), canvasH=\(canvasH), canvasOffsetX=\(canvasOffsetX), playheadX=\(playheadX), currentTime=\(currentTime)")
                     }
                 }
                 .onChange(of: isExpanded) { _, newValue in
@@ -713,8 +711,9 @@ struct SpectrogramView: View {
     ///   - viewportHeight: Unused (kept for API compatibility), canvas size is data-driven
     /// - Returns: Canvas height in points
     private func calculateCanvasHeight(maxFreq: Double, viewportHeight: CGFloat) -> CGFloat {
-        // Fixed pixel density per kHz (isExpanded only affects viewport, not canvas drawing)
-        let basePixelsPerKHz: CGFloat = 60.0
+        // Pixel density maintained for detailed frequency analysis (14.4x from original 60pt/kHz)
+        // With maxFreq=6kHz: 6 × 864 = 5184pt canvas (full data range 0-6kHz displayed)
+        let basePixelsPerKHz: CGFloat = 864.0
         let canvasHeight = CGFloat(maxFreq / 1000.0) * basePixelsPerKHz
 
         // Apply maximum limit to prevent excessive memory usage
@@ -740,8 +739,8 @@ struct SpectrogramView: View {
     /// - Note: This is a UI design decision, not data-driven.
     ///         Keeping display range fixed provides stable UI and predictable scrolling.
     private func getMaxFrequency() -> Double {
-        // Expanded view shows wider frequency range for scroll testing
-        return isExpanded ? 12000.0 : 8000.0  // Normal: 8kHz, Expanded: 12kHz (for scroll testing)
+        // Both views show full analyzed range (6kHz) to display all frequency data
+        return 6000.0  // Both Normal and Expanded: 6kHz (matches data range)
     }
 
     // MARK: - Canvas Architecture - Phase 1: Y-Axis Label Drawing
@@ -759,8 +758,8 @@ struct SpectrogramView: View {
         viewportHeight: CGFloat,
         paperTop: CGFloat
     ) {
-        // Fixed label interval in canvas coordinate system
-        let labelInterval: Double = 1000.0  // 1kHz
+        // Fixed label interval in canvas coordinate system (ultra-fine for ultra-high zoom)
+        let labelInterval: Double = 100.0  // 100Hz for detailed frequency display
         let textHeight: CGFloat = 16
         let textWidth: CGFloat = 45
 
@@ -779,15 +778,8 @@ struct SpectrogramView: View {
             // Clamp label position to prevent cutoff at top/bottom edges
             let clampedY = max(clipMargin, min(canvasHeight - clipMargin, canvasY))
 
-            // Create label text
-            let labelText: String
-            if frequency >= 1000 {
-                let kHz = frequency / 1000.0
-                labelText = kHz.truncatingRemainder(dividingBy: 1.0) == 0 ?
-                    "\(Int(kHz))k" : String(format: "%.1fk", kHz)
-            } else {
-                labelText = "\(Int(frequency))Hz"
-            }
+            // Create label text (always in Hz, no abbreviation)
+            let labelText = "\(Int(frequency))Hz"
 
             let text = Text(labelText)
                 .font(.caption2)
@@ -835,7 +827,7 @@ struct SpectrogramView: View {
         leftPadding: CGFloat
     ) {
         // Fixed time axis density (isExpanded only affects viewport, not drawing parameters)
-        let pixelsPerSecond: CGFloat = 50
+        let pixelsPerSecond: CGFloat = 300  // Must match canvas width calculation
         let timeWindow = Double(canvasWidth / pixelsPerSecond)
         let maxMagnitude = data.magnitudes.flatMap { $0 }.max() ?? 1.0
 
@@ -943,16 +935,16 @@ struct SpectrogramView: View {
     }
 
     private func drawSpectrogramTimeAxis(context: GraphicsContext, size: CGSize, leftPadding: CGFloat) {
-        // Fixed time axis density (same as spectrogram)
-        let pixelsPerSecond: CGFloat = 50
+        // Fixed time axis density (same as spectrogram) - ultra-high for ultra zoom
+        let pixelsPerSecond: CGFloat = 300  // 6x from 50 for ultra time axis zoom
 
         // Calculate recording duration from canvas width (excluding left padding)
         let durationSec = Double((size.width - leftPadding) / pixelsPerSecond)
 
-        // Draw time labels at 1-second intervals (0s, 1s, 2s, ...)
+        // Draw time labels at 0.5-second intervals (0s, 0.5s, 1.0s, 1.5s, 2.0s, ...)
         // X coordinate: timestamp × pixelsPerSecond + leftPadding (Canvas coordinate system - same formula as spectrogram)
         // Y coordinate: size.height - 20 (viewport bottom with padding)
-        let labelInterval: Double = 1.0  // seconds
+        let labelInterval: Double = 0.5  // seconds
         let labelCount = Int(ceil(durationSec / labelInterval))
 
         for i in 0...labelCount {
@@ -962,7 +954,7 @@ struct SpectrogramView: View {
             let x = CGFloat(timestamp) * pixelsPerSecond + leftPadding
             let y = size.height - 20  // Fixed at viewport bottom with 20px padding
 
-            let text = Text(String(format: "%.0fs", timestamp))
+            let text = Text(String(format: "%.1fs", timestamp))
                 .font(.caption2)
                 .foregroundColor(.white)
             context.draw(text, at: CGPoint(x: x, y: y))

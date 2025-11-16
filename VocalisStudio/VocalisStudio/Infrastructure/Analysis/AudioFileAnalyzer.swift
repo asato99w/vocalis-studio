@@ -15,19 +15,19 @@ public class AudioFileAnalyzer: AudioFileAnalyzerProtocol {
 
     // Analysis parameters
     private let pitchSamplingInterval = 0.05  // 50ms for pitch analysis
-    private let spectrogramSamplingInterval = 0.1  // 100ms for spectrogram
+    private let spectrogramSamplingInterval = 0.05  // 50ms for spectrogram (Phase 2: 100ms→50ms for 2x time resolution)
 
     // Frequency ranges
     private let minFreq = 80.0   // Lower bound for pitch detection (expanded)
     private let maxFreq = 1000.0  // Upper bound for pitch detection (expanded)
-    private let spectrogramFreqBins = 20  // Number of frequency bins for spectrogram
-    private let spectrogramMaxFreq = 2000.0  // Max frequency for spectrogram
+    private let spectrogramFreqBins = 1200  // Number of frequency bins for spectrogram (Phase 4: 400→1200 for 6kHz range)
+    private let spectrogramMaxFreq = 6000.0  // Max frequency for spectrogram (Phase 4: 2kHz→6kHz, maintains 5Hz/bin resolution)
 
     // YIN threshold
     private let yinThreshold: Float = 0.25  // Relaxed for better detection (was 0.15)
 
     // Spectrogram FFT buffer size
-    private let spectrogramBufferSize = 4096  // Larger buffer for better frequency resolution
+    private let spectrogramBufferSize = 8192  // Phase 3: 4096→8192 for 2x better frequency resolution (5.38Hz/bin)
 
     public init() {}
 
