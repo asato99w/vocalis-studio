@@ -277,6 +277,7 @@ final class AnalysisViewModelTests: XCTestCase {
         // Then: Should return nil
         XCTAssertNil(sut.analysisResult)
     }
+
 }
 
 // MARK: - Mock Objects
