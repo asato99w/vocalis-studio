@@ -515,6 +515,97 @@ final class AnalysisUITests: XCTestCase {
         add(attachment4)
     }
 
+    /// Test: Pause during playback - currentTime should be preserved
+    /// Bug: Manual pause resets currentTime to 0 (head)
+    /// Expected: currentTime should stay at paused position
+    ///
+    /// STATUS: テスト失敗中 - 以下の問題により
+    /// ISSUE: UITestEnvironmentの録音リセット後、最初の録音が非常に短い（~0.2秒程度）
+    ///        そのため、0.5秒待機中に再生が完了してしまい、手動一時停止をテストできない
+    /// TODO: 以下のいずれかの対応が必要
+    ///       1. テスト内で2秒以上の録音を新規作成する（画面遷移の問題を解決）
+    ///       2. UITestEnvironmentで最低2秒の録音を保証する
+    ///       3. より短い待機時間（0.05秒）で確実に途中停止できるか試す
+    /// IMPLEMENTATION: AnalysisViewModel.swift の pausedTime アプローチは実装済み
+    @MainActor
+    func testPauseDuringPlayback_ShouldPreserveCurrentTime() throws {
+        let app = launchAppWithResetRecordingCount()
+
+        // Navigate to recording screen
+        let recordButton = app.buttons["録音を開始"]
+        XCTAssertTrue(recordButton.waitForExistence(timeout: 5), "Home recording button should exist")
+        recordButton.tap()
+
+        // Create a fresh 2-second recording to ensure sufficient duration for mid-playback pause
+        let startButton = app.buttons["StartRecordingButton"]
+        XCTAssertTrue(startButton.waitForExistence(timeout: 5), "Start recording button should exist")
+        startButton.tap()
+
+        Thread.sleep(forTimeInterval: 2.0)  // Record for 2 seconds
+
+        let stopButton = app.buttons["StopRecordingButton"]
+        XCTAssertTrue(stopButton.waitForExistence(timeout: 5), "Stop button should exist")
+        stopButton.tap()
+
+        Thread.sleep(forTimeInterval: 1.0)  // Wait for recording to be saved
+
+        // Navigate to analysis screen with the fresh recording
+        navigateToAnalysisScreen(app)
+
+        // Wait for analysis to complete
+        Thread.sleep(forTimeInterval: 3.0)
+
+        // Screenshot 1: Before playback
+        let screenshot1 = app.screenshot()
+        let attachment1 = XCTAttachment(screenshot: screenshot1)
+        attachment1.name = "pause_preserve_01_before_play"
+        attachment1.lifetime = .keepAlways
+        add(attachment1)
+
+        // Start playback
+        let playPauseButton = app.buttons["AnalysisPlayPauseButton"]
+        XCTAssertTrue(playPauseButton.waitForExistence(timeout: 5), "Play/Pause button should exist")
+
+        playPauseButton.tap()
+
+        // Let it play for 0.5 seconds (should be at 25% position for a 2-second recording)
+        // Timer callback fires every 0.05s, so 0.5s ensures 10 callbacks
+        Thread.sleep(forTimeInterval: 0.5)
+
+        // Screenshot 2: During playback (before pause)
+        let screenshot2 = app.screenshot()
+        let attachment2 = XCTAttachment(screenshot: screenshot2)
+        attachment2.name = "pause_preserve_02_during_playback"
+        attachment2.lifetime = .keepAlways
+        add(attachment2)
+
+        // Get currentTime before pause (from slider value)
+        let progressSlider = app.sliders["AnalysisProgressSlider"]
+        let sliderValueBeforePause = progressSlider.value as? String ?? "0%"
+        print("🔍 DEBUG: Slider value before pause: \(sliderValueBeforePause)")
+
+        // Pause playback
+        playPauseButton.tap()
+
+        // Wait a moment for pause to settle
+        Thread.sleep(forTimeInterval: 0.2)
+
+        // Screenshot 3: After pause
+        let screenshot3 = app.screenshot()
+        let attachment3 = XCTAttachment(screenshot: screenshot3)
+        attachment3.name = "pause_preserve_03_after_pause"
+        attachment3.lifetime = .keepAlways
+        add(attachment3)
+
+        // Get currentTime after pause
+        let sliderValueAfterPause = progressSlider.value as? String ?? "0%"
+        print("🔍 DEBUG: Slider value after pause: \(sliderValueAfterPause)")
+
+        // Verify currentTime is preserved (not reset to 0)
+        XCTAssertEqual(sliderValueAfterPause, sliderValueBeforePause,
+                      "🔴 RED TEST: Slider value should be preserved after pause, but it changed from \(sliderValueBeforePause) to \(sliderValueAfterPause). This confirms the bug where pause resets currentTime to 0.")
+    }
+
     /// Test: Spectrogram viewport architecture verification with screenshots
     /// Purpose: Verify that spectrogram fills the entire viewport correctly
     @MainActor

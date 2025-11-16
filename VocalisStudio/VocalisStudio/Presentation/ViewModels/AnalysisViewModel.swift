@@ -31,6 +31,14 @@ public class AnalysisViewModel: ObservableObject {
     private var playbackTimer: Timer?
     private var cancellables = Set<AnyCancellable>()
 
+    /// Store currentTime when manually paused to preserve it in completion handler
+    /// This is needed because AVAudioPlayerWrapper.pause() calls playbackContinuation?.resume(),
+    /// which triggers the play() completion handler even for manual pause.
+    /// By checking if pausedTime is set in the completion handler, we can distinguish:
+    /// - Manual pause: pausedTime != nil → restore currentTime
+    /// - Natural completion: pausedTime == nil → reset currentTime to 0
+    private var pausedTime: Double?
+
     // MARK: - Computed Properties
 
     public var duration: Double {
@@ -127,10 +135,19 @@ public class AnalysisViewModel: ObservableObject {
                 do {
                     try await self.audioPlayer.play(url: self.recording.fileURL)
 
-                    // Playback finished - reset to beginning
+                    // Playback finished - check if natural completion or manual pause
                     await MainActor.run {
-                        self.pause()
-                        self.currentTime = 0.0  // Reset to beginning after completion
+                        // Check if pause() was called before this completion handler
+                        // If pausedTime is set, it means manual pause
+                        if let savedTime = self.pausedTime {
+                            // Manual pause - restore the saved time
+                            self.currentTime = savedTime
+                            self.pausedTime = nil
+                        } else {
+                            // Natural completion - reset to beginning
+                            self.pause()
+                            self.currentTime = 0.0
+                        }
                     }
                 } catch {
                     self.logger.error("Audio playback failed: \(error.localizedDescription)")
@@ -162,12 +179,14 @@ public class AnalysisViewModel: ObservableObject {
     }
 
     private func pause() {
+        // Store current time before pausing to preserve it in completion handler
+        pausedTime = currentTime
+
         isPlaying = false
         playbackTimer?.invalidate()
         playbackTimer = nil
 
         audioPlayer.pause()
-        logger.debug("Playback paused")
     }
 
     deinit {
