@@ -12,9 +12,10 @@ final class RecordingLimitUITests: XCTestCase {
         // Use standard UI test launch arguments for compatibility
         app.launchArguments = ["-UITestResetRecordingCount", "-UITestDisableAnimations"]
 
-        // Set free tier with limit reached
+        // Set subscription tier to free (to test free tier recording limit)
         app.launchEnvironment["SUBSCRIPTION_TIER"] = "free"
-        app.launchEnvironment["DAILY_RECORDING_COUNT"] = "100"  // At limit for free tier (dailyCount is 100)
+        // COMMENTED OUT: Testing without DAILY_RECORDING_COUNT to reproduce debug environment behavior
+        // app.launchEnvironment["DAILY_RECORDING_COUNT"] = "100"
 
         app.launch()
     }
@@ -118,8 +119,10 @@ final class RecordingLimitUITests: XCTestCase {
     func testFreeUser_canRecordMultipleTimes_withinLimit() throws {
         // Given: Free user with 0 recordings (within 100 daily limit)
         app.terminate()
+        // Set subscription tier to free (to test free tier recording limit)
         app.launchEnvironment["SUBSCRIPTION_TIER"] = "free"
-        app.launchEnvironment["DAILY_RECORDING_COUNT"] = "0"
+        // COMMENTED OUT: Testing without DAILY_RECORDING_COUNT to reproduce debug environment behavior
+        // app.launchEnvironment["DAILY_RECORDING_COUNT"] = "0"
         app.launch()
 
         // Navigate to Recording screen
@@ -130,8 +133,8 @@ final class RecordingLimitUITests: XCTestCase {
         let recordButton = app.buttons["StartRecordingButton"]
         XCTAssertTrue(recordButton.waitForExistence(timeout: 5), "Record button should exist")
 
-        // When: User records and stops 6 times
-        for iteration in 1...6 {
+        // When: User records and stops 7 times
+        for iteration in 1...7 {
             print("🔴 ITERATION \(iteration): Starting recording")
 
             // Tap record button
@@ -173,7 +176,7 @@ final class RecordingLimitUITests: XCTestCase {
             sleep(1)
         }
 
-        // Then: All 6 recordings completed successfully without any limit alerts
-        print("✅ ALL ITERATIONS COMPLETED: Free user recorded 6 times within daily limit (100)")
+        // Then: All 7 recordings completed successfully without any limit alerts
+        print("✅ ALL ITERATIONS COMPLETED: Free user recorded 7 times within daily limit (100)")
     }
 }

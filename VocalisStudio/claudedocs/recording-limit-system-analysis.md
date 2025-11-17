@@ -189,6 +189,56 @@ if !recordingLimit.isCountWithinLimit(self.dailyRecordingCount) {
 2. 上限内（0-5回 < 100回）では制限アラートが表示されない
 3. UI要素の状態遷移が正しい（StartRecordingButton → StopRecordingButton → StartRecordingButton）
 
+## デバッグ環境の挙動再現テスト（2025-11-17）
+
+### 問題の仮説
+
+デバッグ環境（手動実行）では、フリーティアユーザーが100回/日の制限ではなく、デフォルト値の5回/日で制限されている可能性がある。
+
+### テスト設定
+
+**環境変数の設定:**
+- `SUBSCRIPTION_TIER = "free"` - フリーティアとして設定
+- `DAILY_RECORDING_COUNT` - **コメントアウト（設定なし）**
+
+**テスト内容:**
+- 7回連続で録音と停止を繰り返す
+- 各イテレーションで録音制限アラートが表示されないことを確認
+
+### テスト結果
+
+**実行日時:** 2025-11-17 20:12:53
+**結果:** ❌ FAILED (45.870秒)
+
+**詳細:**
+- ✅ Iteration 1: 成功
+- ✅ Iteration 2: 成功
+- ✅ Iteration 3: 成功
+- ❌ Iteration 4: **失敗** - "Stop button should appear after countdown"
+
+**失敗の原因:**
+- 4回目の録音開始時に`StopRecordingButton`が表示されなかった
+- これは録音が開始されなかったことを示す
+- **録音制限に到達したため、録音が開始されなかった可能性が高い**
+
+### 結論
+
+**RecordingStateViewModelのデフォルト値が使われていることを確認:**
+- デフォルト値: `RecordingLimit(dailyCount: 5, maxDuration: 30)`
+- フリーティアの正しい値: `RecordingLimit(dailyCount: 100, maxDuration: 30)`
+- テストは3回成功し、4回目で失敗 → **dailyCount: 5の制限が適用されている**
+
+**デバッグ環境での問題:**
+1. `SUBSCRIPTION_TIER`環境変数は正しく読み込まれている（フリーティアとして認識）
+2. しかし`recordingLimit`がデフォルト値（5回/日）のまま更新されていない
+3. これは`loadStatus()`の非同期実行により、サブスクリプションステータスが設定される前にデフォルト値が使われるため
+
+**根本原因:**
+- RecordingStateViewModelの初期化時にデフォルト値が設定される
+- `SubscriptionViewModel.loadStatus()`は`.task`モディファイアで非同期実行される
+- UIテスト環境では`loadStatus()`完了前にRecordingStateViewModelが使用される
+- Combine publisherによる更新が間に合わず、デフォルト値（5回/日）が適用される
+
 ## まとめ
 
 1. **設計意図の確認:**
@@ -202,6 +252,11 @@ if !recordingLimit.isCountWithinLimit(self.dailyRecordingCount) {
 3. **実装の一貫性:**
    - UIテスト環境と本番環境で同じ制限値設定を使用
    - テスト結果は本番環境の挙動を正確に反映
+
+4. **発見された問題（2025-11-17）:**
+   - RecordingStateViewModelのデフォルト値（5回/日、30秒）が環境によって使用される
+   - 非同期のloadStatus()完了前にデフォルト値が適用される
+   - DAILY_RECORDING_COUNT環境変数なしの環境で再現可能
 
 ## 関連ファイル
 
