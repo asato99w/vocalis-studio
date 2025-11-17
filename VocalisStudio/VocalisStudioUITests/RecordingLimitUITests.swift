@@ -113,4 +113,67 @@ final class RecordingLimitUITests: XCTestCase {
         alert.buttons["OK"].tap()
         XCTAssertFalse(alert.exists, "Alert should be dismissed second time")
     }
+
+    /// Test that free users can record and stop multiple times within limit
+    func testFreeUser_canRecordMultipleTimes_withinLimit() throws {
+        // Given: Free user with 0 recordings (within 100 daily limit)
+        app.terminate()
+        app.launchEnvironment["SUBSCRIPTION_TIER"] = "free"
+        app.launchEnvironment["DAILY_RECORDING_COUNT"] = "0"
+        app.launch()
+
+        // Navigate to Recording screen
+        let homeRecordButton = app.buttons["HomeRecordButton"]
+        XCTAssertTrue(homeRecordButton.waitForExistence(timeout: 5), "Home record button should exist")
+        homeRecordButton.tap()
+
+        let recordButton = app.buttons["StartRecordingButton"]
+        XCTAssertTrue(recordButton.waitForExistence(timeout: 5), "Record button should exist")
+
+        // When: User records and stops 6 times
+        for iteration in 1...6 {
+            print("🔴 ITERATION \(iteration): Starting recording")
+
+            // Tap record button
+            recordButton.tap()
+
+            // Wait for countdown to complete
+            sleep(4)  // 3 second countdown + buffer
+
+            // Verify recording started
+            let stopButton = app.buttons["StopRecordingButton"]
+            XCTAssertTrue(
+                stopButton.waitForExistence(timeout: 5),
+                "Iteration \(iteration): Stop button should appear after countdown"
+            )
+
+            // Record for 1 second
+            sleep(1)
+
+            // Stop recording
+            print("🔴 ITERATION \(iteration): Stopping recording")
+            stopButton.tap()
+
+            // Wait for recording to stop and return to idle state
+            XCTAssertTrue(
+                recordButton.waitForExistence(timeout: 5),
+                "Iteration \(iteration): Record button should reappear after stopping"
+            )
+
+            // Verify no limit alert appeared
+            let alert = app.alerts.firstMatch
+            XCTAssertFalse(
+                alert.exists,
+                "Iteration \(iteration): Free user within limit should NOT see recording limit alert"
+            )
+
+            print("✅ ITERATION \(iteration): Completed successfully")
+
+            // Small delay between iterations
+            sleep(1)
+        }
+
+        // Then: All 6 recordings completed successfully without any limit alerts
+        print("✅ ALL ITERATIONS COMPLETED: Free user recorded 6 times within daily limit (100)")
+    }
 }
