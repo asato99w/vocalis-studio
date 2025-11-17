@@ -416,9 +416,18 @@ When debugging issues (especially UI tests or runtime bugs), **ALWAYS attempt to
 **File**: `VocalisStudio/claudedocs/UI_TEST_FAILURE_INVESTIGATION_REPORT.md`
 
 **When to reference**:
-- **ALWAYS before running UI tests** (critical best practices)
+- **⚠️ CRITICAL: ALWAYS before running UI tests** (mandatory reference)
 - When encountering simulator crashes
 - When tests fail unexpectedly
+
+**🚨 STRICT RULE FOR CLAUDE CODE**:
+**テスト実行前に必ず参考資料を提示し、それに厳密に従うこと。これを守らないと無駄なやり直しが発生する。**
+
+**Required workflow before ANY UI test execution**:
+1. ✅ Read `UI_TEST_FAILURE_INVESTIGATION_REPORT.md`
+2. ✅ Present reference document to user: "参考資料: `UI_TEST_FAILURE_INVESTIGATION_REPORT.md` に従ってテストを実行します"
+3. ✅ Follow simulator configuration exactly as documented
+4. ✅ Use UUID + parallel testing disabled (never use simulator name)
 
 **Critical best practices from this document**:
 
@@ -446,12 +455,15 @@ xcodebuild test \
 - "(ipc/mig) server died" → Simulator process crash, use UUID + parallel disable
 
 #### Test execution checklist:
+- [ ] Read reference documentation FIRST
+- [ ] Present reference document to user
 - [ ] Simulator specified by UUID (not name)
 - [ ] Parallel testing disabled (`-parallel-testing-enabled NO`)
 - [ ] Provisioning updates allowed (`-allowProvisioningUpdates`)
 - [ ] Correct scheme selected (UIOnly for UI tests)
 
 **Never**:
+- ❌ Skip reading reference documentation before test execution
 - ❌ Use simulator name specification: `-destination 'platform=iOS Simulator,name=iPhone 16'`
 - ❌ Run UI tests with parallel testing enabled (creates unstable clone simulators)
 - ❌ Proceed with UI implementation without running tests first

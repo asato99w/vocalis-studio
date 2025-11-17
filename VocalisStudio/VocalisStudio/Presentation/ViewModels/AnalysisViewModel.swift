@@ -116,7 +116,9 @@ public class AnalysisViewModel: ObservableObject {
     // MARK: - Private Methods
 
     private func play() {
-        guard case .ready = state else { return }
+        guard case .ready = state else {
+            return
+        }
 
         isPlaying = true
 
@@ -127,6 +129,12 @@ public class AnalysisViewModel: ObservableObject {
         if isResuming {
             // Resume from current position
             audioPlayer.resume()
+
+            // CRITICAL: Clear pausedTime when resuming
+            // If not cleared, the completion handler will mistakenly treat
+            // natural completion as manual pause and restore the old position
+            pausedTime = nil
+
             logger.debug("Playback resumed from time: \(startTime)")
         } else {
             // Start fresh playback from beginning
@@ -139,14 +147,26 @@ public class AnalysisViewModel: ObservableObject {
                     await MainActor.run {
                         // Check if pause() was called before this completion handler
                         // If pausedTime is set, it means manual pause
+                        self.logger.debug("🎵 COMPLETION: Playback finished. pausedTime=\(self.pausedTime?.description ?? "nil")")
                         if let savedTime = self.pausedTime {
                             // Manual pause - restore the saved time
+                            self.logger.debug("🎵 COMPLETION: Manual pause detected, restoring time: \(savedTime)")
                             self.currentTime = savedTime
                             self.pausedTime = nil
                         } else {
                             // Natural completion - reset to beginning
-                            self.pause()
+                            // CRITICAL: Set isPlaying = false FIRST before stopping timer
+                            // to ensure UI shows play button (not pause button)
+                            self.logger.debug("🎵 COMPLETION: Natural completion, setting isPlaying=false")
+                            self.isPlaying = false
+
+                            // Stop timer if still running
+                            self.playbackTimer?.invalidate()
+                            self.playbackTimer = nil
+
+                            // Reset position to beginning
                             self.currentTime = 0.0
+                            self.logger.debug("🎵 COMPLETION: Reset complete. isPlaying=\(self.isPlaying), currentTime=\(self.currentTime)")
                         }
                     }
                 } catch {
@@ -170,23 +190,29 @@ public class AnalysisViewModel: ObservableObject {
                 // Sync currentTime with audio player
                 self.currentTime = self.audioPlayer.currentTime
 
-                if self.currentTime >= self.duration {
-                    self.pause()
-                    self.currentTime = 0.0  // Reset to beginning after completion
-                }
+                // Timer-based completion check is NOT needed
+                // The play() completion handler already handles playback completion
+                // This check can cause race conditions with the completion handler
             }
         }
     }
 
     private func pause() {
-        // Store current time before pausing to preserve it in completion handler
-        pausedTime = currentTime
-
-        isPlaying = false
+        // CRITICAL: Stop timer FIRST before reading position to prevent race condition
         playbackTimer?.invalidate()
         playbackTimer = nil
 
+        // CRITICAL: Use audioPlayer.currentTime (actual playback position), not self.currentTime
+        // self.currentTime may have been updated by timer after UI test tapped pause button
+        // but before this method was called, causing a race condition
+        pausedTime = audioPlayer.currentTime
+
+        isPlaying = false
+
         audioPlayer.pause()
+
+        // Update currentTime to match the actual paused position
+        currentTime = audioPlayer.currentTime
     }
 
     deinit {

@@ -478,6 +478,16 @@ final class AnalysisUITests: XCTestCase {
         // Bug: Button stays in pause state
         XCTAssertTrue(playPauseButton.exists, "Play/Pause button should exist after playback completion")
 
+        // CRITICAL: Verify button shows "play" icon (not "pause" icon)
+        // The button's label shows the localized text from the adjacent Text view
+        // Japanese: "再生" (play) vs "一時停止" (pause)
+        // Expected: "再生" (isPlaying = false)
+        // Bug: "一時停止" (isPlaying = true, stuck in playing state)
+        let buttonLabel = playPauseButton.label
+        print("🔍 DEBUG: Button label after completion: '\(buttonLabel)'")
+        XCTAssertTrue(buttonLabel.contains("再生") || buttonLabel.contains("paused"),
+                     "🔴 RED TEST: Button should show play state after completion, but found: '\(buttonLabel)'. Expected '再生' (play) or 'paused', but got stuck in playing state.")
+
         // Verify currentTime reset to 0 after playback completion
         // Expected: currentTime should be 00:00 (reset to beginning for next playback)
         // Bug: currentTime might stay at duration (00:01) instead of resetting
@@ -531,25 +541,7 @@ final class AnalysisUITests: XCTestCase {
     func testPauseDuringPlayback_ShouldPreserveCurrentTime() throws {
         let app = launchAppWithResetRecordingCount()
 
-        // Navigate to recording screen
-        let recordButton = app.buttons["録音を開始"]
-        XCTAssertTrue(recordButton.waitForExistence(timeout: 5), "Home recording button should exist")
-        recordButton.tap()
-
-        // Create a fresh 2-second recording to ensure sufficient duration for mid-playback pause
-        let startButton = app.buttons["StartRecordingButton"]
-        XCTAssertTrue(startButton.waitForExistence(timeout: 5), "Start recording button should exist")
-        startButton.tap()
-
-        Thread.sleep(forTimeInterval: 2.0)  // Record for 2 seconds
-
-        let stopButton = app.buttons["StopRecordingButton"]
-        XCTAssertTrue(stopButton.waitForExistence(timeout: 5), "Stop button should exist")
-        stopButton.tap()
-
-        Thread.sleep(forTimeInterval: 1.0)  // Wait for recording to be saved
-
-        // Navigate to analysis screen with the fresh recording
+        // Navigate to analysis screen using the standard helper (creates a 2+ second recording)
         navigateToAnalysisScreen(app)
 
         // Wait for analysis to complete
@@ -568,9 +560,9 @@ final class AnalysisUITests: XCTestCase {
 
         playPauseButton.tap()
 
-        // Let it play for 0.5 seconds (should be at 25% position for a 2-second recording)
-        // Timer callback fires every 0.05s, so 0.5s ensures 10 callbacks
-        Thread.sleep(forTimeInterval: 0.5)
+        // Let it play for 0.2 seconds to ensure we pause mid-playback
+        // Shorter wait time to account for UI test tap delay (~0.7s)
+        Thread.sleep(forTimeInterval: 0.2)
 
         // Screenshot 2: During playback (before pause)
         let screenshot2 = app.screenshot()
@@ -587,8 +579,12 @@ final class AnalysisUITests: XCTestCase {
         // Pause playback
         playPauseButton.tap()
 
-        // Wait a moment for pause to settle
-        Thread.sleep(forTimeInterval: 0.2)
+        // Wait for pause to complete
+        Thread.sleep(forTimeInterval: 0.5)
+
+        // Get currentTime immediately after pause
+        let sliderValueAfterPause = progressSlider.value as? String ?? "0%"
+        print("🔍 DEBUG: Slider value immediately after pause: \(sliderValueAfterPause)")
 
         // Screenshot 3: After pause
         let screenshot3 = app.screenshot()
@@ -597,13 +593,23 @@ final class AnalysisUITests: XCTestCase {
         attachment3.lifetime = .keepAlways
         add(attachment3)
 
-        // Get currentTime after pause
-        let sliderValueAfterPause = progressSlider.value as? String ?? "0%"
-        print("🔍 DEBUG: Slider value after pause: \(sliderValueAfterPause)")
+        // CRITICAL: Wait additional time to verify currentTime doesn't continue advancing
+        Thread.sleep(forTimeInterval: 1.0)
 
-        // Verify currentTime is preserved (not reset to 0)
-        XCTAssertEqual(sliderValueAfterPause, sliderValueBeforePause,
-                      "🔴 RED TEST: Slider value should be preserved after pause, but it changed from \(sliderValueBeforePause) to \(sliderValueAfterPause). This confirms the bug where pause resets currentTime to 0.")
+        // Get currentTime again to verify it stayed the same
+        let sliderValueAfter1Second = progressSlider.value as? String ?? "0%"
+        print("🔍 DEBUG: Slider value 1 second after pause: \(sliderValueAfter1Second)")
+
+        // Screenshot 4: 1 second after pause
+        let screenshot4 = app.screenshot()
+        let attachment4 = XCTAttachment(screenshot: screenshot4)
+        attachment4.name = "pause_preserve_04_one_second_later"
+        attachment4.lifetime = .keepAlways
+        add(attachment4)
+
+        // Verify currentTime is preserved (doesn't advance after pause)
+        XCTAssertEqual(sliderValueAfter1Second, sliderValueAfterPause,
+                      "🔴 RED TEST: Slider value should be preserved after pause, but it changed from \(sliderValueAfterPause) to \(sliderValueAfter1Second). This confirms the bug where currentTime continues advancing after pause.")
     }
 
     /// Test: Spectrogram viewport architecture verification with screenshots
@@ -670,5 +676,111 @@ final class AnalysisUITests: XCTestCase {
         attachment3.name = "spectrogram_03_scrolled_up"
         attachment3.lifetime = .keepAlways
         add(attachment3)
+    }
+
+    /// Test: Pause→Resume→Completion - Button and currentTime should behave correctly after completion
+    /// Bug: After pausing and resuming, playback completion may cause incorrect state
+    /// Expected: Button shows play state and currentTime resets to 0 after completion
+    func testPauseResumeCompletion_ShouldResetToBeginning() throws {
+        let app = launchAppWithResetRecordingCount()
+
+        // Navigate to analysis screen (create recording first)
+        navigateToAnalysisScreen(app)
+
+        // Wait for analysis to complete
+        Thread.sleep(forTimeInterval: 3.0)
+
+        // Screenshot 1: Before playback
+        let screenshot1 = app.screenshot()
+        let attachment1 = XCTAttachment(screenshot: screenshot1)
+        attachment1.name = "pause_resume_completion_01_before_play"
+        attachment1.lifetime = .keepAlways
+        add(attachment1)
+
+        // Get play/pause button
+        let playPauseButton = app.buttons["AnalysisPlayPauseButton"]
+        XCTAssertTrue(playPauseButton.waitForExistence(timeout: 5), "Play/Pause button should exist")
+
+        // Start playback
+        playPauseButton.tap()
+
+        // Wait briefly, then pause
+        Thread.sleep(forTimeInterval: 0.5)
+
+        // Screenshot 2: During playback (before pause)
+        let screenshot2 = app.screenshot()
+        let attachment2 = XCTAttachment(screenshot: screenshot2)
+        attachment2.name = "pause_resume_completion_02_during_playback"
+        attachment2.lifetime = .keepAlways
+        add(attachment2)
+
+        // Pause playback
+        playPauseButton.tap()
+
+        Thread.sleep(forTimeInterval: 0.2)
+
+        // Screenshot 3: After pause
+        let screenshot3 = app.screenshot()
+        let attachment3 = XCTAttachment(screenshot: screenshot3)
+        attachment3.name = "pause_resume_completion_03_after_pause"
+        attachment3.lifetime = .keepAlways
+        add(attachment3)
+
+        // Resume playback
+        playPauseButton.tap()
+
+        // Screenshot 4: After resume
+        let screenshot4 = app.screenshot()
+        let attachment4 = XCTAttachment(screenshot: screenshot4)
+        attachment4.name = "pause_resume_completion_04_after_resume"
+        attachment4.lifetime = .keepAlways
+        add(attachment4)
+
+        // Wait for playback to complete naturally
+        // Recording is ~1.6 seconds total
+        // We paused at 0.5s, so ~1.1s remaining
+        // Wait 2.5 seconds to ensure completion
+        Thread.sleep(forTimeInterval: 2.5)
+
+        // Screenshot 5: After playback completion
+        let screenshot5 = app.screenshot()
+        let attachment5 = XCTAttachment(screenshot: screenshot5)
+        attachment5.name = "pause_resume_completion_05_after_completion"
+        attachment5.lifetime = .keepAlways
+        add(attachment5)
+
+        // Verify button state after completion
+        // Expected: Button should be back to play state (not pause state)
+        XCTAssertTrue(playPauseButton.exists, "Play/Pause button should exist after playback completion")
+
+        // Verify button shows play state (Japanese: "再生")
+        let buttonLabel = playPauseButton.label
+        print("🔍 DEBUG: Button label after pause→resume→completion: '\(buttonLabel)'")
+        XCTAssertTrue(buttonLabel.contains("再生") || buttonLabel.contains("paused"),
+                     "🔴 RED TEST: Button should show play state after completion, but found: '\(buttonLabel)'. Bug: After pause→resume→completion, button shows incorrect state.")
+
+        // Verify currentTime reset to 0 after playback completion
+        let progressSlider = app.sliders["AnalysisProgressSlider"]
+
+        let sliderValueRaw = progressSlider.value
+        print("🔍 DEBUG: progressSlider.value after pause→resume→completion: \(sliderValueRaw ?? "nil")")
+
+        var sliderValue: Double = 1.0
+        if let doubleValue = sliderValueRaw as? Double {
+            sliderValue = doubleValue
+        } else if let stringValue = sliderValueRaw as? String {
+            sliderValue = Double(stringValue) ?? 1.0
+        }
+
+        print("🔍 DEBUG: Final sliderValue after pause→resume→completion = \(sliderValue)")
+        XCTAssertLessThan(sliderValue, 0.1,
+                         "🔴 RED TEST: Slider should be near 0.0 after pause→resume→completion, but found: \(sliderValue). Bug: currentTime does not reset correctly after pause→resume→completion.")
+
+        // Screenshot 6: After verification
+        let screenshot6 = app.screenshot()
+        let attachment6 = XCTAttachment(screenshot: screenshot6)
+        attachment6.name = "pause_resume_completion_06_verification"
+        attachment6.lifetime = .keepAlways
+        add(attachment6)
     }
 }

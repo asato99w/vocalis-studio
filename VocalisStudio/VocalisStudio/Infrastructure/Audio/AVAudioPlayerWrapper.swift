@@ -29,13 +29,13 @@ public class AVAudioPlayerWrapper: NSObject, AudioPlayerProtocol {
     public func pause() {
         audioPlayer?.pause()
 
-        // Resume continuation to prevent leak
-        // Bug: Without resuming, continuation remains waiting indefinitely
-        // Symptom: Repeated play-pause cycles cause playback to stop working
-        // Fix: Resume continuation on pause since AnalysisViewModel uses timer-based
-        //      tracking and doesn't depend on continuation completion
-        playbackContinuation?.resume()
-        playbackContinuation = nil
+        // DO NOT resume continuation on manual pause
+        // The continuation should only complete when playback naturally finishes
+        // Resuming here would trigger AnalysisViewModel's completion handler prematurely
+        // Continuation will be resumed when:
+        // 1. Playback naturally completes (audioPlayerDidFinishPlaying)
+        // 2. User calls stop()
+        // 3. User resumes and playback completes
     }
 
     public func resume() {
