@@ -31,13 +31,16 @@ public class AnalysisViewModel: ObservableObject {
     private var playbackTimer: Timer?
     private var cancellables = Set<AnyCancellable>()
 
-    /// Store currentTime when manually paused to preserve it in completion handler
-    /// This is needed because AVAudioPlayerWrapper.pause() calls playbackContinuation?.resume(),
-    /// which triggers the play() completion handler even for manual pause.
-    /// By checking if pausedTime is set in the completion handler, we can distinguish:
-    /// - Manual pause: pausedTime != nil → restore currentTime
-    /// - Natural completion: pausedTime == nil → reset currentTime to 0
-    private var pausedTime: Double?
+    /// Playback state machine for managing play/pause/completion flow
+    /// This explicit state enum makes state transitions clear and prevents bugs
+    /// related to forgetting to set/clear state variables
+    private enum PlaybackState {
+        case idle                           // Stopped state
+        case playing(startedAt: Double)     // Playing from specific position
+        case paused(at: Double)            // Paused at specific position
+    }
+
+    private var playbackState: PlaybackState = .idle
 
     // MARK: - Computed Properties
 
@@ -122,42 +125,36 @@ public class AnalysisViewModel: ObservableObject {
 
         isPlaying = true
 
-        // Check if we're resuming from a paused position or starting fresh
-        let startTime = currentTime
-        let isResuming = startTime > 0.01  // Small threshold to handle floating point precision
-
-        if isResuming {
-            // Resume from current position
+        // Check playback state to determine if resuming or starting fresh
+        switch playbackState {
+        case .paused(let pausedPosition):
+            // Resume from paused position
             audioPlayer.resume()
+            playbackState = .playing(startedAt: pausedPosition)
+            logger.debug("Playback resumed from time: \(pausedPosition)")
 
-            // CRITICAL: Clear pausedTime when resuming
-            // If not cleared, the completion handler will mistakenly treat
-            // natural completion as manual pause and restore the old position
-            pausedTime = nil
-
-            logger.debug("Playback resumed from time: \(startTime)")
-        } else {
+        case .idle, .playing:
             // Start fresh playback from beginning
+            let startPosition = currentTime
+            playbackState = .playing(startedAt: startPosition)
+
             Task { [weak self] in
                 guard let self = self else { return }
                 do {
                     try await self.audioPlayer.play(url: self.recording.fileURL)
 
-                    // Playback finished - check if natural completion or manual pause
+                    // Playback finished - check state to determine next action
                     await MainActor.run {
-                        // Check if pause() was called before this completion handler
-                        // If pausedTime is set, it means manual pause
-                        self.logger.debug("🎵 COMPLETION: Playback finished. pausedTime=\(self.pausedTime?.description ?? "nil")")
-                        if let savedTime = self.pausedTime {
-                            // Manual pause - restore the saved time
-                            self.logger.debug("🎵 COMPLETION: Manual pause detected, restoring time: \(savedTime)")
-                            self.currentTime = savedTime
-                            self.pausedTime = nil
-                        } else {
+                        switch self.playbackState {
+                        case .paused(let time):
+                            // Manual pause occurred - restore position
+                            self.logger.debug("🎵 COMPLETION: Manual pause detected, restoring time: \(time)")
+                            self.currentTime = time
+                            self.playbackState = .idle
+
+                        case .playing:
                             // Natural completion - reset to beginning
-                            // CRITICAL: Set isPlaying = false FIRST before stopping timer
-                            // to ensure UI shows play button (not pause button)
-                            self.logger.debug("🎵 COMPLETION: Natural completion, setting isPlaying=false")
+                            self.logger.debug("🎵 COMPLETION: Natural completion, resetting")
                             self.isPlaying = false
 
                             // Stop timer if still running
@@ -166,7 +163,12 @@ public class AnalysisViewModel: ObservableObject {
 
                             // Reset position to beginning
                             self.currentTime = 0.0
+                            self.playbackState = .idle
                             self.logger.debug("🎵 COMPLETION: Reset complete. isPlaying=\(self.isPlaying), currentTime=\(self.currentTime)")
+
+                        case .idle:
+                            // Already handled or stopped
+                            break
                         }
                     }
                 } catch {
@@ -176,7 +178,7 @@ public class AnalysisViewModel: ObservableObject {
                     }
                 }
             }
-            logger.debug("Playback started from beginning")
+            logger.debug("Playback started from time: \(startPosition)")
         }
 
         // Start playback timer to update currentTime
@@ -189,10 +191,6 @@ public class AnalysisViewModel: ObservableObject {
 
                 // Sync currentTime with audio player
                 self.currentTime = self.audioPlayer.currentTime
-
-                // Timer-based completion check is NOT needed
-                // The play() completion handler already handles playback completion
-                // This check can cause race conditions with the completion handler
             }
         }
     }
@@ -202,17 +200,18 @@ public class AnalysisViewModel: ObservableObject {
         playbackTimer?.invalidate()
         playbackTimer = nil
 
-        // CRITICAL: Use audioPlayer.currentTime (actual playback position), not self.currentTime
-        // self.currentTime may have been updated by timer after UI test tapped pause button
-        // but before this method was called, causing a race condition
-        pausedTime = audioPlayer.currentTime
+        // Get actual playback position and transition to paused state
+        // CRITICAL: Use audioPlayer.currentTime (actual position), not self.currentTime
+        // to avoid race condition with timer updates
+        let pausedPosition = audioPlayer.currentTime
+        playbackState = .paused(at: pausedPosition)
 
         isPlaying = false
 
         audioPlayer.pause()
 
         // Update currentTime to match the actual paused position
-        currentTime = audioPlayer.currentTime
+        currentTime = pausedPosition
     }
 
     deinit {
