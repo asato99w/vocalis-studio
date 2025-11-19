@@ -14,7 +14,6 @@ final class RecordingStateViewModelTests: XCTestCase {
     var mockScalePlayer: RecordingStateMockScalePlayer!
     var mockSubscriptionViewModel: SubscriptionViewModel!
     var mockUsageTrackerWrapper: RecordingStateMockUsageTracker!
-    var mockLimitConfig: RecordingStateMockLimitConfig!
     var cancellables: Set<AnyCancellable>!
 
     override func setUp() async throws {
@@ -24,7 +23,6 @@ final class RecordingStateViewModelTests: XCTestCase {
         mockAudioPlayer = RecordingStateMockAudioPlayer()
         mockScalePlayer = RecordingStateMockScalePlayer()
         mockUsageTrackerWrapper = RecordingStateMockUsageTracker()
-        mockLimitConfig = RecordingStateMockLimitConfig()
         cancellables = Set<AnyCancellable>()
 
         // Create subscription view model with mock repository
@@ -43,15 +41,14 @@ final class RecordingStateViewModelTests: XCTestCase {
             scalePlaybackCoordinator: ScalePlaybackCoordinator(scalePlayer: mockScalePlayer),
             subscriptionViewModel: mockSubscriptionViewModel,
             usageTracker: mockUsageTrackerWrapper.tracker,
-            limitConfig: mockLimitConfig,
-            countdownDuration: 0
+            countdownDuration: 0,
+            recordingLimitConfig: .test
         )
     }
 
     override func tearDown() {
         cancellables = nil
         sut = nil
-        mockLimitConfig = nil
         mockUsageTrackerWrapper = nil
         mockSubscriptionViewModel = nil
         mockScalePlayer = nil
@@ -125,9 +122,8 @@ final class RecordingStateViewModelTests: XCTestCase {
     }
 
     func testStartRecording_whenLimitReached_shouldShowError() async {
-        // Given: Set count at limit
-        mockUsageTrackerWrapper.todayCount = 10
-        mockLimitConfig.limit = RecordingLimit(dailyCount: 10, maxDuration: 60)
+        // Given: Set count at limit (Free tier limit is 3)
+        mockUsageTrackerWrapper.todayCount = 3
 
         // When
         await sut.startRecording(settings: nil)
@@ -448,10 +444,3 @@ class RecordingStateMockUsageTracker {
     }
 }
 
-class RecordingStateMockLimitConfig: RecordingLimitConfigProtocol {
-    var limit: RecordingLimit = RecordingLimit(dailyCount: 100, maxDuration: 60)
-
-    func limitForTier(_ tier: SubscriptionTier) -> RecordingLimit {
-        return limit
-    }
-}

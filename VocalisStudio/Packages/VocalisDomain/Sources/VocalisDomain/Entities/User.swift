@@ -50,27 +50,6 @@ public struct User: Identifiable, Equatable, Codable, Sendable {
 
     // MARK: - Business Logic
 
-    /// Get daily recording limit based on subscription tier
-    public var dailyRecordingLimit: Int {
-        switch subscriptionStatus.tier {
-        case .free:
-            // Grandfather users have unlimited recordings
-            if subscriptionStatus.cohort == .v1_0 {
-                return Int.max
-            }
-            return 3
-        case .premium:
-            return 10
-        case .premiumPlus:
-            return Int.max
-        }
-    }
-
-    /// Check if user has reached daily recording limit
-    public var hasReachedDailyLimit: Bool {
-        recordingStats.todayCount >= dailyRecordingLimit
-    }
-
     /// Check if user can use scale recording feature
     /// Scale recording is now available for all tiers
     public var canUseScaleRecording: Bool {

@@ -19,8 +19,14 @@ final class RecordingPolicyServiceImpl: RecordingPolicyService {
         user: User,
         settings: ScaleSettings?
     ) async throws -> RecordingPermission {
-        // Check daily recording limit
-        if user.hasReachedDailyLimit {
+        // Grandfather users (v1.0 cohort) have unlimited recordings
+        if user.subscriptionStatus.cohort == .v1_0 {
+            return .allowed
+        }
+
+        // Check daily recording limit using RecordingLimit.forTier()
+        let limit = RecordingLimit.forTier(user.subscriptionStatus.tier)
+        if !limit.isCountWithinLimit(user.recordingStats.todayCount) {
             return .denied(.dailyLimitExceeded)
         }
 

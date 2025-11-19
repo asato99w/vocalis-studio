@@ -60,10 +60,10 @@ public class RecordingViewModel: ObservableObject {
         scalePlaybackCoordinator: ScalePlaybackCoordinator,
         subscriptionViewModel: SubscriptionViewModel,
         usageTracker: RecordingUsageTracker = RecordingUsageTracker(),
-        limitConfig: RecordingLimitConfigProtocol = ProductionRecordingLimitConfig(),
         countdownDuration: Int = 3,
         targetPitchPollingIntervalNanoseconds: UInt64 = 100_000_000,
-        playbackPitchPollingIntervalNanoseconds: UInt64 = 50_000_000
+        playbackPitchPollingIntervalNanoseconds: UInt64 = 50_000_000,
+        recordingLimitConfig: RecordingLimit.Configuration = .production
     ) {
         self.pitchDetector = pitchDetector
         self.subscriptionViewModel = subscriptionViewModel
@@ -77,8 +77,8 @@ public class RecordingViewModel: ObservableObject {
             scalePlaybackCoordinator: scalePlaybackCoordinator,
             subscriptionViewModel: subscriptionViewModel,
             usageTracker: usageTracker,
-            limitConfig: limitConfig,
-            countdownDuration: countdownDuration
+            countdownDuration: countdownDuration,
+            recordingLimitConfig: recordingLimitConfig
         )
 
         self.pitchDetectionVM = PitchDetectionViewModel(

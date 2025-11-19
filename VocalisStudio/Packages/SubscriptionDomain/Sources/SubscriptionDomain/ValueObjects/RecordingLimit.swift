@@ -22,13 +22,45 @@ public struct RecordingLimit {
         self.maxDuration = maxDuration
     }
 
+    /// Configuration for recording limits (allows test overrides)
+    public struct Configuration {
+        public let freeDailyCount: Int
+        public let freeMaxDuration: TimeInterval
+        public let premiumDailyCount: Int
+        public let premiumMaxDuration: TimeInterval
+
+        public init(
+            freeDailyCount: Int = 3,
+            freeMaxDuration: TimeInterval = 30,
+            premiumDailyCount: Int = 10,
+            premiumMaxDuration: TimeInterval = 300
+        ) {
+            self.freeDailyCount = freeDailyCount
+            self.freeMaxDuration = freeMaxDuration
+            self.premiumDailyCount = premiumDailyCount
+            self.premiumMaxDuration = premiumMaxDuration
+        }
+
+        /// Production configuration
+        public static let production = Configuration()
+
+        /// Test configuration with short durations and counts
+        public static let test = Configuration(
+            freeDailyCount: 3,
+            freeMaxDuration: 2,
+            premiumDailyCount: 10,
+            premiumMaxDuration: 4
+        )
+    }
+
     /// Get recording limit for subscription tier
-    public static func forTier(_ tier: SubscriptionTier) -> RecordingLimit {
+    /// Single source of truth for both count and duration limits
+    public static func forTier(_ tier: SubscriptionTier, configuration: Configuration = .production) -> RecordingLimit {
         switch tier {
         case .free:
-            return RecordingLimit(dailyCount: 100, maxDuration: 30) // 100 recordings/day for testing, 30 seconds max
+            return RecordingLimit(dailyCount: configuration.freeDailyCount, maxDuration: configuration.freeMaxDuration)
         case .premium:
-            return RecordingLimit(dailyCount: nil, maxDuration: 300) // Unlimited recordings, 5 minutes max
+            return RecordingLimit(dailyCount: configuration.premiumDailyCount, maxDuration: configuration.premiumMaxDuration)
         case .premiumPlus:
             return RecordingLimit(dailyCount: nil, maxDuration: nil) // Unlimited
         }

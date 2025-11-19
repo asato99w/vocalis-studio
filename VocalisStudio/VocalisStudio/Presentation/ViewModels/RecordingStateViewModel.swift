@@ -24,7 +24,7 @@ public class RecordingStateViewModel: ObservableObject {
 
     @Published public private(set) var currentTier: SubscriptionTier = .free
     @Published public private(set) var dailyRecordingCount: Int = 0
-    @Published public private(set) var recordingLimit: RecordingLimit = RecordingLimit(dailyCount: 5, maxDuration: 30)
+    @Published public private(set) var recordingLimit: RecordingLimit = RecordingLimit(dailyCount: 2, maxDuration: 30)
 
     // MARK: - Callbacks
 
@@ -41,7 +41,6 @@ public class RecordingStateViewModel: ObservableObject {
     internal let scalePlaybackCoordinator: ScalePlaybackCoordinator
     private let subscriptionViewModel: SubscriptionViewModel
     private let usageTracker: RecordingUsageTracker
-    private let limitConfig: RecordingLimitConfigProtocol
 
     // MARK: - Private Properties
 
@@ -57,6 +56,7 @@ public class RecordingStateViewModel: ObservableObject {
     // MARK: - Configuration
 
     private let countdownDuration: Int
+    private let recordingLimitConfig: RecordingLimit.Configuration
 
     // MARK: - Initialization
 
@@ -68,8 +68,8 @@ public class RecordingStateViewModel: ObservableObject {
         scalePlaybackCoordinator: ScalePlaybackCoordinator,
         subscriptionViewModel: SubscriptionViewModel,
         usageTracker: RecordingUsageTracker = RecordingUsageTracker(),
-        limitConfig: RecordingLimitConfigProtocol = ProductionRecordingLimitConfig(),
-        countdownDuration: Int = 3
+        countdownDuration: Int = 3,
+        recordingLimitConfig: RecordingLimit.Configuration = .production
     ) {
         self.startRecordingUseCase = startRecordingUseCase
         self.startRecordingWithScaleUseCase = startRecordingWithScaleUseCase
@@ -78,8 +78,8 @@ public class RecordingStateViewModel: ObservableObject {
         self.scalePlaybackCoordinator = scalePlaybackCoordinator
         self.subscriptionViewModel = subscriptionViewModel
         self.usageTracker = usageTracker
-        self.limitConfig = limitConfig
         self.countdownDuration = countdownDuration
+        self.recordingLimitConfig = recordingLimitConfig
         self.countdownValue = countdownDuration
 
         // Subscribe to subscription status updates
@@ -87,9 +87,13 @@ public class RecordingStateViewModel: ObservableObject {
             .sink { [weak self] status in
                 guard let self = self else { return }
                 Task { @MainActor in
+                    Logger.viewModel.error("🔴 RECORDING_LIMIT_MARK: currentStatus updated, tier=\(status?.tier.rawValue ?? "nil")")
+                    FileLogger.shared.log(level: "ERROR", category: "recording_limit", message: "🔴 currentStatus updated, tier=\(status?.tier.rawValue ?? "nil")")
                     if let status = status {
                         self.currentTier = status.tier
-                        self.recordingLimit = self.limitConfig.limitForTier(status.tier)
+                        self.recordingLimit = RecordingLimit.forTier(status.tier, configuration: self.recordingLimitConfig)
+                        Logger.viewModel.error("🔴 RECORDING_LIMIT_MARK: recordingLimit updated, dailyCount=\(self.recordingLimit.dailyCount?.description ?? "nil"), maxDuration=\(self.recordingLimit.maxDuration?.description ?? "nil")")
+                        FileLogger.shared.log(level: "ERROR", category: "recording_limit", message: "🔴 recordingLimit updated, dailyCount=\(self.recordingLimit.dailyCount?.description ?? "nil"), maxDuration=\(self.recordingLimit.maxDuration?.description ?? "nil")")
                     }
                 }
             }
@@ -98,6 +102,8 @@ public class RecordingStateViewModel: ObservableObject {
         // Initialize usage count
         dailyRecordingCount = usageTracker.getTodayCount()
 
+        Logger.viewModel.error("🔴 RECORDING_LIMIT_MARK: RecordingStateViewModel initialized, defaultLimit dailyCount=\(self.recordingLimit.dailyCount?.description ?? "nil"), maxDuration=\(self.recordingLimit.maxDuration?.description ?? "nil")")
+        FileLogger.shared.log(level: "ERROR", category: "recording_limit", message: "🔴 RecordingStateViewModel initialized, defaultLimit dailyCount=\(self.recordingLimit.dailyCount?.description ?? "nil"), maxDuration=\(self.recordingLimit.maxDuration?.description ?? "nil")")
         Logger.viewModel.info("RecordingStateViewModel initialized")
     }
 
@@ -111,18 +117,24 @@ public class RecordingStateViewModel: ObservableObject {
     /// Start the recording process with countdown
     public func startRecording(settings: ScaleSettings? = nil) async {
         print("[DIAG] startRecording START: state=\(recordingState)")
+        Logger.viewModel.error("🔴 RECORDING_LIMIT_MARK: startRecording START, state=\(String(describing: self.recordingState))")
 
         // Don't start if already recording or in countdown
         guard recordingState == .idle else {
             print("[DIAG] startRecording REJECTED: already in state \(recordingState)")
+            Logger.viewModel.error("🔴 RECORDING_LIMIT_MARK: startRecording REJECTED - already in state \(String(describing: self.recordingState))")
             Logger.viewModel.warning("Start recording ignored: already in state \(String(describing: self.recordingState))")
             return
         }
 
         // Check recording count limit
         self.dailyRecordingCount = usageTracker.getTodayCount()
+        Logger.viewModel.error("🔴 RECORDING_LIMIT_MARK: Recording count check: current=\(self.dailyRecordingCount), limit=\(self.recordingLimit.dailyCount?.description ?? "nil")")
+        FileLogger.shared.log(level: "ERROR", category: "recording_limit", message: "🔴 Recording count check: current=\(self.dailyRecordingCount), limit=\(self.recordingLimit.dailyCount?.description ?? "nil")")
         print("[DIAG] Recording count check: current=\(self.dailyRecordingCount), limit=\(recordingLimit.dailyCount ?? -1)")
         if !recordingLimit.isCountWithinLimit(self.dailyRecordingCount) {
+            Logger.viewModel.error("🔴 RECORDING_LIMIT_MARK: Recording REJECTED - count limit reached")
+            FileLogger.shared.log(level: "ERROR", category: "recording_limit", message: "🔴 Recording REJECTED - count limit reached")
             print("[DIAG] startRecording REJECTED: count limit reached")
             Logger.viewModel.warning("Recording limit reached: \(self.dailyRecordingCount)")
             let errorMsg = "本日の録音回数の上限に達しました (\(currentTier.displayName)プラン)"
@@ -133,6 +145,7 @@ public class RecordingStateViewModel: ObservableObject {
 
         let settingsInfo = settings != nil ? "5-tone scale" : "no scale"
         Logger.viewModel.info("Starting recording with settings: \(settingsInfo)")
+        Logger.viewModel.error("🔴 RECORDING_LIMIT_MARK: startRecording PASSED checks, settings=\(settingsInfo)")
         print("[DIAG] startRecording PASSED checks, settings=\(settingsInfo)")
 
         // Clear any previous error
@@ -148,13 +161,18 @@ public class RecordingStateViewModel: ObservableObject {
 
         // Start countdown
         print("[DIAG] Starting countdown: \(countdownDuration) seconds")
+        Logger.viewModel.error("🔴 RECORDING_LIMIT_MARK: Starting countdown \(self.countdownDuration) seconds")
         recordingState = .countdown
         countdownValue = countdownDuration
 
         // Create countdown task
         countdownTask = Task { [weak self] in
-            guard let self = self else { return }
+            guard let self = self else {
+                Logger.viewModel.error("🔴 RECORDING_LIMIT_MARK: Countdown task - self is nil")
+                return
+            }
             print("[DIAG] Countdown task started")
+            Logger.viewModel.error("🔴 RECORDING_LIMIT_MARK: Countdown task started")
             // Countdown: countdownDuration, ..., 2, 1
             for value in (1...self.countdownDuration).reversed() {
                 if Task.isCancelled {
@@ -173,8 +191,10 @@ public class RecordingStateViewModel: ObservableObject {
 
             // Countdown complete, set flag before executing recording
             print("[DIAG] Countdown complete, setting isCountdownComplete=true")
+            Logger.viewModel.error("🔴 RECORDING_LIMIT_MARK: Countdown complete")
             await MainActor.run { self.isCountdownComplete = true }
             print("[DIAG] Calling executeRecording")
+            Logger.viewModel.error("🔴 RECORDING_LIMIT_MARK: Calling executeRecording")
             await self.executeRecording(settings: settings)
         }
     }
@@ -314,6 +334,7 @@ public class RecordingStateViewModel: ObservableObject {
     /// Execute the actual recording after countdown
     private func executeRecording(settings: ScaleSettings?) async {
         print("[DIAG] executeRecording START")
+        Logger.viewModel.error("🔴 RECORDING_LIMIT_MARK: executeRecording START")
         do {
             // Create user object from current state
             let user = createCurrentUser()
@@ -337,6 +358,7 @@ public class RecordingStateViewModel: ObservableObject {
 
             // Update state
             print("[DIAG] Setting recordingState to .recording")
+            Logger.viewModel.error("🔴 RECORDING_LIMIT_MARK: Setting recordingState to .recording")
             recordingState = .recording
             currentSession = session
             progress = 0.0
@@ -347,10 +369,12 @@ public class RecordingStateViewModel: ObservableObject {
             startDurationMonitoring()
 
             Logger.viewModel.info("Recording in progress")
+            Logger.viewModel.error("🔴 RECORDING_LIMIT_MARK: executeRecording SUCCESS")
             print("[DIAG] executeRecording SUCCESS")
 
         } catch {
             print("[DIAG] executeRecording ERROR: \(error.localizedDescription)")
+            Logger.viewModel.error("🔴 RECORDING_LIMIT_MARK: executeRecording ERROR - \(error.localizedDescription)")
             Logger.viewModel.logError(error)
             let errorMsg = error.localizedDescription
             errorMessage = errorMsg

@@ -62,8 +62,8 @@ final class RecordingLimitIntegrationTests: XCTestCase {
             scalePlaybackCoordinator: ScalePlaybackCoordinator(scalePlayer: mockScalePlayer),
             subscriptionViewModel: subscriptionViewModel,
             usageTracker: mockUsageTracker,
-            limitConfig: TestRecordingLimitConfig(), // Use test config with shorter durations
-            countdownDuration: 0 // Skip countdown for faster test execution
+            countdownDuration: 0, // Skip countdown for faster test execution
+            recordingLimitConfig: .test // Use test configuration with short durations
         )
     }
 
@@ -77,7 +77,7 @@ final class RecordingLimitIntegrationTests: XCTestCase {
         try await Task.sleep(nanoseconds: 100_000_000)
 
         // Then: Free tier should have 2 second limit (test config)
-        XCTAssertEqual(recordingViewModel.recordingLimit.maxDuration, 2)
+        XCTAssertEqual(recordingViewModel.recordingLimit.maxDuration, 2, "Test config should use 2 seconds for faster testing")
         XCTAssertEqual(recordingViewModel.recordingLimit.durationDescription, "2秒")
     }
 
@@ -89,7 +89,7 @@ final class RecordingLimitIntegrationTests: XCTestCase {
         try await Task.sleep(nanoseconds: 100_000_000)
 
         // Then: Premium tier should have 4 second limit (test config)
-        XCTAssertEqual(recordingViewModel.recordingLimit.maxDuration, 4)
+        XCTAssertEqual(recordingViewModel.recordingLimit.maxDuration, 4, "Test config should use 4 seconds for faster testing")
         XCTAssertEqual(recordingViewModel.recordingLimit.durationDescription, "4秒")
     }
 
@@ -147,19 +147,19 @@ final class RecordingLimitIntegrationTests: XCTestCase {
         // Wait for subscription status to update
         try await Task.sleep(nanoseconds: 100_000_000)
 
-        // Then: Free tier should have 5 recordings/day limit
-        XCTAssertEqual(recordingViewModel.recordingLimit.dailyCount, 5)
+        // Then: Free tier should have 3 recordings/day limit (test config same as production)
+        XCTAssertEqual(recordingViewModel.recordingLimit.dailyCount, 3, "Test config should use 3 recordings/day same as production")
     }
 
-    func testPremiumTierHasUnlimitedRecordings() async throws {
+    func testPremiumTierHas10RecordingsPerDay() async throws {
         // Given: Premium tier
         subscriptionViewModel.setDebugTier(.premium)
 
         // Wait for subscription status to update
         try await Task.sleep(nanoseconds: 100_000_000)
 
-        // Then: Premium tier should have unlimited recordings
-        XCTAssertNil(recordingViewModel.recordingLimit.dailyCount)
+        // Then: Premium tier should have 10 recordings/day limit
+        XCTAssertEqual(recordingViewModel.recordingLimit.dailyCount, 10, "Premium tier should have 10 recordings/day limit")
     }
 }
 

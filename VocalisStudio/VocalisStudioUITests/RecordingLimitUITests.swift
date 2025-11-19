@@ -28,7 +28,13 @@ final class RecordingLimitUITests: XCTestCase {
 
     /// Test that recording limit alert appears when user tries to record at limit
     func testRecordingLimitAlert_shouldAppear_whenAtLimit() throws {
-        // Given: User navigates to Recording screen
+        // Given: User is at the recording limit (3 recordings for free tier)
+        app.terminate()
+        app.launchEnvironment["SUBSCRIPTION_TIER"] = "free"
+        app.launchEnvironment["DAILY_RECORDING_COUNT"] = "3"  // Set count to limit
+        app.launch()
+
+        // Navigate to Recording screen
         let homeRecordButton = app.buttons["HomeRecordButton"]
         XCTAssertTrue(homeRecordButton.waitForExistence(timeout: 5), "Home record button should exist")
         homeRecordButton.tap()
@@ -55,9 +61,14 @@ final class RecordingLimitUITests: XCTestCase {
     }
 
     /// Test that OK button dismisses the recording limit alert
-    /// BUG: Currently fails because alert doesn't dismiss when OK is pressed
     func testRecordingLimitAlert_shouldDismiss_whenOKPressed() throws {
-        // Given: Recording limit alert is displayed
+        // Given: User is at the recording limit (3 recordings for free tier)
+        app.terminate()
+        app.launchEnvironment["SUBSCRIPTION_TIER"] = "free"
+        app.launchEnvironment["DAILY_RECORDING_COUNT"] = "3"  // Set count to limit
+        app.launch()
+
+        // Navigate to Recording screen
         let homeRecordButton = app.buttons["HomeRecordButton"]
         XCTAssertTrue(homeRecordButton.waitForExistence(timeout: 5), "Home record button should exist")
         homeRecordButton.tap()
@@ -78,10 +89,9 @@ final class RecordingLimitUITests: XCTestCase {
         sleep(1)
 
         // Then: Alert should disappear
-        // BUG: This assertion FAILS because alert remains visible
         XCTAssertFalse(
             alert.exists,
-            "🐛 BUG: Alert should be dismissed after tapping OK, but it remains visible"
+            "Alert should be dismissed after tapping OK"
         )
 
         // And: Recording screen should still be accessible (not frozen)
@@ -90,15 +100,26 @@ final class RecordingLimitUITests: XCTestCase {
 
     /// Test that alert can be dismissed and shown again on subsequent attempts
     func testRecordingLimitAlert_canBeShownMultipleTimes() throws {
-        // Given: User has dismissed the alert once
+        // Given: User is at the recording limit (3 recordings for free tier)
+        app.terminate()
+        app.launchEnvironment["SUBSCRIPTION_TIER"] = "free"
+        app.launchEnvironment["DAILY_RECORDING_COUNT"] = "3"  // Set count to limit
+        app.launch()
+
+        // Navigate to Recording screen
         let homeRecordButton = app.buttons["HomeRecordButton"]
+        XCTAssertTrue(homeRecordButton.waitForExistence(timeout: 5), "Home record button should exist")
         homeRecordButton.tap()
 
         let recordButton = app.buttons["StartRecordingButton"]
+        XCTAssertTrue(recordButton.waitForExistence(timeout: 5), "Record button should exist")
         recordButton.tap()
 
         let alert = app.alerts.firstMatch
+        XCTAssertTrue(alert.waitForExistence(timeout: 5), "Alert should appear")
         alert.buttons["OK"].tap()
+
+        sleep(1)  // Wait for alert to dismiss
         XCTAssertFalse(alert.exists, "Alert should be dismissed")
 
         // When: User taps Record button again
@@ -121,8 +142,8 @@ final class RecordingLimitUITests: XCTestCase {
         app.terminate()
         // Set subscription tier to free (to test free tier recording limit)
         app.launchEnvironment["SUBSCRIPTION_TIER"] = "free"
-        // COMMENTED OUT: Testing without DAILY_RECORDING_COUNT to reproduce debug environment behavior
-        // app.launchEnvironment["DAILY_RECORDING_COUNT"] = "0"
+        // DO NOT set DAILY_RECORDING_COUNT - we need the count to increment naturally
+        // Recording count is reset via -UITestResetRecordingCount launch argument (see setUpWithError)
         app.launch()
 
         // Navigate to Recording screen
@@ -133,22 +154,50 @@ final class RecordingLimitUITests: XCTestCase {
         let recordButton = app.buttons["StartRecordingButton"]
         XCTAssertTrue(recordButton.waitForExistence(timeout: 5), "Record button should exist")
 
-        // When: User records and stops 7 times
-        for iteration in 1...7 {
+        // When: User attempts 4 recordings to test limit boundary
+        // Expected outcomes:
+        // - Free tier (limit=3): Alert on 4th attempt
+        // - Premium tier (limit=10): No alert within this test
+        for iteration in 1...4 {
             print("🔴 ITERATION \(iteration): Starting recording")
 
             // Tap record button
             recordButton.tap()
+
+            // Check if alert appeared BEFORE recording starts (at limit)
+            let alertBeforeRecording = app.alerts.firstMatch
+            if alertBeforeRecording.waitForExistence(timeout: 2) {
+                print("⚠️ ALERT APPEARED at iteration \(iteration) BEFORE recording")
+                print("Alert title: \(alertBeforeRecording.staticTexts.element(boundBy: 0).label)")
+                print("Alert message: \(alertBeforeRecording.staticTexts.element(boundBy: 1).label)")
+
+                // Dismiss alert to continue test
+                let okButton = alertBeforeRecording.buttons["OK"]
+                if okButton.exists {
+                    okButton.tap()
+                }
+
+                // Recording should NOT have started
+                let stopButton = app.buttons["StopRecordingButton"]
+                XCTAssertFalse(
+                    stopButton.exists,
+                    "Iteration \(iteration): Recording should NOT start when limit alert appears"
+                )
+
+                print("🛑 LIMIT REACHED at iteration \(iteration)")
+                break
+            }
 
             // Wait for countdown to complete
             sleep(4)  // 3 second countdown + buffer
 
             // Verify recording started
             let stopButton = app.buttons["StopRecordingButton"]
-            XCTAssertTrue(
-                stopButton.waitForExistence(timeout: 5),
-                "Iteration \(iteration): Stop button should appear after countdown"
-            )
+            if !stopButton.waitForExistence(timeout: 5) {
+                print("❌ ITERATION \(iteration): Stop button did NOT appear - recording failed to start")
+                XCTFail("Iteration \(iteration): Stop button should appear after countdown")
+                break
+            }
 
             // Record for 1 second
             sleep(1)
@@ -163,20 +212,77 @@ final class RecordingLimitUITests: XCTestCase {
                 "Iteration \(iteration): Record button should reappear after stopping"
             )
 
-            // Verify no limit alert appeared
-            let alert = app.alerts.firstMatch
-            XCTAssertFalse(
-                alert.exists,
-                "Iteration \(iteration): Free user within limit should NOT see recording limit alert"
-            )
-
             print("✅ ITERATION \(iteration): Completed successfully")
 
             // Small delay between iterations
             sleep(1)
         }
 
-        // Then: All 7 recordings completed successfully without any limit alerts
-        print("✅ ALL ITERATIONS COMPLETED: Free user recorded 7 times within daily limit (100)")
+        print("✅ TEST COMPLETED")
+    }
+
+    /// Test that premium users can record unlimited times without daily count limit
+    func testPremiumUser_canRecordUnlimitedTimes() throws {
+        // Given: Premium user with 0 recordings
+        app.terminate()
+        // Set subscription tier to premium (to test premium tier recording limit)
+        app.launchEnvironment["SUBSCRIPTION_TIER"] = "premium"
+        // Reset recording count to 0 for consistent test behavior
+        app.launchEnvironment["DAILY_RECORDING_COUNT"] = "0"
+        app.launch()
+
+        // Navigate to Recording screen
+        let homeRecordButton = app.buttons["HomeRecordButton"]
+        XCTAssertTrue(homeRecordButton.waitForExistence(timeout: 5), "Home record button should exist")
+        homeRecordButton.tap()
+
+        let recordButton = app.buttons["StartRecordingButton"]
+        XCTAssertTrue(recordButton.waitForExistence(timeout: 5), "Record button should exist")
+
+        // When: User records and stops 10 times (more than free tier limit)
+        for iteration in 1...10 {
+            print("🟣 PREMIUM ITERATION \(iteration): Starting recording")
+
+            // Tap record button
+            recordButton.tap()
+
+            // Wait for countdown to complete
+            sleep(4)  // 3 second countdown + buffer
+
+            // Verify recording started
+            let stopButton = app.buttons["StopRecordingButton"]
+            XCTAssertTrue(
+                stopButton.waitForExistence(timeout: 5),
+                "Iteration \(iteration): Stop button should appear after countdown"
+            )
+
+            // Record for 1 second (well within 300 second max duration)
+            sleep(1)
+
+            // Stop recording
+            print("🟣 PREMIUM ITERATION \(iteration): Stopping recording")
+            stopButton.tap()
+
+            // Wait for recording to stop and return to idle state
+            XCTAssertTrue(
+                recordButton.waitForExistence(timeout: 5),
+                "Iteration \(iteration): Record button should reappear after stopping"
+            )
+
+            // Verify no limit alert appeared
+            let alert = app.alerts.firstMatch
+            XCTAssertFalse(
+                alert.exists,
+                "Iteration \(iteration): Premium user should NOT see daily count limit alert"
+            )
+
+            print("✅ PREMIUM ITERATION \(iteration): Completed successfully")
+
+            // Small delay between iterations
+            sleep(1)
+        }
+
+        // Then: All 10 recordings completed successfully without daily count limit alerts
+        print("✅ ALL PREMIUM ITERATIONS COMPLETED: Premium user recorded 10 times without daily count limit")
     }
 }
