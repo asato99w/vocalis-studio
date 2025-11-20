@@ -13,13 +13,11 @@ final class NavigationUITests: XCTestCase {
         continueAfterFailure = false
     }
 
-    /// Test: Multiple recordings creation and management
-    /// Expected: ~20 seconds execution time
-    @MainActor
-    func testMultipleRecordings() throws {
-        let app = launchAppWithResetRecordingCount()
+    // MARK: - Helper Methods
 
-        // 1. Create first recording
+    /// Create a recording and return to home screen
+    @MainActor
+    private func createRecordingAndReturnToHome(_ app: XCUIApplication) {
         let homeRecordButton = app.buttons["HomeRecordButton"]
         XCTAssertTrue(homeRecordButton.waitForExistence(timeout: 5), "Home record button should exist")
         homeRecordButton.tap()
@@ -41,28 +39,26 @@ final class NavigationUITests: XCTestCase {
         let playButton = app.buttons["PlayLastRecordingButton"]
         XCTAssertTrue(playButton.waitForExistence(timeout: 5), "Play button should appear after save")
 
-        // 2. Navigate back to Home and create second recording
+        // Navigate back to Home
         app.navigationBars.buttons.element(boundBy: 0).tap()
         XCTAssertTrue(homeRecordButton.waitForExistence(timeout: 5), "Home record button should appear after navigation back")
-        homeRecordButton.tap()
-        XCTAssertTrue(startButton.waitForExistence(timeout: 5), "Start recording button should exist for second recording")
-        startButton.tap()
+    }
 
-        // Wait for recording to start by checking StopButton appearance
-        XCTAssertTrue(stopButton.waitForExistence(timeout: 10), "Stop recording button should appear for second recording")
+    // MARK: - Tests
 
-        // Continue recording for a moment to ensure valid audio data
-        Thread.sleep(forTimeInterval: 1.0)
+    /// Test: Multiple recordings creation and management
+    /// Expected: ~20 seconds execution time
+    @MainActor
+    func testMultipleRecordings() throws {
+        let app = launchAppWithResetRecordingCount()
 
-        stopButton.tap()
+        // Create first recording
+        createRecordingAndReturnToHome(app)
 
-        // Wait for second recording to be saved by checking PlayButton appearance
-        let playButton2 = app.buttons["PlayLastRecordingButton"]
-        XCTAssertTrue(playButton2.waitForExistence(timeout: 5), "Play button should appear after second save")
+        // Create second recording
+        createRecordingAndReturnToHome(app)
 
-        // 3. Navigate to Recording List
-        app.navigationBars.buttons.element(boundBy: 0).tap()
-
+        // Navigate to Recording List
         let homeListButton = app.buttons["HomeListButton"]
         XCTAssertTrue(homeListButton.waitForExistence(timeout: 5), "Home list button should exist")
         homeListButton.tap()
