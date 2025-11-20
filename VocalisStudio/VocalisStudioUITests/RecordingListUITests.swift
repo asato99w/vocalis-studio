@@ -170,8 +170,8 @@ final class RecordingListUITests: XCTestCase {
         let stopButton = app.buttons["StopRecordingButton"]
         XCTAssertTrue(stopButton.waitForExistence(timeout: 10), "Stop recording button should appear")
 
-        // Record for 3 seconds to have enough playback time
-        Thread.sleep(forTimeInterval: 3.0)
+        // Record for 1 second (sufficient for slider verification)
+        Thread.sleep(forTimeInterval: 1.0)
 
         stopButton.tap()
 
@@ -220,8 +220,8 @@ final class RecordingListUITests: XCTestCase {
         let timeLabels = app.staticTexts.matching(NSPredicate(format: "label MATCHES %@", "[0-9]:[0-9]{2}"))
         XCTAssertGreaterThan(timeLabels.count, 0, "Time labels should be displayed during playback")
 
-        // Wait for playback to finish naturally
-        Thread.sleep(forTimeInterval: 3.0)
+        // Wait for playback to finish naturally (1 second recording)
+        Thread.sleep(forTimeInterval: 1.0)
 
         // Screenshot: After playback (slider should disappear)
         let screenshot3 = app.screenshot()
