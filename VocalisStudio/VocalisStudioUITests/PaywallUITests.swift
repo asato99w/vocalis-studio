@@ -262,12 +262,9 @@ final class PaywallUITests: XCTestCase {
             buyButton.tap()
         }
 
-        // Wait for transaction to process
-        sleep(3)
-
-        // Handle purchase success alert explicitly
+        // Wait for transaction to process by checking for OK button or home screen
         let okButton = app.buttons["OK"]
-        if okButton.waitForExistence(timeout: 5) {
+        if okButton.waitForExistence(timeout: 10) {
             okButton.tap()
         }
 
@@ -279,7 +276,7 @@ final class PaywallUITests: XCTestCase {
 
         // Check that we're back on home screen
         let homeSettingsButton = app.buttons["HomeSettingsButton"]
-        XCTAssertTrue(homeSettingsButton.waitForExistence(timeout: 5), "Should return to home screen after purchase")
+        XCTAssertTrue(homeSettingsButton.waitForExistence(timeout: 10), "Should return to home screen after purchase")
 
         homeSettingsButton.tap()
 
@@ -326,8 +323,8 @@ final class PaywallUITests: XCTestCase {
         }
         print("=== END BUTTONS ===")
 
-        // Wait for purchase (StoreKit transaction processing)
-        sleep(4)
+        // Wait for purchase to complete by checking for home screen button
+        _ = app.buttons["HomeSettingsButton"].waitForExistence(timeout: 10)
 
         // Navigate to subscription management to check status
         let homeSettingsButton = app.buttons["HomeSettingsButton"]
@@ -412,16 +409,14 @@ final class PaywallUITests: XCTestCase {
         purchaseButton.tap()
 
         // Wait for StoreKit transaction processing
-        sleep(3)
-
         let okButton = app.buttons["OK"]
-        if okButton.waitForExistence(timeout: 5) {
+        if okButton.waitForExistence(timeout: 10) {
             okButton.tap()
         }
 
         // Navigate to home
         let homeSettingsButton = app.buttons["HomeSettingsButton"]
-        XCTAssertTrue(homeSettingsButton.waitForExistence(timeout: 5), "Should return to home")
+        XCTAssertTrue(homeSettingsButton.waitForExistence(timeout: 10), "Should return to home")
 
         // Step 1: Set debug tier to Free via Debug Menu
         let debugButton = app.staticTexts["Debug"]
@@ -472,16 +467,13 @@ final class PaywallUITests: XCTestCase {
         XCTAssertTrue(restoreButton.waitForExistence(timeout: 5), "Restore button should exist")
         restoreButton.tap()
 
-        // Wait for StoreKit restore transaction
-        sleep(3)
-
-        // Handle restore alert
-        if okButton.waitForExistence(timeout: 5) {
+        // Wait for StoreKit restore transaction and handle alert
+        if okButton.waitForExistence(timeout: 10) {
             okButton.tap()
         }
 
         // Wait for status to update after restore
-        sleep(2)
+        Thread.sleep(forTimeInterval: 1.0)
 
         // Step 3: 🔴 BUG VERIFICATION
         // Without fix: observeTransactionUpdates() calls loadStatus()

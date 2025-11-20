@@ -78,8 +78,9 @@ final class SettingsUITests: XCTestCase {
         XCTAssertTrue(startButton.waitForExistence(timeout: 5), "Start button should exist")
         startButton.tap()
 
-        // Wait for countdown to complete (3 seconds)
-        Thread.sleep(forTimeInterval: 3.5)
+        // Wait for stop button to appear (countdown is disabled in UI test mode)
+        let stopButton = app.buttons["StopRecordingButton"]
+        XCTAssertTrue(stopButton.waitForExistence(timeout: 10), "Stop button should appear after recording starts")
 
         // During recording, verify target pitch remains "--" (no scale, no target)
         let targetPitchEmpty = app.staticTexts["TargetPitchEmpty"]
@@ -87,9 +88,8 @@ final class SettingsUITests: XCTestCase {
         XCTAssertEqual(targetPitchEmpty.label, "--", "Target pitch should remain '--' when scale is OFF during recording")
 
         // Continue recording for a moment
-        Thread.sleep(forTimeInterval: 1.5)
+        Thread.sleep(forTimeInterval: 1.0)
 
-        let stopButton = app.buttons["StopRecordingButton"]
         XCTAssertTrue(stopButton.exists, "Stop button should be available")
         stopButton.tap()
 
@@ -153,14 +153,17 @@ final class SettingsUITests: XCTestCase {
         XCTAssertTrue(startButton.exists, "Start button should exist for second recording")
         startButton.tap()
 
-        // Wait for countdown to complete (3 seconds) + extra time for scale/pitch monitoring to start
-        Thread.sleep(forTimeInterval: 5.0)  // Increased from 3.5s to 5.0s for debugging
+        // Wait for stop button to appear (countdown is disabled in UI test mode)
+        XCTAssertTrue(stopButton.waitForExistence(timeout: 10), "Stop button should appear after recording starts")
+
+        // Wait for scale playback to start and pitch monitoring to initialize
+        Thread.sleep(forTimeInterval: 1.0)
 
         // During recording, verify target pitch is displayed (not "--")
         // Scale playback should have started, showing actual pitch targets
         // When targetPitch is set, the UI uses "TargetPitchNoteName" accessibility identifier
         let targetPitchNoteName = app.staticTexts["TargetPitchNoteName"]
-        XCTAssertTrue(targetPitchNoteName.waitForExistence(timeout: 2), "Target pitch note name should exist during recording with scale ON")
+        XCTAssertTrue(targetPitchNoteName.waitForExistence(timeout: 5), "Target pitch note name should exist during recording with scale ON")
 
         // Target pitch should show actual note (e.g., "C3", "D3") when scale is ON
         // Verify the label is not empty and looks like a note name
@@ -169,7 +172,7 @@ final class SettingsUITests: XCTestCase {
         XCTAssertTrue(noteLabel.count >= 2, "Target pitch should display actual notes (e.g., 'C3', 'D3') when scale is ON during recording")
 
         // Continue recording for a moment
-        Thread.sleep(forTimeInterval: 1.5)
+        Thread.sleep(forTimeInterval: 1.0)
 
         XCTAssertTrue(stopButton.exists, "Stop button should be available for second recording")
         stopButton.tap()

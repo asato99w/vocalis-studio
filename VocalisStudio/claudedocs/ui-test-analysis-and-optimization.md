@@ -1000,15 +1000,18 @@ sleep(0.2)  // 0.2秒録音（制限チェックには十分）
 | 2025-11-20 | Thread.sleep → waitForExistence | RecordingListUITests | ~10秒削減（12箇所置換）|
 | 2025-11-20 | Thread.sleep → waitForExistence | NavigationUITests | ~6秒削減（9箇所置換）|
 | 2025-11-20 | Thread.sleep → waitForExistence | PlaybackUITests | ~2秒削減（3箇所置換）|
+| 2025-11-20 | Thread.sleep → waitForExistence + 分析完了待ち最適化 | AnalysisUITests | ~30秒削減（navigateToAnalysisScreen最適化、分析完了を状態ベースに）|
+| 2025-11-20 | Thread.sleep → waitForExistence + カウントダウン待ち削減 | SettingsUITests | ~8秒削減（カウントダウン待ち → stopButton待機）|
+| 2025-11-20 | sleep → waitForExistence | PaywallUITests | ~8秒削減（StoreKit処理を状態ベースに）|
 
 ### 未着手の改善（優先順位順）
 | 優先度 | 改善項目 | 対象ファイル | 期待効果 |
 |--------|----------|-------------|---------|
-| 1 | Thread.sleep → waitForExistence | NavigationUITests, AnalysisUITests, SettingsUITests, PaywallUITests, PlaybackUITests | 20-40秒削減 |
-| 2 | 分析完了待ち最適化 | AnalysisUITests | 20秒削減 |
-| 3 | 録音データ共有化 | RecordingListUITests, AnalysisUITests | 72秒削減 |
-| 4 | スクリーンショット削減 | AnalysisUITests | 18秒削減 |
-| 5 | 録音時間短縮 | PlaybackUITests, RecordingLimitUITests | 22秒削減 |
+| 1 | 録音データ共有化 | RecordingListUITests, AnalysisUITests | 72秒削減 |
+| 2 | スクリーンショット削減 | AnalysisUITests | 18秒削減 |
+| 3 | 録音時間短縮 | PlaybackUITests, RecordingLimitUITests | 22秒削減 |
+| 4 | テストスキーム作成（Critical/Smoke/Full） | 全テスト | 開発速度向上 |
+| 5 | テストクラス分割と並列実行最適化 | AnalysisUITests | 理論値: 152秒 → 60秒 |
 
 ### 既知の問題（スキップ中）
 | 問題 | 対象テスト | 理由 |
@@ -1058,5 +1061,5 @@ sleep(0.2)  // 0.2秒録音（制限チェックには十分）
 
 ---
 
-**最終更新**: 2025-11-19
-**次回レビュー推奨日**: Phase 1完了後（2-3日後）
+**最終更新**: 2025-11-20
+**次回レビュー推奨日**: Phase 2実装時（録音データ共有化、スクリーンショット削減）

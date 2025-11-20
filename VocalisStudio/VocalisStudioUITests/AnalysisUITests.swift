@@ -43,21 +43,21 @@ final class AnalysisUITests: XCTestCase {
 
         // 2. Navigate to Recording List
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        Thread.sleep(forTimeInterval: 0.5)
 
         let homeListButton = app.buttons["HomeListButton"]
         XCTAssertTrue(homeListButton.waitForExistence(timeout: 5), "Home list button should exist")
         homeListButton.tap()
 
-        Thread.sleep(forTimeInterval: 2.0)
-
-        // 3. Navigate to Analysis screen
+        // Wait for recording list to load
         let analysisLinks = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "AnalysisNavigationLink_"))
         XCTAssertTrue(analysisLinks.firstMatch.waitForExistence(timeout: 5), "Analysis navigation link should exist")
+
+        // 3. Navigate to Analysis screen
         analysisLinks.firstMatch.tap()
 
-        // Wait for analysis screen to load and analysis to start
-        Thread.sleep(forTimeInterval: 2.0)
+        // Wait for analysis screen to load
+        let recordingInfoTitle = app.staticTexts["録音情報"]
+        XCTAssertTrue(recordingInfoTitle.waitForExistence(timeout: 10), "Analysis screen should load")
 
         // Screenshot: Analysis screen loading
         let screenshot1 = app.screenshot()
@@ -66,9 +66,9 @@ final class AnalysisUITests: XCTestCase {
         attachment1.lifetime = .keepAlways
         add(attachment1)
 
-        // 4. Wait for analysis to complete (if loading indicator exists, wait for it to disappear)
-        // Note: Analysis might be fast, so we give it time to complete
-        Thread.sleep(forTimeInterval: 3.0)
+        // 4. Wait for analysis to complete by checking for playback button
+        let playPauseButtonWait = app.buttons["AnalysisPlayPauseButton"]
+        XCTAssertTrue(playPauseButtonWait.waitForExistence(timeout: 10), "Analysis should complete and show playback controls")
 
         // Screenshot: Analysis screen after loading
         let screenshot2 = app.screenshot()
@@ -98,8 +98,8 @@ final class AnalysisUITests: XCTestCase {
         // 7. Test playback controls - Play
         playPauseButton.tap()
 
-        // Wait a moment for playback to start
-        Thread.sleep(forTimeInterval: 1.0)
+        // Wait a moment for playback to start (minimum time for valid state)
+        Thread.sleep(forTimeInterval: 0.5)
 
         // Screenshot: During playback
         let screenshot3 = app.screenshot()
@@ -114,8 +114,6 @@ final class AnalysisUITests: XCTestCase {
         // 8. Test playback controls - Pause
         playPauseButton.tap()
 
-        Thread.sleep(forTimeInterval: 0.5)
-
         // Screenshot: After pause
         let screenshot4 = app.screenshot()
         let attachment4 = XCTAttachment(screenshot: screenshot4)
@@ -125,10 +123,7 @@ final class AnalysisUITests: XCTestCase {
 
         // 9. Test seek controls
         seekBackButton.tap()
-        Thread.sleep(forTimeInterval: 0.5)
-
         seekForwardButton.tap()
-        Thread.sleep(forTimeInterval: 0.5)
 
         // Screenshot: After seek operations
         let screenshot5 = app.screenshot()
@@ -139,7 +134,6 @@ final class AnalysisUITests: XCTestCase {
 
         // 10. Verify navigation back works
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        Thread.sleep(forTimeInterval: 0.5)
 
         // Should be back at Recording List
         let deleteButtons = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "DeleteRecordingButton_"))
@@ -155,12 +149,9 @@ final class AnalysisUITests: XCTestCase {
         // Navigate to analysis screen (same setup as testAnalysisViewDisplay)
         navigateToAnalysisScreen(app)
 
-        // Wait for analysis to complete
-        Thread.sleep(forTimeInterval: 3.0)
-
-        // Find and tap on spectrogram expand button
+        // Wait for analysis to complete by checking for expand button
         let expandButton = app.buttons["SpectrogramExpandButton"]
-        XCTAssertTrue(expandButton.waitForExistence(timeout: 5), "Spectrogram expand button should exist")
+        XCTAssertTrue(expandButton.waitForExistence(timeout: 10), "Spectrogram expand button should exist")
 
         // Tap expand button
         expandButton.tap()
@@ -238,12 +229,9 @@ final class AnalysisUITests: XCTestCase {
         // Navigate to analysis screen
         navigateToAnalysisScreen(app)
 
-        // Wait for analysis to complete
-        Thread.sleep(forTimeInterval: 3.0)
-
-        // Find and tap on pitch graph expand button
+        // Wait for analysis to complete by checking for expand button
         let expandButton = app.buttons["PitchGraphExpandButton"]
-        XCTAssertTrue(expandButton.waitForExistence(timeout: 5), "Pitch graph expand button should exist")
+        XCTAssertTrue(expandButton.waitForExistence(timeout: 10), "Pitch graph expand button should exist")
 
         // Tap expand button
         expandButton.tap()
@@ -289,12 +277,9 @@ final class AnalysisUITests: XCTestCase {
         // Navigate to analysis screen
         navigateToAnalysisScreen(app)
 
-        // Wait for analysis to complete
-        Thread.sleep(forTimeInterval: 3.0)
-
-        // Expand pitch analysis view
+        // Wait for analysis to complete by checking for expand button
         let expandButton = app.buttons["PitchGraphExpandButton"]
-        XCTAssertTrue(expandButton.waitForExistence(timeout: 5), "Pitch graph expand button should exist")
+        XCTAssertTrue(expandButton.waitForExistence(timeout: 10), "Pitch graph expand button should exist")
         expandButton.tap()
 
         // Wait for expansion animation
@@ -361,20 +346,21 @@ final class AnalysisUITests: XCTestCase {
 
         // 2. Navigate to Recording List
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        Thread.sleep(forTimeInterval: 0.5)
 
         let homeListButton = app.buttons["HomeListButton"]
         XCTAssertTrue(homeListButton.waitForExistence(timeout: 5), "Home list button should exist")
         homeListButton.tap()
 
-        Thread.sleep(forTimeInterval: 2.0)
-
-        // 3. Navigate to Analysis screen
+        // Wait for recording list to load
         let analysisLinks = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "AnalysisNavigationLink_"))
         XCTAssertTrue(analysisLinks.firstMatch.waitForExistence(timeout: 5), "Analysis navigation link should exist")
+
+        // 3. Navigate to Analysis screen
         analysisLinks.firstMatch.tap()
 
-        Thread.sleep(forTimeInterval: 2.0)
+        // Wait for analysis screen to load
+        let recordingInfoTitle = app.staticTexts["録音情報"]
+        XCTAssertTrue(recordingInfoTitle.waitForExistence(timeout: 10), "Analysis screen should load")
     }
 
     /// Test: Playback scroll behavior - verify time axis and playback cursor
@@ -386,8 +372,9 @@ final class AnalysisUITests: XCTestCase {
         // Navigate to analysis screen
         navigateToAnalysisScreen(app)
 
-        // Wait for analysis to complete
-        Thread.sleep(forTimeInterval: 3.0)
+        // Wait for analysis to complete by checking for playback button
+        let playPauseButton = app.buttons["AnalysisPlayPauseButton"]
+        XCTAssertTrue(playPauseButton.waitForExistence(timeout: 10), "Play/Pause button should exist")
 
         // Screenshot 1: Before playback (initial position)
         let screenshot1 = app.screenshot()
@@ -397,8 +384,6 @@ final class AnalysisUITests: XCTestCase {
         add(attachment1)
 
         // Start playback
-        let playPauseButton = app.buttons["AnalysisPlayPauseButton"]
-        XCTAssertTrue(playPauseButton.waitForExistence(timeout: 5), "Play/Pause button should exist")
         playPauseButton.tap()
 
         // Wait during playback (about 1 second into playback)
@@ -436,8 +421,9 @@ final class AnalysisUITests: XCTestCase {
         // Navigate to analysis screen
         navigateToAnalysisScreen(app)
 
-        // Wait for analysis to complete
-        Thread.sleep(forTimeInterval: 3.0)
+        // Wait for analysis to complete by checking for playback button
+        let playPauseButton = app.buttons["AnalysisPlayPauseButton"]
+        XCTAssertTrue(playPauseButton.waitForExistence(timeout: 10), "Play/Pause button should exist")
 
         // Screenshot 1: Before playback
         let screenshot1 = app.screenshot()
@@ -447,8 +433,6 @@ final class AnalysisUITests: XCTestCase {
         add(attachment1)
 
         // Start playback
-        let playPauseButton = app.buttons["AnalysisPlayPauseButton"]
-        XCTAssertTrue(playPauseButton.waitForExistence(timeout: 5), "Play/Pause button should exist")
 
         playPauseButton.tap()
 
@@ -544,8 +528,9 @@ final class AnalysisUITests: XCTestCase {
         // Navigate to analysis screen using the standard helper (creates a 2+ second recording)
         navigateToAnalysisScreen(app)
 
-        // Wait for analysis to complete
-        Thread.sleep(forTimeInterval: 3.0)
+        // Wait for analysis to complete by checking for playback button
+        let playPauseButton = app.buttons["AnalysisPlayPauseButton"]
+        XCTAssertTrue(playPauseButton.waitForExistence(timeout: 10), "Play/Pause button should exist")
 
         // Screenshot 1: Before playback
         let screenshot1 = app.screenshot()
@@ -555,8 +540,6 @@ final class AnalysisUITests: XCTestCase {
         add(attachment1)
 
         // Start playback
-        let playPauseButton = app.buttons["AnalysisPlayPauseButton"]
-        XCTAssertTrue(playPauseButton.waitForExistence(timeout: 5), "Play/Pause button should exist")
 
         playPauseButton.tap()
 
@@ -687,8 +670,9 @@ final class AnalysisUITests: XCTestCase {
         // Navigate to analysis screen (create recording first)
         navigateToAnalysisScreen(app)
 
-        // Wait for analysis to complete
-        Thread.sleep(forTimeInterval: 3.0)
+        // Wait for analysis to complete by checking for playback button
+        let playPauseButton = app.buttons["AnalysisPlayPauseButton"]
+        XCTAssertTrue(playPauseButton.waitForExistence(timeout: 10), "Play/Pause button should exist")
 
         // Screenshot 1: Before playback
         let screenshot1 = app.screenshot()
@@ -698,8 +682,6 @@ final class AnalysisUITests: XCTestCase {
         add(attachment1)
 
         // Get play/pause button
-        let playPauseButton = app.buttons["AnalysisPlayPauseButton"]
-        XCTAssertTrue(playPauseButton.waitForExistence(timeout: 5), "Play/Pause button should exist")
 
         // Start playback
         playPauseButton.tap()
