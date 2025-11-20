@@ -1008,12 +1008,12 @@ sleep(0.2)  // 0.2秒録音（制限チェックには十分）
 | 2025-11-20 | 録音時間短縮（3秒 → 1秒）+ 再生待ち短縮 | RecordingListUITests | ~4秒削減（testPlaybackPositionSliderAppearsWhenPlaying）|
 | 2025-11-20 | ヘルパーメソッドによるコード整理 | RecordingListUITests | 可読性・保守性向上（createRecordingAndNavigateToListヘルパー追加）|
 | 2025-11-20 | ヘルパーメソッドによるコード整理 | NavigationUITests | 可読性・保守性向上（createRecordingAndReturnToHomeヘルパー追加）|
+| 2025-11-20 | テストスキーム作成（Critical/Smoke） | test-runner.sh | 開発速度向上（Critical: ~1分、Smoke: ~1.7分）|
 
 ### 未着手の改善（優先順位順）
 | 優先度 | 改善項目 | 対象ファイル | 期待効果 |
 |--------|----------|-------------|---------|
 | 1 | 録音データ共有化 | RecordingListUITests, AnalysisUITests | 72秒削減 |
-| 3 | テストスキーム作成（Critical/Smoke/Full） | 全テスト | 開発速度向上 |
 | 4 | テストクラス分割と並列実行最適化 | AnalysisUITests | 理論値: 152秒 → 60秒 |
 
 ### 既知の問題（スキップ中）
@@ -1029,7 +1029,7 @@ sleep(0.2)  // 0.2秒録音（制限チェックには十分）
 **期待効果**: 追加52秒削減（累計40%高速化予定、残りは録音共有化）
 
 ### Phase 3: 高度な最適化（1週間）
-1. テストスキーム作成（Critical/Smoke/Full）
+1. ~~テストスキーム作成（Critical/Smoke/Full）~~ ✅ 完了（test-runner.shに追加）
 2. テストクラス分割と並列実行最適化
 3. 不要なテストの削除・統合
 

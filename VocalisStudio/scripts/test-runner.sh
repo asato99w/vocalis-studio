@@ -1,12 +1,14 @@
 #!/bin/bash
 
 # VocalisStudio Test Runner Script
-# Usage: ./scripts/test-runner.sh [all|ui|unit] [test-name]
+# Usage: ./scripts/test-runner.sh [all|ui|unit|critical|smoke] [test-name]
 #
 # Examples:
 #   ./scripts/test-runner.sh ui                    # Run all UI tests
 #   ./scripts/test-runner.sh unit                  # Run all Unit tests
 #   ./scripts/test-runner.sh all                   # Run all tests
+#   ./scripts/test-runner.sh critical              # Run critical UI tests only (~1 min)
+#   ./scripts/test-runner.sh smoke                 # Run smoke UI tests (~3 min)
 #   ./scripts/test-runner.sh ui PaywallUITests     # Run specific UI test class
 
 set -e  # Exit on error
@@ -20,25 +22,94 @@ NC='\033[0m' # No Color
 
 # Configuration
 PROJECT="VocalisStudio.xcodeproj"
-DESTINATION="platform=iOS Simulator,name=iPhone 16 Clean"
+DESTINATION="platform=iOS Simulator,name=iPhone 16 Pro"
 
 # Functions
 print_usage() {
     echo -e "${BLUE}VocalisStudio Test Runner${NC}"
     echo ""
-    echo "Usage: $0 [all|ui|unit] [test-name]"
+    echo "Usage: $0 [all|ui|unit|critical|smoke] [test-name]"
     echo ""
     echo "Test Types:"
-    echo "  all   - Run all tests (Unit + UI)"
-    echo "  ui    - Run UI tests only"
-    echo "  unit  - Run Unit tests only"
+    echo "  all      - Run all tests (Unit + UI)"
+    echo "  ui       - Run all UI tests"
+    echo "  unit     - Run Unit tests only"
+    echo "  critical - Run critical UI tests only (~1 min)"
+    echo "  smoke    - Run smoke UI tests (~3 min)"
     echo ""
     echo "Examples:"
     echo "  $0 ui                    # Run all UI tests"
     echo "  $0 unit                  # Run all Unit tests"
     echo "  $0 all                   # Run all tests"
+    echo "  $0 critical              # Run critical tests (fastest)"
+    echo "  $0 smoke                 # Run smoke tests (quick validation)"
     echo "  $0 ui PaywallUITests     # Run specific UI test class"
     echo ""
+}
+
+# Critical tests - minimum viable tests for core functionality
+# Expected: ~1 minute
+run_critical_tests() {
+    echo -e "${BLUE}Running CRITICAL tests (core functionality)${NC}"
+    echo ""
+
+    local cmd="xcodebuild test \
+        -project ${PROJECT} \
+        -scheme VocalisStudio-UIOnly \
+        -destination '${DESTINATION}' \
+        -parallel-testing-enabled NO \
+        -allowProvisioningUpdates \
+        -only-testing:VocalisStudioUITests/RecordingFlowUITests/testBasicRecordingFlow \
+        -only-testing:VocalisStudioUITests/RecordingListUITests/testDeleteRecording \
+        -only-testing:VocalisStudioUITests/RecordingLimitUITests/testRecordingLimitAlert_shouldAppear_whenAtLimit \
+        -only-testing:VocalisStudioUITests/PaywallUITests/testPurchase_shouldUpdateToPremiumStatus"
+
+    echo -e "${YELLOW}Tests: testBasicRecordingFlow, testDeleteRecording, testRecordingLimitAlert, testPurchase${NC}"
+    echo ""
+
+    if eval $cmd; then
+        echo ""
+        echo -e "${GREEN}✅ CRITICAL Tests PASSED${NC}"
+        return 0
+    else
+        echo ""
+        echo -e "${RED}❌ CRITICAL Tests FAILED${NC}"
+        return 1
+    fi
+}
+
+# Smoke tests - quick validation of main features
+# Expected: ~3 minutes
+run_smoke_tests() {
+    echo -e "${BLUE}Running SMOKE tests (main features validation)${NC}"
+    echo ""
+
+    local cmd="xcodebuild test \
+        -project ${PROJECT} \
+        -scheme VocalisStudio-UIOnly \
+        -destination '${DESTINATION}' \
+        -parallel-testing-enabled NO \
+        -allowProvisioningUpdates \
+        -only-testing:VocalisStudioUITests/RecordingFlowUITests/testBasicRecordingFlow \
+        -only-testing:VocalisStudioUITests/RecordingListUITests/testDeleteRecording \
+        -only-testing:VocalisStudioUITests/RecordingLimitUITests/testRecordingLimitAlert_shouldAppear_whenAtLimit \
+        -only-testing:VocalisStudioUITests/PaywallUITests/testPurchase_shouldUpdateToPremiumStatus \
+        -only-testing:VocalisStudioUITests/NavigationUITests/testMultipleRecordings \
+        -only-testing:VocalisStudioUITests/PlaybackUITests/testPlaybackFullCompletion \
+        -only-testing:VocalisStudioUITests/AnalysisUITests/testAnalysisViewDisplay"
+
+    echo -e "${YELLOW}Tests: Critical + testMultipleRecordings, testPlaybackFullCompletion, testAnalysisViewDisplay${NC}"
+    echo ""
+
+    if eval $cmd; then
+        echo ""
+        echo -e "${GREEN}✅ SMOKE Tests PASSED${NC}"
+        return 0
+    else
+        echo ""
+        echo -e "${RED}❌ SMOKE Tests FAILED${NC}"
+        return 1
+    fi
 }
 
 run_tests() {
@@ -113,6 +184,12 @@ main() {
             ;;
         unit)
             run_tests "VocalisStudio-UnitOnly" "VocalisStudioTests" "$test_name"
+            ;;
+        critical)
+            run_critical_tests
+            ;;
+        smoke)
+            run_smoke_tests
             ;;
         help|--help|-h)
             print_usage
