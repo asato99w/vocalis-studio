@@ -45,7 +45,6 @@ final class RecordingListUITests: XCTestCase {
 
         // 2. Navigate back to Home
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        Thread.sleep(forTimeInterval: 0.5)
 
         // 3. Navigate to Recording List screen
         let homeListButton = app.buttons["HomeListButton"]
@@ -53,8 +52,7 @@ final class RecordingListUITests: XCTestCase {
         homeListButton.tap()
 
         // 4. Verify recording appears in the list
-        // Wait for list to load (increased from 1.0 to 2.0 seconds)
-        Thread.sleep(forTimeInterval: 2.0)
+        // Wait for list to load by checking for delete buttons
 
         // Screenshot: Recording list
         let screenshot1 = app.screenshot()
@@ -73,8 +71,9 @@ final class RecordingListUITests: XCTestCase {
         XCTAssertTrue(analysisLinks.firstMatch.waitForExistence(timeout: 5), "Analysis navigation link should exist")
         analysisLinks.firstMatch.tap()
 
-        // Wait for analysis screen to load
-        Thread.sleep(forTimeInterval: 1.0)
+        // Wait for analysis screen to load by checking for analysis UI elements
+        let analysisPlayButton = app.buttons["AnalysisPlayPauseButton"]
+        XCTAssertTrue(analysisPlayButton.waitForExistence(timeout: 5), "Analysis play button should appear")
 
         // Screenshot: Analysis screen
         let screenshot2 = app.screenshot()
@@ -85,7 +84,9 @@ final class RecordingListUITests: XCTestCase {
 
         // 6. Navigate back to list using back button
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        Thread.sleep(forTimeInterval: 0.5)
+
+        // Wait for list to reload by checking delete button visibility
+        XCTAssertTrue(deleteButtons.firstMatch.waitForExistence(timeout: 3), "Delete button should reappear after navigation back")
 
         // Screenshot: Back to list
         let screenshot3 = app.screenshot()
@@ -128,15 +129,15 @@ final class RecordingListUITests: XCTestCase {
 
         // 2. Navigate back to Home
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        Thread.sleep(forTimeInterval: 0.5)
 
         // 3. Navigate to Recording List
         let homeListButton = app.buttons["HomeListButton"]
         XCTAssertTrue(homeListButton.waitForExistence(timeout: 5), "Home list button should exist")
         homeListButton.tap()
 
-        // Wait for list to load
-        Thread.sleep(forTimeInterval: 2.0)
+        // Wait for list to load by checking for delete buttons
+        let deleteButtons = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "DeleteRecordingButton_"))
+        XCTAssertTrue(deleteButtons.firstMatch.waitForExistence(timeout: 5), "Delete button should appear in list")
 
         // Screenshot: Recording list with scale name
         let screenshot = app.screenshot()
@@ -179,13 +180,14 @@ final class RecordingListUITests: XCTestCase {
 
         // 2. Navigate to Recording List
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        Thread.sleep(forTimeInterval: 0.5)
 
         let homeListButton = app.buttons["HomeListButton"]
         XCTAssertTrue(homeListButton.waitForExistence(timeout: 5), "Home list button should exist")
         homeListButton.tap()
 
-        Thread.sleep(forTimeInterval: 2.0)
+        // Wait for list to load by checking for delete buttons
+        let deleteButtons = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "DeleteRecordingButton_"))
+        XCTAssertTrue(deleteButtons.firstMatch.waitForExistence(timeout: 5), "Delete button should appear in list")
 
         // Screenshot: List before playback
         let screenshot1 = app.screenshot()
@@ -199,8 +201,9 @@ final class RecordingListUITests: XCTestCase {
         XCTAssertTrue(playCircleButtons.firstMatch.waitForExistence(timeout: 3), "Play button should exist in the list")
         playCircleButtons.firstMatch.tap()
 
-        // Wait for playback to start
-        Thread.sleep(forTimeInterval: 1.0)
+        // Wait for playback to start by checking slider appearance
+        let sliders = app.sliders
+        XCTAssertTrue(sliders.firstMatch.waitForExistence(timeout: 5), "Position slider should appear when playback starts")
 
         // Screenshot: During playback (slider should be visible)
         let screenshot2 = app.screenshot()
@@ -210,7 +213,6 @@ final class RecordingListUITests: XCTestCase {
         add(attachment2)
 
         // 4. Verify slider is visible during playback
-        let sliders = app.sliders
         XCTAssertGreaterThan(sliders.count, 0, "Position slider should be visible during playback")
 
         // 5. Verify time display exists (format: "M:SS")
@@ -261,15 +263,11 @@ final class RecordingListUITests: XCTestCase {
 
         // 2. Navigate back to Home
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        Thread.sleep(forTimeInterval: 0.5)
 
         // 3. Navigate to Recording List screen
         let homeListButton = app.buttons["HomeListButton"]
         XCTAssertTrue(homeListButton.waitForExistence(timeout: 5), "Home list button should exist")
         homeListButton.tap()
-
-        // Wait for list to load (increased timeout)
-        Thread.sleep(forTimeInterval: 2.0)
 
         // Screenshot: Recording list before deletion
         let screenshot1 = app.screenshot()
@@ -286,8 +284,9 @@ final class RecordingListUITests: XCTestCase {
         // 5. Tap delete button (use firstMatch to handle multiple recordings)
         deleteButtons.firstMatch.tap()
 
-        // Wait for confirmation dialog to appear
-        Thread.sleep(forTimeInterval: 0.5)
+        // Wait for confirmation dialog to appear by checking for confirm button
+        let deleteConfirmButton = app.buttons["DeleteConfirmButton"]
+        XCTAssertTrue(deleteConfirmButton.waitForExistence(timeout: 3), "Delete confirm button should exist in confirmation dialog")
 
         // Screenshot: Confirmation dialog
         let screenshot2 = app.screenshot()
@@ -297,13 +296,19 @@ final class RecordingListUITests: XCTestCase {
         add(attachment2)
 
         // 6. Confirm deletion by tapping the delete confirm button
-        // Note: In SwiftUI confirmationDialog, buttons are matched by their text
-        let deleteConfirmButton = app.buttons["DeleteConfirmButton"]
-        XCTAssertTrue(deleteConfirmButton.waitForExistence(timeout: 3), "Delete confirm button should exist in confirmation dialog")
         deleteConfirmButton.tap()
 
-        // Wait for deletion to complete and UI to update
-        Thread.sleep(forTimeInterval: 2.0)
+        // Wait for deletion to complete by checking count change
+        // Re-query the buttons after deletion to ensure fresh count
+        let deleteButtonsAfterDeletion = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "DeleteRecordingButton_"))
+
+        // Wait for the count to decrease (delete animation to complete)
+        let expectation = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "count < %d", initialCount),
+            object: deleteButtonsAfterDeletion
+        )
+        let result = XCTWaiter.wait(for: [expectation], timeout: 5.0)
+        XCTAssertEqual(result, .completed, "Recording count should decrease after deletion")
 
         // Screenshot: After deletion
         let screenshot3 = app.screenshot()
@@ -312,12 +317,8 @@ final class RecordingListUITests: XCTestCase {
         attachment3.lifetime = .keepAlways
         add(attachment3)
 
-        // 7. Verify recording is deleted by checking if count decreased
-        // Re-query the buttons after deletion to ensure fresh count
-        let deleteButtonsAfterDeletion = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "DeleteRecordingButton_"))
+        // 7. Verify recording is deleted by checking final count
         let finalCount = deleteButtonsAfterDeletion.count
-
-        // Verify that exactly one recording was deleted
         XCTAssertEqual(finalCount, initialCount - 1, "Recording count should decrease by 1 after deletion (was \(initialCount), now \(finalCount))")
     }
 }

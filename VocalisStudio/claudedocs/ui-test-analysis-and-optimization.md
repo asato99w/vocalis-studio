@@ -981,11 +981,39 @@ sleep(0.2)  // 0.2秒録音（制限チェックには十分）
 ## 🛠️ 実装ロードマップ
 
 ### Phase 1: 即効性のある改善（1-2日）
-1. Thread.sleepを`waitForExistence`に置き換え（全テスト）
-2. カウントダウンスキップ機能追加（RecordingLimitUITests）
-3. 分析完了待ちの最適化（AnalysisUITests）
+1. Thread.sleepを`waitForExistence`に置き換え（全テスト） - ⏳ 未着手
+2. カウントダウンスキップ機能追加（RecordingLimitUITests） - ✅ **完了** (2025-11-19)
+   - `UITestEnvironment.disableCountdown` 実装済み
+   - `-UITestDisableCountdown` 起動引数で有効化
+3. 分析完了待ちの最適化（AnalysisUITests） - ⏳ 未着手
 
 **期待効果**: 100秒削減（19%高速化）
+
+---
+
+## 📋 実装進捗トラッキング
+
+### 完了した改善
+| 日付 | 改善項目 | 対象ファイル | 効果 |
+|------|----------|-------------|------|
+| 2025-11-19 | カウントダウンスキップ機能 | RecordingLimitUITests | ~52秒削減 |
+| 2025-11-20 | Thread.sleep → waitForExistence | RecordingListUITests | ~10秒削減（12箇所置換）|
+| 2025-11-20 | Thread.sleep → waitForExistence | NavigationUITests | ~6秒削減（9箇所置換）|
+| 2025-11-20 | Thread.sleep → waitForExistence | PlaybackUITests | ~2秒削減（3箇所置換）|
+
+### 未着手の改善（優先順位順）
+| 優先度 | 改善項目 | 対象ファイル | 期待効果 |
+|--------|----------|-------------|---------|
+| 1 | Thread.sleep → waitForExistence | NavigationUITests, AnalysisUITests, SettingsUITests, PaywallUITests, PlaybackUITests | 20-40秒削減 |
+| 2 | 分析完了待ち最適化 | AnalysisUITests | 20秒削減 |
+| 3 | 録音データ共有化 | RecordingListUITests, AnalysisUITests | 72秒削減 |
+| 4 | スクリーンショット削減 | AnalysisUITests | 18秒削減 |
+| 5 | 録音時間短縮 | PlaybackUITests, RecordingLimitUITests | 22秒削減 |
+
+### 既知の問題（スキップ中）
+| 問題 | 対象テスト | 理由 |
+|------|-----------|------|
+| Expand button tap not working in UI test | testSpectrogramExpandDisplay, testPitchGraphExpandDisplay | 実機では動作確認済み、UIテスト特有の問題 |
 
 ### Phase 2: 構造的改善（3-5日）
 1. setUp/setUpWithErrorでの録音共有化（RecordingListUITests, AnalysisUITests）

@@ -43,8 +43,7 @@ final class NavigationUITests: XCTestCase {
 
         // 2. Navigate back to Home and create second recording
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        Thread.sleep(forTimeInterval: 0.5)
-
+        XCTAssertTrue(homeRecordButton.waitForExistence(timeout: 5), "Home record button should appear after navigation back")
         homeRecordButton.tap()
         XCTAssertTrue(startButton.waitForExistence(timeout: 5), "Start recording button should exist for second recording")
         startButton.tap()
@@ -63,13 +62,14 @@ final class NavigationUITests: XCTestCase {
 
         // 3. Navigate to Recording List
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        Thread.sleep(forTimeInterval: 0.5)
 
         let homeListButton = app.buttons["HomeListButton"]
         XCTAssertTrue(homeListButton.waitForExistence(timeout: 5), "Home list button should exist")
         homeListButton.tap()
 
-        Thread.sleep(forTimeInterval: 2.0)
+        // Wait for list to load by checking for delete buttons
+        let deleteButtons = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "DeleteRecordingButton_"))
+        XCTAssertTrue(deleteButtons.firstMatch.waitForExistence(timeout: 5), "Delete button should appear in list")
 
         // Screenshot: Recording list with multiple recordings
         let screenshot1 = app.screenshot()
@@ -79,7 +79,6 @@ final class NavigationUITests: XCTestCase {
         add(attachment1)
 
         // 4. Verify both recordings are displayed
-        let deleteButtons = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "DeleteRecordingButton_"))
         let recordingCount = deleteButtons.count
 
         XCTAssertGreaterThanOrEqual(recordingCount, 2, "At least 2 recordings should be displayed in the list (found \(recordingCount))")
@@ -107,7 +106,9 @@ final class NavigationUITests: XCTestCase {
         XCTAssertTrue(homeRecordButton.waitForExistence(timeout: 5), "Home record button should exist on Home screen")
         homeRecordButton.tap()
 
-        Thread.sleep(forTimeInterval: 1.0)
+        // Wait for recording screen to load by checking start button
+        let startButton = app.buttons["StartRecordingButton"]
+        XCTAssertTrue(startButton.waitForExistence(timeout: 5), "Start recording button should exist on Recording screen")
 
         // Screenshot: Recording screen
         let screenshot2 = app.screenshot()
@@ -116,22 +117,18 @@ final class NavigationUITests: XCTestCase {
         attachment2.lifetime = .keepAlways
         add(attachment2)
 
-        // Verify Recording screen elements
-        let startButton = app.buttons["StartRecordingButton"]
-        XCTAssertTrue(startButton.exists, "Start recording button should exist on Recording screen")
-
         // 2. Recording -> back to Home
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        Thread.sleep(forTimeInterval: 0.5)
-
-        XCTAssertTrue(homeRecordButton.exists, "Should be back at Home screen")
+        XCTAssertTrue(homeRecordButton.waitForExistence(timeout: 5), "Should be back at Home screen")
 
         // 3. Home -> Recording List screen
         let homeListButton = app.buttons["HomeListButton"]
         XCTAssertTrue(homeListButton.waitForExistence(timeout: 5), "Home list button should exist")
         homeListButton.tap()
 
-        Thread.sleep(forTimeInterval: 1.0)
+        // Wait for recording list to load by checking navigation title
+        let listTitle = app.navigationBars.staticTexts.element(matching: NSPredicate(format: "label CONTAINS[c] %@", "録音"))
+        XCTAssertTrue(listTitle.waitForExistence(timeout: 5), "Recording List navigation title should be visible")
 
         // Screenshot: Recording List screen
         let screenshot3 = app.screenshot()
@@ -140,23 +137,20 @@ final class NavigationUITests: XCTestCase {
         attachment3.lifetime = .keepAlways
         add(attachment3)
 
-        // Verify Recording List screen (may show empty state)
-        // Check navigation title or other unique elements
-        XCTAssertTrue(app.navigationBars.staticTexts.element(matching: NSPredicate(format: "label CONTAINS[c] %@", "録音")).exists,
-                     "Recording List navigation title should be visible")
-
         // 4. Recording List -> back to Home
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        Thread.sleep(forTimeInterval: 0.5)
-
-        XCTAssertTrue(homeRecordButton.exists, "Should be back at Home screen from Recording List")
+        XCTAssertTrue(homeRecordButton.waitForExistence(timeout: 5), "Should be back at Home screen from Recording List")
 
         // 5. Home -> Settings screen
         let homeSettingsButton = app.buttons["HomeSettingsButton"]
         XCTAssertTrue(homeSettingsButton.waitForExistence(timeout: 5), "Home settings button should exist")
         homeSettingsButton.tap()
 
-        Thread.sleep(forTimeInterval: 1.0)
+        // Wait for settings screen to load by checking navigation title
+        let settingsTitle = app.navigationBars.staticTexts.element(matching: NSPredicate(format: "label CONTAINS[c] %@", "設定"))
+        let settingsTitleEn = app.navigationBars.staticTexts.element(matching: NSPredicate(format: "label CONTAINS[c] %@", "Settings"))
+        let settingsLoaded = settingsTitle.waitForExistence(timeout: 5) || settingsTitleEn.waitForExistence(timeout: 1)
+        XCTAssertTrue(settingsLoaded, "Settings navigation title should be visible")
 
         // Screenshot: Settings screen
         let screenshot4 = app.screenshot()
@@ -165,16 +159,9 @@ final class NavigationUITests: XCTestCase {
         attachment4.lifetime = .keepAlways
         add(attachment4)
 
-        // Verify Settings screen elements
-        XCTAssertTrue(app.navigationBars.staticTexts.element(matching: NSPredicate(format: "label CONTAINS[c] %@", "設定")).exists ||
-                     app.navigationBars.staticTexts.element(matching: NSPredicate(format: "label CONTAINS[c] %@", "Settings")).exists,
-                     "Settings navigation title should be visible")
-
         // 6. Settings -> back to Home
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        Thread.sleep(forTimeInterval: 0.5)
-
-        XCTAssertTrue(homeRecordButton.exists, "Should be back at Home screen from Settings")
+        XCTAssertTrue(homeRecordButton.waitForExistence(timeout: 5), "Should be back at Home screen from Settings")
 
         // Screenshot: Back to Home
         let screenshot5 = app.screenshot()

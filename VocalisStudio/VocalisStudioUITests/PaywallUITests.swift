@@ -112,21 +112,15 @@ final class PaywallUITests: XCTestCase {
         XCTAssertTrue(homeSettingsButton.waitForExistence(timeout: 5), "Home settings button should exist")
         homeSettingsButton.tap()
 
-        // Wait for settings view to appear
-        Thread.sleep(forTimeInterval: 0.5)
-
-        // Verify subscription management link exists
+        // Wait for settings view to appear by checking subscription link
         let subscriptionLink = app.buttons.containing(NSPredicate(format: "label CONTAINS[cd] %@", "サブスクリプションを管理"))
-        XCTAssertTrue(subscriptionLink.firstMatch.exists, "Should have subscription management link in settings")
+        XCTAssertTrue(subscriptionLink.firstMatch.waitForExistence(timeout: 5), "Should have subscription management link in settings")
 
         // Tap to navigate
         subscriptionLink.firstMatch.tap()
 
-        // Wait for navigation
-        Thread.sleep(forTimeInterval: 0.5)
-
-        // Verify navigation to subscription management
-        XCTAssertTrue(app.navigationBars["サブスクリプション管理"].exists, "Should navigate to subscription management")
+        // Wait for subscription management screen to appear
+        XCTAssertTrue(app.navigationBars["サブスクリプション管理"].waitForExistence(timeout: 5), "Should navigate to subscription management")
     }
 
     func testSettings_hasTermsAndPrivacyLinks() throws {
@@ -135,11 +129,7 @@ final class PaywallUITests: XCTestCase {
         XCTAssertTrue(homeSettingsButton.waitForExistence(timeout: 5), "Home settings button should exist")
         homeSettingsButton.tap()
 
-        // Wait for settings view to appear
-        Thread.sleep(forTimeInterval: 0.5)
-
-        // Verify terms and privacy links exist in settings
-        // Note: These are Link elements in SwiftUI Form, need to find them differently
+        // Wait for settings view to appear by checking terms link
         let termsLink = app.staticTexts["利用規約"]
         XCTAssertTrue(termsLink.waitForExistence(timeout: 5), "Should have terms link in settings")
 
@@ -193,16 +183,13 @@ final class PaywallUITests: XCTestCase {
         if homeSettingsButton.waitForExistence(timeout: 5) {
             homeSettingsButton.tap()
 
-            // Wait for settings view to appear
-            Thread.sleep(forTimeInterval: 0.5)
-
-            // Tap subscription management link
+            // Wait for subscription management link to appear
             let subscriptionLink = app.buttons.containing(NSPredicate(format: "label CONTAINS[cd] %@", "サブスクリプションを管理"))
             if subscriptionLink.firstMatch.waitForExistence(timeout: 5) {
                 subscriptionLink.firstMatch.tap()
 
-                // Wait for subscription management view to appear
-                Thread.sleep(forTimeInterval: 0.5)
+                // Wait for subscription management screen to load
+                _ = app.navigationBars["サブスクリプション管理"].waitForExistence(timeout: 5)
             }
         }
     }
@@ -213,7 +200,8 @@ final class PaywallUITests: XCTestCase {
         let upgradeBanner = app.buttons.containing(NSPredicate(format: "label CONTAINS[cd] %@", "無制限録音を解放"))
         if upgradeBanner.firstMatch.waitForExistence(timeout: 2) {
             upgradeBanner.firstMatch.tap()
-            Thread.sleep(forTimeInterval: 0.5)
+            // Wait for paywall to appear
+            _ = app.buttons["購入する"].waitForExistence(timeout: 5)
             return
         }
 
@@ -223,16 +211,13 @@ final class PaywallUITests: XCTestCase {
         if debugButton.waitForExistence(timeout: 2) {
             debugButton.tap()
 
-            // Wait for debug menu view to appear
-            Thread.sleep(forTimeInterval: 0.5)
-
-            // Tap Paywall link
+            // Wait for debug menu and find paywall link
             let paywallLink = app.buttons.containing(NSPredicate(format: "label CONTAINS[cd] %@", "プレミアムプラン"))
             if paywallLink.firstMatch.waitForExistence(timeout: 5) {
                 paywallLink.firstMatch.tap()
 
                 // Wait for paywall view to appear
-                Thread.sleep(forTimeInterval: 0.5)
+                _ = app.buttons["購入する"].waitForExistence(timeout: 5)
             }
         }
         #endif
@@ -286,9 +271,6 @@ final class PaywallUITests: XCTestCase {
             okButton.tap()
         }
 
-        // Wait for paywall sheet to dismiss after alert
-        Thread.sleep(forTimeInterval: 1)
-
         // Expected behavior: After purchase, app should return to home/top page
         // Verify we're back on home screen by checking for home-specific elements
 
@@ -300,16 +282,12 @@ final class PaywallUITests: XCTestCase {
         XCTAssertTrue(homeSettingsButton.waitForExistence(timeout: 5), "Should return to home screen after purchase")
 
         homeSettingsButton.tap()
-        Thread.sleep(forTimeInterval: 0.5)
 
         let subscriptionLink = app.buttons.containing(NSPredicate(format: "label CONTAINS[cd] %@", "サブスクリプションを管理"))
         XCTAssertTrue(subscriptionLink.firstMatch.waitForExistence(timeout: 5), "Subscription management link should exist")
         subscriptionLink.firstMatch.tap()
 
-        // Wait for subscription management screen to load
-        Thread.sleep(forTimeInterval: 1)
-
-        // Verify Premium status is displayed
+        // Wait for subscription management screen to load and verify Premium status
         let premiumStatusText = app.staticTexts.containing(NSPredicate(format: "label CONTAINS[cd] %@", "Premium"))
         XCTAssertTrue(premiumStatusText.firstMatch.waitForExistence(timeout: 5),
                      "Should show Premium status in subscription management after purchase")
@@ -330,11 +308,9 @@ final class PaywallUITests: XCTestCase {
         XCTAssertTrue(purchaseButton.exists)
         purchaseButton.tap()
 
-        // DEBUG: Print all buttons and alerts after tapping purchase button
-        Thread.sleep(forTimeInterval: 2)
-
-        // Check for error alert
+        // Wait for either error alert or purchase dialog
         let errorAlert = app.alerts["エラー"]
+        _ = errorAlert.waitForExistence(timeout: 2)
         if errorAlert.exists {
             print("=== ERROR ALERT DETECTED ===")
             for staticText in errorAlert.staticTexts.allElementsBoundByIndex {
@@ -342,7 +318,6 @@ final class PaywallUITests: XCTestCase {
             }
             // Tap OK to dismiss
             errorAlert.buttons["OK"].tap()
-            Thread.sleep(forTimeInterval: 1)
         }
 
         print("=== ALL BUTTONS AFTER PURCHASE TAP ===")
@@ -351,19 +326,17 @@ final class PaywallUITests: XCTestCase {
         }
         print("=== END BUTTONS ===")
 
-        // Wait for purchase
+        // Wait for purchase (StoreKit transaction processing)
         sleep(4)
 
         // Navigate to subscription management to check status
         let homeSettingsButton = app.buttons["HomeSettingsButton"]
         if homeSettingsButton.waitForExistence(timeout: 5) {
             homeSettingsButton.tap()
-            Thread.sleep(forTimeInterval: 0.5)
 
             let subscriptionLink = app.buttons.containing(NSPredicate(format: "label CONTAINS[cd] %@", "サブスクリプションを管理"))
             if subscriptionLink.firstMatch.waitForExistence(timeout: 5) {
                 subscriptionLink.firstMatch.tap()
-                Thread.sleep(forTimeInterval: 1)
 
                 // Print all text elements to see what's displayed
                 print("=== ALL TEXT ELEMENTS IN SUBSCRIPTION MANAGEMENT ===")
@@ -382,52 +355,45 @@ final class PaywallUITests: XCTestCase {
         XCTAssertTrue(debugButton.waitForExistence(timeout: 5), "Debug button should exist on home screen")
         debugButton.tap()
 
-        // Wait for debug menu
-        Thread.sleep(forTimeInterval: 0.5)
-
-        // Switch to Premium tier in debug menu
+        // Wait for tier picker to appear in debug menu
         let tierPicker = app.segmentedControls.firstMatch
-        XCTAssertTrue(tierPicker.exists, "Tier picker should exist")
+        XCTAssertTrue(tierPicker.waitForExistence(timeout: 5), "Tier picker should exist")
         tierPicker.buttons["Premium"].tap()
 
         // Wait for status update
-        Thread.sleep(forTimeInterval: 1)
-
-        // Verify current tier shows Premium
         let currentTierLabel = app.staticTexts.containing(NSPredicate(format: "label CONTAINS[cd] %@", "現在: Premium"))
-        XCTAssertTrue(currentTierLabel.firstMatch.exists, "Should show current tier as Premium")
+        XCTAssertTrue(currentTierLabel.firstMatch.waitForExistence(timeout: 5), "Should show current tier as Premium")
 
         // Navigate back to home
         app.navigationBars.buttons.firstMatch.tap()
-        Thread.sleep(forTimeInterval: 0.5)
 
         // Navigate to Settings → Subscription Management
         let homeSettingsButton = app.buttons["HomeSettingsButton"]
+        XCTAssertTrue(homeSettingsButton.waitForExistence(timeout: 5), "Home settings button should appear")
         homeSettingsButton.tap()
-        Thread.sleep(forTimeInterval: 0.5)
 
         let subscriptionLink = app.buttons.containing(NSPredicate(format: "label CONTAINS[cd] %@", "サブスクリプションを管理"))
+        XCTAssertTrue(subscriptionLink.firstMatch.waitForExistence(timeout: 5), "Subscription link should appear")
         subscriptionLink.firstMatch.tap()
-        Thread.sleep(forTimeInterval: 0.5)
 
         // Verify Premium status is shown in subscription management
         let premiumText = app.staticTexts.containing(NSPredicate(format: "label CONTAINS[cd] %@", "Premium"))
-        XCTAssertTrue(premiumText.firstMatch.exists, "Should show Premium status in subscription management")
+        XCTAssertTrue(premiumText.firstMatch.waitForExistence(timeout: 5), "Should show Premium status in subscription management")
 
         // Return to settings
         app.navigationBars.buttons.firstMatch.tap()
-        Thread.sleep(forTimeInterval: 0.5)
 
         // Return to home
-        app.navigationBars.buttons.firstMatch.tap()
-        Thread.sleep(forTimeInterval: 0.5)
+        let backButton = app.navigationBars.buttons.firstMatch
+        XCTAssertTrue(backButton.waitForExistence(timeout: 3), "Back button should appear")
+        backButton.tap()
 
         // Return to debug menu
+        XCTAssertTrue(debugButton.waitForExistence(timeout: 5), "Debug button should appear")
         debugButton.tap()
-        Thread.sleep(forTimeInterval: 0.5)
 
         // Verify tier is still Premium
-        XCTAssertTrue(currentTierLabel.firstMatch.exists, "Tier should still be Premium in debug menu")
+        XCTAssertTrue(currentTierLabel.firstMatch.waitForExistence(timeout: 5), "Tier should still be Premium in debug menu")
         #endif
     }
 
@@ -444,13 +410,14 @@ final class PaywallUITests: XCTestCase {
         let purchaseButton = app.buttons["購入する"]
         XCTAssertTrue(purchaseButton.exists, "Purchase button should exist")
         purchaseButton.tap()
-        Thread.sleep(forTimeInterval: 3)
+
+        // Wait for StoreKit transaction processing
+        sleep(3)
 
         let okButton = app.buttons["OK"]
         if okButton.waitForExistence(timeout: 5) {
             okButton.tap()
         }
-        Thread.sleep(forTimeInterval: 1)
 
         // Navigate to home
         let homeSettingsButton = app.buttons["HomeSettingsButton"]
@@ -460,17 +427,17 @@ final class PaywallUITests: XCTestCase {
         let debugButton = app.staticTexts["Debug"]
         XCTAssertTrue(debugButton.waitForExistence(timeout: 5), "Debug button should exist")
         debugButton.tap()
-        Thread.sleep(forTimeInterval: 0.5)
+
+        // Wait for tier picker to appear
+        let tierPicker = app.segmentedControls.firstMatch
+        XCTAssertTrue(tierPicker.waitForExistence(timeout: 5), "Tier picker should exist")
 
         // Set to Free tier - this sets isDebugTierSet = true
-        let tierPicker = app.segmentedControls.firstMatch
-        XCTAssertTrue(tierPicker.exists, "Tier picker should exist")
         tierPicker.buttons["Free"].tap()
-        Thread.sleep(forTimeInterval: 1)
 
         // Verify Free tier is set
         let freeTierLabel = app.staticTexts.containing(NSPredicate(format: "label CONTAINS[cd] %@", "現在: 無料"))
-        XCTAssertTrue(freeTierLabel.firstMatch.exists, "Should show Free tier in debug menu")
+        XCTAssertTrue(freeTierLabel.firstMatch.waitForExistence(timeout: 5), "Should show Free tier in debug menu")
 
         // Close all navigation to get back to home
         // Tap back buttons until we reach home screen
@@ -478,10 +445,12 @@ final class PaywallUITests: XCTestCase {
             let firstButton = app.navigationBars.buttons.element(boundBy: 0)
             if firstButton.exists {
                 firstButton.tap()
-                Thread.sleep(forTimeInterval: 0.3)
             } else {
                 break
             }
+
+            // Small delay for navigation
+            _ = app.buttons["HomeSettingsButton"].waitForExistence(timeout: 1)
 
             // Check if we're at home screen
             if app.buttons["HomeSettingsButton"].exists {
@@ -493,23 +462,26 @@ final class PaywallUITests: XCTestCase {
         let settingsButton2 = app.buttons["HomeSettingsButton"]
         XCTAssertTrue(settingsButton2.waitForExistence(timeout: 5), "Should be at home screen")
         settingsButton2.tap()
-        Thread.sleep(forTimeInterval: 0.5)
 
         let subscriptionLink = app.buttons.containing(NSPredicate(format: "label CONTAINS[cd] %@", "サブスクリプションを管理"))
+        XCTAssertTrue(subscriptionLink.firstMatch.waitForExistence(timeout: 5), "Subscription link should appear")
         subscriptionLink.firstMatch.tap()
-        Thread.sleep(forTimeInterval: 1)
 
         // Tap restore button (this will fire Transaction.updates)
         let restoreButton = app.buttons["購入の復元"]
         XCTAssertTrue(restoreButton.waitForExistence(timeout: 5), "Restore button should exist")
         restoreButton.tap()
-        Thread.sleep(forTimeInterval: 3)
+
+        // Wait for StoreKit restore transaction
+        sleep(3)
 
         // Handle restore alert
         if okButton.waitForExistence(timeout: 5) {
             okButton.tap()
         }
-        Thread.sleep(forTimeInterval: 2)
+
+        // Wait for status to update after restore
+        sleep(2)
 
         // Step 3: 🔴 BUG VERIFICATION
         // Without fix: observeTransactionUpdates() calls loadStatus()

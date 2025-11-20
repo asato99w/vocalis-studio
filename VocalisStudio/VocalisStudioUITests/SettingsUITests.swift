@@ -24,7 +24,9 @@ final class SettingsUITests: XCTestCase {
         XCTAssertTrue(homeRecordButton.waitForExistence(timeout: 5), "Home record button should exist")
         homeRecordButton.tap()
 
-        Thread.sleep(forTimeInterval: 1.0)
+        // Wait for recording screen to load by checking start button
+        let startButton = app.buttons["StartRecordingButton"]
+        XCTAssertTrue(startButton.waitForExistence(timeout: 5), "Start button should exist on recording screen")
 
         // Screenshot: Initial recording screen
         let screenshot1 = app.screenshot()
@@ -62,8 +64,6 @@ final class SettingsUITests: XCTestCase {
         XCTAssertTrue(offButton.exists, "Off button should exist")
         offButton.tap()
 
-        Thread.sleep(forTimeInterval: 0.5)
-
         // Verify scale changed to Off
         XCTAssertTrue(offButton.isSelected, "Off should be selected after tap")
 
@@ -75,7 +75,6 @@ final class SettingsUITests: XCTestCase {
         add(attachment3)
 
         // 6. Record with scale OFF
-        let startButton = app.buttons["StartRecordingButton"]
         XCTAssertTrue(startButton.waitForExistence(timeout: 5), "Start button should exist")
         startButton.tap()
 
@@ -108,26 +107,26 @@ final class SettingsUITests: XCTestCase {
 
         // Verify first recording was saved by checking recording list
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        Thread.sleep(forTimeInterval: 0.5)
 
         let listButton1 = app.buttons["HomeListButton"]
         XCTAssertTrue(listButton1.waitForExistence(timeout: 5), "Home list button should exist")
         listButton1.tap()
-        Thread.sleep(forTimeInterval: 5.0)  // Increased wait time for list to load
 
-        // Verify at least 1 recording exists (from scale OFF recording)
+        // Wait for list to load by checking for delete buttons
         let deleteButtons1 = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "DeleteRecordingButton_"))
+        XCTAssertTrue(deleteButtons1.firstMatch.waitForExistence(timeout: 5), "Delete button should appear in list")
         XCTAssertGreaterThanOrEqual(deleteButtons1.count, 1, "At least 1 recording should exist after first recording")
 
         // Navigate back to home screen to start second recording
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        Thread.sleep(forTimeInterval: 0.5)
 
         // Navigate to Recording screen for second recording
         let homeRecordButton2 = app.buttons["HomeRecordButton"]
         XCTAssertTrue(homeRecordButton2.waitForExistence(timeout: 5), "Home record button should exist for second recording")
         homeRecordButton2.tap()
-        Thread.sleep(forTimeInterval: 1.0)
+
+        // Wait for scale picker to be ready
+        XCTAssertTrue(scaleTypePicker.waitForExistence(timeout: 5), "Scale type picker should exist for second recording")
 
         // 7. Show settings panel again if it was hidden after recording
         if showSettingsButton.waitForExistence(timeout: 2) {
@@ -139,8 +138,6 @@ final class SettingsUITests: XCTestCase {
         XCTAssertTrue(scaleTypePicker.waitForExistence(timeout: 5), "Scale type picker should exist after re-showing settings")
         XCTAssertTrue(fiveToneButton.exists, "5-tone button should still exist")
         fiveToneButton.tap()
-
-        Thread.sleep(forTimeInterval: 0.5)
 
         // Verify scale changed back to 5-tone
         XCTAssertTrue(fiveToneButton.isSelected, "5-tone should be selected after tap")
@@ -191,13 +188,14 @@ final class SettingsUITests: XCTestCase {
 
         // 10. Navigate to Recording List to verify both recordings were created
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        Thread.sleep(forTimeInterval: 0.5)
 
         let homeListButton = app.buttons["HomeListButton"]
         XCTAssertTrue(homeListButton.waitForExistence(timeout: 5), "Home list button should exist")
         homeListButton.tap()
 
-        Thread.sleep(forTimeInterval: 2.0)
+        // Wait for list to load by checking for delete buttons
+        let deleteButtons = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "DeleteRecordingButton_"))
+        XCTAssertTrue(deleteButtons.firstMatch.waitForExistence(timeout: 5), "Delete button should appear in list")
 
         // Screenshot: Recording list with both recordings
         let screenshot7 = app.screenshot()
@@ -207,9 +205,7 @@ final class SettingsUITests: XCTestCase {
         add(attachment7)
 
         // Verify at least 2 recordings exist
-        let deleteButtons = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "DeleteRecordingButton_"))
         let recordingCount = deleteButtons.count
-
         XCTAssertGreaterThanOrEqual(recordingCount, 2, "At least 2 recordings should exist (one with scale OFF, one with scale ON)")
     }
 }

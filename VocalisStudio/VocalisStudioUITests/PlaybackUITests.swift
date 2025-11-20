@@ -117,9 +117,6 @@ final class PlaybackUITests: XCTestCase {
         let startButton = app.buttons["StartRecordingButton"]
         XCTAssertTrue(startButton.waitForExistence(timeout: 5), "Start recording button should exist")
 
-        // Wait for view to fully initialize with settings
-        Thread.sleep(forTimeInterval: 1.0)
-
         // 📸 Screenshot 1: Initial recording screen
         let screenshot1 = app.screenshot()
         let attachment1 = XCTAttachment(screenshot: screenshot1)
@@ -193,8 +190,8 @@ final class PlaybackUITests: XCTestCase {
             XCTFail("StopPlaybackButton disappeared between waitForExistence and tap - playback likely finished naturally")
         }
 
-        // 12. Wait for playback to stop
-        Thread.sleep(forTimeInterval: 0.5)
+        // 12. Wait for playback to stop by checking play button reappears
+        XCTAssertTrue(playButton.waitForExistence(timeout: 3), "Play button should reappear after stopping playback")
 
         // 📸 Screenshot 5: After playback stopped (BUG CHECK - should show '--')
         let screenshot5 = app.screenshot()
@@ -241,9 +238,6 @@ final class PlaybackUITests: XCTestCase {
         // 2. Wait for recording screen to load
         let startButton = app.buttons["StartRecordingButton"]
         XCTAssertTrue(startButton.waitForExistence(timeout: 5), "Start recording button should exist")
-
-        // Wait for view to fully initialize
-        Thread.sleep(forTimeInterval: 1.0)
 
         // 📸 Screenshot 1: Initial recording screen
         let screenshot1 = app.screenshot()

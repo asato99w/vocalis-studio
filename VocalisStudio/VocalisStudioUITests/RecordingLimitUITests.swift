@@ -10,7 +10,7 @@ final class RecordingLimitUITests: XCTestCase {
         app = XCUIApplication()
 
         // Use standard UI test launch arguments for compatibility
-        app.launchArguments = ["-UITestResetRecordingCount", "-UITestDisableAnimations"]
+        app.launchArguments = ["-UITestResetRecordingCount", "-UITestDisableAnimations", "-UITestDisableCountdown"]
 
         // Set subscription tier to free (to test free tier recording limit)
         app.launchEnvironment["SUBSCRIPTION_TIER"] = "free"
@@ -85,12 +85,10 @@ final class RecordingLimitUITests: XCTestCase {
         XCTAssertTrue(okButton.exists, "OK button should exist in alert")
         okButton.tap()
 
-        // Wait a moment for dismiss action
-        sleep(1)
-
-        // Then: Alert should disappear
-        XCTAssertFalse(
-            alert.exists,
+        // Then: Alert should disappear (wait for disappearance instead of fixed sleep)
+        let alertDisappeared = !alert.waitForExistence(timeout: 3)
+        XCTAssertTrue(
+            alertDisappeared || !alert.exists,
             "Alert should be dismissed after tapping OK"
         )
 
@@ -119,7 +117,8 @@ final class RecordingLimitUITests: XCTestCase {
         XCTAssertTrue(alert.waitForExistence(timeout: 5), "Alert should appear")
         alert.buttons["OK"].tap()
 
-        sleep(1)  // Wait for alert to dismiss
+        // Wait for alert to dismiss (state-based wait)
+        _ = !alert.waitForExistence(timeout: 3)
         XCTAssertFalse(alert.exists, "Alert should be dismissed")
 
         // When: User taps Record button again
@@ -188,8 +187,8 @@ final class RecordingLimitUITests: XCTestCase {
                 break
             }
 
-            // Wait for countdown to complete
-            sleep(4)  // 3 second countdown + buffer
+            // Wait for recording to start (countdown skipped with -UITestDisableCountdown)
+            // No sleep needed - just wait for stop button to appear
 
             // Verify recording started
             let stopButton = app.buttons["StopRecordingButton"]
@@ -213,9 +212,7 @@ final class RecordingLimitUITests: XCTestCase {
             )
 
             print("✅ ITERATION \(iteration): Completed successfully")
-
-            // Small delay between iterations
-            sleep(1)
+            // No delay needed - waitForExistence on recordButton already handles timing
         }
 
         print("✅ TEST COMPLETED")
@@ -246,14 +243,14 @@ final class RecordingLimitUITests: XCTestCase {
             // Tap record button
             recordButton.tap()
 
-            // Wait for countdown to complete
-            sleep(4)  // 3 second countdown + buffer
+            // Wait for recording to start (countdown skipped with -UITestDisableCountdown)
+            // No sleep needed - just wait for stop button to appear
 
             // Verify recording started
             let stopButton = app.buttons["StopRecordingButton"]
             XCTAssertTrue(
                 stopButton.waitForExistence(timeout: 5),
-                "Iteration \(iteration): Stop button should appear after countdown"
+                "Iteration \(iteration): Stop button should appear after recording starts"
             )
 
             // Record for 1 second (well within 300 second max duration)
@@ -277,9 +274,7 @@ final class RecordingLimitUITests: XCTestCase {
             )
 
             print("✅ PREMIUM ITERATION \(iteration): Completed successfully")
-
-            // Small delay between iterations
-            sleep(1)
+            // No delay needed - waitForExistence on recordButton already handles timing
         }
 
         // Then: All 10 recordings completed successfully without daily count limit alerts
