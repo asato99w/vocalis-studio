@@ -59,28 +59,18 @@ final class AnalysisUITests: XCTestCase {
         let recordingInfoTitle = app.staticTexts["録音情報"]
         XCTAssertTrue(recordingInfoTitle.waitForExistence(timeout: 10), "Analysis screen should load")
 
-        // Screenshot: Analysis screen loading
-        let screenshot1 = app.screenshot()
-        let attachment1 = XCTAttachment(screenshot: screenshot1)
-        attachment1.name = "analysis_01_initial_load"
-        attachment1.lifetime = .keepAlways
-        add(attachment1)
-
         // 4. Wait for analysis to complete by checking for playback button
         let playPauseButtonWait = app.buttons["AnalysisPlayPauseButton"]
         XCTAssertTrue(playPauseButtonWait.waitForExistence(timeout: 10), "Analysis should complete and show playback controls")
 
-        // Screenshot: Analysis screen after loading
-        let screenshot2 = app.screenshot()
-        let attachment2 = XCTAttachment(screenshot: screenshot2)
-        attachment2.name = "analysis_02_after_loading"
-        attachment2.lifetime = .keepAlways
-        add(attachment2)
+        // Screenshot: Analysis screen after loading (consolidated from 2 screenshots)
+        let screenshot1 = app.screenshot()
+        let attachment1 = XCTAttachment(screenshot: screenshot1)
+        attachment1.name = "analysis_01_loaded"
+        attachment1.lifetime = .keepAlways
+        add(attachment1)
 
-        // 5. Verify Recording Info Panel is displayed by checking its title text
-        // Note: SwiftUI VStack accessibility identifiers may not work reliably, so we check for content instead
-        let recordingInfoTitle = app.staticTexts["録音情報"]
-        XCTAssertTrue(recordingInfoTitle.waitForExistence(timeout: 10), "Recording info panel title should be displayed")
+        // 5. Verify Recording Info Panel is displayed (already checked during navigation)
 
         // 6. Verify Playback controls exist
         let playPauseButton = app.buttons["AnalysisPlayPauseButton"]
@@ -101,36 +91,22 @@ final class AnalysisUITests: XCTestCase {
         // Wait a moment for playback to start (minimum time for valid state)
         Thread.sleep(forTimeInterval: 0.5)
 
-        // Screenshot: During playback
-        let screenshot3 = app.screenshot()
-        let attachment3 = XCTAttachment(screenshot: screenshot3)
-        attachment3.name = "analysis_03_during_playback"
-        attachment3.lifetime = .keepAlways
-        add(attachment3)
-
         // Verify button changed to pause state (still exists but may show different icon)
         XCTAssertTrue(playPauseButton.exists, "Play/Pause button should still exist during playback")
 
         // 8. Test playback controls - Pause
         playPauseButton.tap()
 
-        // Screenshot: After pause
-        let screenshot4 = app.screenshot()
-        let attachment4 = XCTAttachment(screenshot: screenshot4)
-        attachment4.name = "analysis_04_after_pause"
-        attachment4.lifetime = .keepAlways
-        add(attachment4)
-
         // 9. Test seek controls
         seekBackButton.tap()
         seekForwardButton.tap()
 
-        // Screenshot: After seek operations
-        let screenshot5 = app.screenshot()
-        let attachment5 = XCTAttachment(screenshot: screenshot5)
-        attachment5.name = "analysis_05_after_seek"
-        attachment5.lifetime = .keepAlways
-        add(attachment5)
+        // Screenshot: Final state after all playback control operations
+        let screenshot2 = app.screenshot()
+        let attachment2 = XCTAttachment(screenshot: screenshot2)
+        attachment2.name = "analysis_02_after_controls"
+        attachment2.lifetime = .keepAlways
+        add(attachment2)
 
         // 10. Verify navigation back works
         app.navigationBars.buttons.element(boundBy: 0).tap()
@@ -159,10 +135,10 @@ final class AnalysisUITests: XCTestCase {
         // Wait for expansion animation
         Thread.sleep(forTimeInterval: 1.0)
 
-        // Screenshot 1: Initial expanded view (should show bottom - low frequency, 0Hz side)
+        // Screenshot 1: Expanded view
         let screenshot1 = app.screenshot()
         let attachment1 = XCTAttachment(screenshot: screenshot1)
-        attachment1.name = "expanded_spectrogram_01_initial_bottom"
+        attachment1.name = "expanded_spectrogram_01_expanded"
         attachment1.lifetime = .keepAlways
         add(attachment1)
 
@@ -170,7 +146,6 @@ final class AnalysisUITests: XCTestCase {
         // Use coordinate-based swipe since SpectrogramCanvas might not be directly interactable
         let screenBounds = app.frame
         let centerX = screenBounds.width / 2
-        let centerY = screenBounds.height / 2
 
         // Swipe down (finger moves down, content scrolls up to reveal top frequencies)
         let startPoint1 = app.coordinate(withNormalizedOffset: CGVector(dx: centerX / screenBounds.width, dy: 0.3))
@@ -178,25 +153,11 @@ final class AnalysisUITests: XCTestCase {
         startPoint1.press(forDuration: 0.1, thenDragTo: endPoint1)
         Thread.sleep(forTimeInterval: 0.5)
 
-        // Screenshot 2: After scrolling up (should show higher frequencies)
-        let screenshot2 = app.screenshot()
-        let attachment2 = XCTAttachment(screenshot: screenshot2)
-        attachment2.name = "expanded_spectrogram_02_scrolled_up"
-        attachment2.lifetime = .keepAlways
-        add(attachment2)
-
         // Swipe up (finger moves up, content scrolls down back to bottom)
         let startPoint2 = app.coordinate(withNormalizedOffset: CGVector(dx: centerX / screenBounds.width, dy: 0.7))
         let endPoint2 = app.coordinate(withNormalizedOffset: CGVector(dx: centerX / screenBounds.width, dy: 0.3))
         startPoint2.press(forDuration: 0.1, thenDragTo: endPoint2)
         Thread.sleep(forTimeInterval: 0.5)
-
-        // Screenshot 3: After scrolling back down (should show bottom again)
-        let screenshot3 = app.screenshot()
-        let attachment3 = XCTAttachment(screenshot: screenshot3)
-        attachment3.name = "expanded_spectrogram_03_scrolled_back_down"
-        attachment3.lifetime = .keepAlways
-        add(attachment3)
 
         // Verify collapse button exists
         let collapseButton = app.buttons["SpectrogramCollapseButton"]
@@ -208,12 +169,12 @@ final class AnalysisUITests: XCTestCase {
         // Wait for collapse animation
         Thread.sleep(forTimeInterval: 1.0)
 
-        // Screenshot 4: After closing expanded view
-        let screenshot4 = app.screenshot()
-        let attachment4 = XCTAttachment(screenshot: screenshot4)
-        attachment4.name = "expanded_spectrogram_04_closed"
-        attachment4.lifetime = .keepAlways
-        add(attachment4)
+        // Screenshot 2: After closing expanded view
+        let screenshot2 = app.screenshot()
+        let attachment2 = XCTAttachment(screenshot: screenshot2)
+        attachment2.name = "expanded_spectrogram_02_closed"
+        attachment2.lifetime = .keepAlways
+        add(attachment2)
 
         // Verify we're back to normal view (spectrogram view should still exist)
         let spectrogramView = app.otherElements["SpectrogramView"]
@@ -376,36 +337,22 @@ final class AnalysisUITests: XCTestCase {
         let playPauseButton = app.buttons["AnalysisPlayPauseButton"]
         XCTAssertTrue(playPauseButton.waitForExistence(timeout: 10), "Play/Pause button should exist")
 
-        // Screenshot 1: Before playback (initial position)
-        let screenshot1 = app.screenshot()
-        let attachment1 = XCTAttachment(screenshot: screenshot1)
-        attachment1.name = "time_axis_01_before_playback"
-        attachment1.lifetime = .keepAlways
-        add(attachment1)
-
         // Start playback
         playPauseButton.tap()
 
         // Wait during playback (about 1 second into playback)
         Thread.sleep(forTimeInterval: 1.0)
 
-        // Screenshot 2: During playback (time axis should have scrolled)
-        let screenshot2 = app.screenshot()
-        let attachment2 = XCTAttachment(screenshot: screenshot2)
-        attachment2.name = "time_axis_02_during_playback"
-        attachment2.lifetime = .keepAlways
-        add(attachment2)
-
         // Wait for playback to complete (assuming recording is short, ~2-3 seconds)
         // We'll wait for the full recording duration plus buffer
         Thread.sleep(forTimeInterval: 3.0)
 
-        // Screenshot 3: After playback ends (should return to start position)
-        let screenshot3 = app.screenshot()
-        let attachment3 = XCTAttachment(screenshot: screenshot3)
-        attachment3.name = "time_axis_03_after_playback_end"
-        attachment3.lifetime = .keepAlways
-        add(attachment3)
+        // Screenshot: After playback ends (should return to start position)
+        let screenshot1 = app.screenshot()
+        let attachment1 = XCTAttachment(screenshot: screenshot1)
+        attachment1.name = "time_axis_after_playback"
+        attachment1.lifetime = .keepAlways
+        add(attachment1)
 
         // Verify play button is back to play state (not pause)
         XCTAssertTrue(playPauseButton.exists, "Play/Pause button should exist after playback ends")
@@ -425,37 +372,22 @@ final class AnalysisUITests: XCTestCase {
         let playPauseButton = app.buttons["AnalysisPlayPauseButton"]
         XCTAssertTrue(playPauseButton.waitForExistence(timeout: 10), "Play/Pause button should exist")
 
-        // Screenshot 1: Before playback
-        let screenshot1 = app.screenshot()
-        let attachment1 = XCTAttachment(screenshot: screenshot1)
-        attachment1.name = "playback_completion_01_before_play"
-        attachment1.lifetime = .keepAlways
-        add(attachment1)
-
         // Start playback
-
         playPauseButton.tap()
 
         // Wait a moment after playback starts
         Thread.sleep(forTimeInterval: 0.5)
 
-        // Screenshot 2: During playback (button should be in pause state)
-        let screenshot2 = app.screenshot()
-        let attachment2 = XCTAttachment(screenshot: screenshot2)
-        attachment2.name = "playback_completion_02_during_playback"
-        attachment2.lifetime = .keepAlways
-        add(attachment2)
-
         // Wait for playback to complete naturally
         // Recording is short (~1 second), wait 3 seconds to ensure completion
         Thread.sleep(forTimeInterval: 3.0)
 
-        // Screenshot 3: After playback completion
-        let screenshot3 = app.screenshot()
-        let attachment3 = XCTAttachment(screenshot: screenshot3)
-        attachment3.name = "playback_completion_03_after_completion"
-        attachment3.lifetime = .keepAlways
-        add(attachment3)
+        // Screenshot: After playback completion
+        let screenshot1 = app.screenshot()
+        let attachment1 = XCTAttachment(screenshot: screenshot1)
+        attachment1.name = "playback_completion_after"
+        attachment1.lifetime = .keepAlways
+        add(attachment1)
 
         // Verify button state after completion
         // Expected: Button should be back to play state (not pause state)
@@ -500,13 +432,6 @@ final class AnalysisUITests: XCTestCase {
         print("🔍 DEBUG: Final sliderValue = \(sliderValue), checking if < 0.1")
         XCTAssertLessThan(sliderValue, 0.1,
                          "🔴 RED TEST: Slider should be near 0.0 (beginning) after playback completion, but found: \(sliderValue). This confirms the bug where currentTime does not reset to 0.")
-
-        // Screenshot 4: After verifying state
-        let screenshot4 = app.screenshot()
-        let attachment4 = XCTAttachment(screenshot: screenshot4)
-        attachment4.name = "playback_completion_04_verification"
-        attachment4.lifetime = .keepAlways
-        add(attachment4)
     }
 
     /// Test: Pause during playback - currentTime should be preserved
@@ -532,27 +457,12 @@ final class AnalysisUITests: XCTestCase {
         let playPauseButton = app.buttons["AnalysisPlayPauseButton"]
         XCTAssertTrue(playPauseButton.waitForExistence(timeout: 10), "Play/Pause button should exist")
 
-        // Screenshot 1: Before playback
-        let screenshot1 = app.screenshot()
-        let attachment1 = XCTAttachment(screenshot: screenshot1)
-        attachment1.name = "pause_preserve_01_before_play"
-        attachment1.lifetime = .keepAlways
-        add(attachment1)
-
         // Start playback
-
         playPauseButton.tap()
 
         // Let it play for 0.2 seconds to ensure we pause mid-playback
         // Shorter wait time to account for UI test tap delay (~0.7s)
         Thread.sleep(forTimeInterval: 0.2)
-
-        // Screenshot 2: During playback (before pause)
-        let screenshot2 = app.screenshot()
-        let attachment2 = XCTAttachment(screenshot: screenshot2)
-        attachment2.name = "pause_preserve_02_during_playback"
-        attachment2.lifetime = .keepAlways
-        add(attachment2)
 
         // Get currentTime before pause (from slider value)
         let progressSlider = app.sliders["AnalysisProgressSlider"]
@@ -569,13 +479,6 @@ final class AnalysisUITests: XCTestCase {
         let sliderValueAfterPause = progressSlider.value as? String ?? "0%"
         print("🔍 DEBUG: Slider value immediately after pause: \(sliderValueAfterPause)")
 
-        // Screenshot 3: After pause
-        let screenshot3 = app.screenshot()
-        let attachment3 = XCTAttachment(screenshot: screenshot3)
-        attachment3.name = "pause_preserve_03_after_pause"
-        attachment3.lifetime = .keepAlways
-        add(attachment3)
-
         // CRITICAL: Wait additional time to verify currentTime doesn't continue advancing
         Thread.sleep(forTimeInterval: 1.0)
 
@@ -583,12 +486,12 @@ final class AnalysisUITests: XCTestCase {
         let sliderValueAfter1Second = progressSlider.value as? String ?? "0%"
         print("🔍 DEBUG: Slider value 1 second after pause: \(sliderValueAfter1Second)")
 
-        // Screenshot 4: 1 second after pause
-        let screenshot4 = app.screenshot()
-        let attachment4 = XCTAttachment(screenshot: screenshot4)
-        attachment4.name = "pause_preserve_04_one_second_later"
-        attachment4.lifetime = .keepAlways
-        add(attachment4)
+        // Screenshot: Final state after pause verification
+        let screenshot1 = app.screenshot()
+        let attachment1 = XCTAttachment(screenshot: screenshot1)
+        attachment1.name = "pause_preserve_final"
+        attachment1.lifetime = .keepAlways
+        add(attachment1)
 
         // Verify currentTime is preserved (doesn't advance after pause)
         XCTAssertEqual(sliderValueAfter1Second, sliderValueAfterPause,
@@ -626,13 +529,6 @@ final class AnalysisUITests: XCTestCase {
         // Additional wait for data to stabilize
         Thread.sleep(forTimeInterval: 2.0)
 
-        // Screenshot 1: Initial state
-        let screenshot1 = app.screenshot()
-        let attachment1 = XCTAttachment(screenshot: screenshot1)
-        attachment1.name = "spectrogram_01_initial_state"
-        attachment1.lifetime = .keepAlways
-        add(attachment1)
-
         // Perform vertical scroll (simulate drag down)
         let spectrogramCenter = spectrogramView.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
         let spectrogramBottom = spectrogramView.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.8))
@@ -640,25 +536,18 @@ final class AnalysisUITests: XCTestCase {
 
         Thread.sleep(forTimeInterval: 1.0)
 
-        // Screenshot 2: After scrolling down (showing lower frequencies)
-        let screenshot2 = app.screenshot()
-        let attachment2 = XCTAttachment(screenshot: screenshot2)
-        attachment2.name = "spectrogram_02_scrolled_down"
-        attachment2.lifetime = .keepAlways
-        add(attachment2)
-
         // Scroll up to show higher frequencies
         let spectrogramTop = spectrogramView.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2))
         spectrogramBottom.press(forDuration: 0.1, thenDragTo: spectrogramTop)
 
         Thread.sleep(forTimeInterval: 1.0)
 
-        // Screenshot 3: After scrolling up (showing higher frequencies)
-        let screenshot3 = app.screenshot()
-        let attachment3 = XCTAttachment(screenshot: screenshot3)
-        attachment3.name = "spectrogram_03_scrolled_up"
-        attachment3.lifetime = .keepAlways
-        add(attachment3)
+        // Screenshot: Final state after scroll operations
+        let screenshot1 = app.screenshot()
+        let attachment1 = XCTAttachment(screenshot: screenshot1)
+        attachment1.name = "spectrogram_viewport_final"
+        attachment1.lifetime = .keepAlways
+        add(attachment1)
     }
 
     /// Test: Pause→Resume→Completion - Button and currentTime should behave correctly after completion
@@ -674,49 +563,19 @@ final class AnalysisUITests: XCTestCase {
         let playPauseButton = app.buttons["AnalysisPlayPauseButton"]
         XCTAssertTrue(playPauseButton.waitForExistence(timeout: 10), "Play/Pause button should exist")
 
-        // Screenshot 1: Before playback
-        let screenshot1 = app.screenshot()
-        let attachment1 = XCTAttachment(screenshot: screenshot1)
-        attachment1.name = "pause_resume_completion_01_before_play"
-        attachment1.lifetime = .keepAlways
-        add(attachment1)
-
-        // Get play/pause button
-
         // Start playback
         playPauseButton.tap()
 
         // Wait briefly, then pause
         Thread.sleep(forTimeInterval: 0.5)
 
-        // Screenshot 2: During playback (before pause)
-        let screenshot2 = app.screenshot()
-        let attachment2 = XCTAttachment(screenshot: screenshot2)
-        attachment2.name = "pause_resume_completion_02_during_playback"
-        attachment2.lifetime = .keepAlways
-        add(attachment2)
-
         // Pause playback
         playPauseButton.tap()
 
         Thread.sleep(forTimeInterval: 0.2)
 
-        // Screenshot 3: After pause
-        let screenshot3 = app.screenshot()
-        let attachment3 = XCTAttachment(screenshot: screenshot3)
-        attachment3.name = "pause_resume_completion_03_after_pause"
-        attachment3.lifetime = .keepAlways
-        add(attachment3)
-
         // Resume playback
         playPauseButton.tap()
-
-        // Screenshot 4: After resume
-        let screenshot4 = app.screenshot()
-        let attachment4 = XCTAttachment(screenshot: screenshot4)
-        attachment4.name = "pause_resume_completion_04_after_resume"
-        attachment4.lifetime = .keepAlways
-        add(attachment4)
 
         // Wait for playback to complete naturally
         // Recording is ~1.6 seconds total
@@ -724,12 +583,12 @@ final class AnalysisUITests: XCTestCase {
         // Wait 2.5 seconds to ensure completion
         Thread.sleep(forTimeInterval: 2.5)
 
-        // Screenshot 5: After playback completion
-        let screenshot5 = app.screenshot()
-        let attachment5 = XCTAttachment(screenshot: screenshot5)
-        attachment5.name = "pause_resume_completion_05_after_completion"
-        attachment5.lifetime = .keepAlways
-        add(attachment5)
+        // Screenshot: After pause→resume→completion
+        let screenshot1 = app.screenshot()
+        let attachment1 = XCTAttachment(screenshot: screenshot1)
+        attachment1.name = "pause_resume_completion_after"
+        attachment1.lifetime = .keepAlways
+        add(attachment1)
 
         // Verify button state after completion
         // Expected: Button should be back to play state (not pause state)
@@ -757,12 +616,5 @@ final class AnalysisUITests: XCTestCase {
         print("🔍 DEBUG: Final sliderValue after pause→resume→completion = \(sliderValue)")
         XCTAssertLessThan(sliderValue, 0.1,
                          "🔴 RED TEST: Slider should be near 0.0 after pause→resume→completion, but found: \(sliderValue). Bug: currentTime does not reset correctly after pause→resume→completion.")
-
-        // Screenshot 6: After verification
-        let screenshot6 = app.screenshot()
-        let attachment6 = XCTAttachment(screenshot: screenshot6)
-        attachment6.name = "pause_resume_completion_06_verification"
-        attachment6.lifetime = .keepAlways
-        add(attachment6)
     }
 }
