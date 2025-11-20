@@ -136,14 +136,22 @@ public class DependencyContainer {
     // MARK: - Presentation Layer
 
     public lazy var recordingViewModel: RecordingViewModel = {
-        RecordingViewModel(
+        #if DEBUG
+        let disableCountdown = CommandLine.arguments.contains("-UITestDisableCountdown")
+        let countdownDuration = disableCountdown ? 0 : 3
+        #else
+        let countdownDuration = 3
+        #endif
+
+        return RecordingViewModel(
             startRecordingUseCase: startRecordingUseCase,
             startRecordingWithScaleUseCase: startRecordingWithScaleUseCase,
             stopRecordingUseCase: stopRecordingUseCase,
             audioPlayer: audioPlayer,
             pitchDetector: pitchDetector,
             scalePlaybackCoordinator: scalePlaybackCoordinator,
-            subscriptionViewModel: subscriptionViewModel
+            subscriptionViewModel: subscriptionViewModel,
+            countdownDuration: countdownDuration
         )
     }()
 
