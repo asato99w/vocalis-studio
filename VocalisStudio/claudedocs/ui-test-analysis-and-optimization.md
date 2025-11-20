@@ -1004,12 +1004,12 @@ sleep(0.2)  // 0.2秒録音（制限チェックには十分）
 | 2025-11-20 | Thread.sleep → waitForExistence + カウントダウン待ち削減 | SettingsUITests | ~8秒削減（カウントダウン待ち → stopButton待機）|
 | 2025-11-20 | sleep → waitForExistence | PaywallUITests | ~8秒削減（StoreKit処理を状態ベースに）|
 | 2025-11-20 | スクリーンショット削減 | AnalysisUITests | ~30秒削減（33枚 → 13枚、中間状態削除）|
+| 2025-11-20 | 録音時間短縮（5秒 → 3秒） | PlaybackUITests | ~4秒削減（2箇所の録音時間短縮）|
 
 ### 未着手の改善（優先順位順）
 | 優先度 | 改善項目 | 対象ファイル | 期待効果 |
 |--------|----------|-------------|---------|
 | 1 | 録音データ共有化 | RecordingListUITests, AnalysisUITests | 72秒削減 |
-| 2 | 録音時間短縮 | PlaybackUITests, RecordingLimitUITests | 22秒削減 |
 | 3 | テストスキーム作成（Critical/Smoke/Full） | 全テスト | 開発速度向上 |
 | 4 | テストクラス分割と並列実行最適化 | AnalysisUITests | 理論値: 152秒 → 60秒 |
 
@@ -1020,10 +1020,10 @@ sleep(0.2)  // 0.2秒録音（制限チェックには十分）
 
 ### Phase 2: 構造的改善（3-5日）
 1. setUp/setUpWithErrorでの録音共有化（RecordingListUITests, AnalysisUITests）
-2. スクリーンショット削減（AnalysisUITests）
-3. 録音時間短縮（PlaybackUITests, RecordingLimitUITests）
+2. ~~スクリーンショット削減（AnalysisUITests）~~ ✅ 完了（~30秒削減）
+3. ~~録音時間短縮（PlaybackUITests, RecordingLimitUITests）~~ ✅ 完了（~8秒削減）
 
-**期待効果**: 追加90秒削減（累計37%高速化）
+**期待効果**: 追加52秒削減（累計40%高速化予定、残りは録音共有化）
 
 ### Phase 3: 高度な最適化（1週間）
 1. テストスキーム作成（Critical/Smoke/Full）

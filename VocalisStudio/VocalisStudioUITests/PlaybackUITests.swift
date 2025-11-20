@@ -53,9 +53,9 @@ final class PlaybackUITests: XCTestCase {
         let stopButton = app.buttons["StopRecordingButton"]
         XCTAssertTrue(stopButton.waitForExistence(timeout: 10), "Stop recording button should appear")
 
-        // Continue recording for longer to allow playback verification
-        // Need 5+ seconds of actual recording time to safely verify playback state
-        Thread.sleep(forTimeInterval: 5.0)
+        // Continue recording for playback verification
+        // 3 seconds needed to allow playback initialization (2s) + buffer for verification
+        Thread.sleep(forTimeInterval: 3.0)
 
         stopButton.tap()
 
@@ -131,9 +131,9 @@ final class PlaybackUITests: XCTestCase {
         let stopButton = app.buttons["StopRecordingButton"]
         XCTAssertTrue(stopButton.waitForExistence(timeout: 10), "Stop recording button should appear during recording")
 
-        // Continue recording for longer to allow playback verification
-        // Need 5+ seconds of actual recording time to safely verify playback state
-        Thread.sleep(forTimeInterval: 5.0)
+        // Continue recording for playback verification
+        // 3 seconds needed to allow playback initialization (2s) + buffer for verification
+        Thread.sleep(forTimeInterval: 3.0)
 
         // 📸 Screenshot 2: During recording
         let screenshot2 = app.screenshot()
