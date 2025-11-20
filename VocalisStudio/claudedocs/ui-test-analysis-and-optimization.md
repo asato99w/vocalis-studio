@@ -1006,6 +1006,7 @@ sleep(0.2)  // 0.2秒録音（制限チェックには十分）
 | 2025-11-20 | スクリーンショット削減 | AnalysisUITests | ~30秒削減（33枚 → 13枚、中間状態削除）|
 | 2025-11-20 | 録音時間短縮（5秒 → 3秒） | PlaybackUITests | ~4秒削減（2箇所の録音時間短縮）|
 | 2025-11-20 | 録音時間短縮（3秒 → 1秒）+ 再生待ち短縮 | RecordingListUITests | ~4秒削減（testPlaybackPositionSliderAppearsWhenPlaying）|
+| 2025-11-20 | ヘルパーメソッドによるコード整理 | RecordingListUITests | 可読性・保守性向上（createRecordingAndNavigateToListヘルパー追加）|
 
 ### 未着手の改善（優先順位順）
 | 優先度 | 改善項目 | 対象ファイル | 期待効果 |
