@@ -95,13 +95,18 @@ public struct RecordingListView: View {
                     },
                     onAnalyze: {
                         selectedRecording = recording
-                    },
-                    onDelete: {
+                    }
+                )
+                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                    Button(role: .destructive) {
                         Task {
                             await viewModel.deleteRecording(recording)
                         }
+                    } label: {
+                        Label("delete".localized, systemImage: "trash")
                     }
-                )
+                    .accessibilityIdentifier("DeleteRecordingButton_\(recording.id.value.uuidString)")
+                }
             }
         }
     }
@@ -116,9 +121,6 @@ private struct RecordingRow: View {
     @Binding var selectedRecording: Recording?
     let onTap: () -> Void
     let onAnalyze: () -> Void
-    let onDelete: () -> Void
-
-    @State private var showDeleteConfirmation = false
 
     var body: some View {
         HStack(spacing: 0) {
@@ -156,24 +158,14 @@ private struct RecordingRow: View {
 
                     Spacer()
 
-                    // Action buttons (subtle, right-aligned)
-                    HStack(spacing: 12) {
-                        Button(action: onAnalyze) {
-                            Image(systemName: "waveform.path.ecg")
-                                .foregroundColor(ColorPalette.accent.opacity(0.8))
-                                .font(.subheadline)
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .accessibilityIdentifier("AnalysisNavigationLink_\(recording.id.value.uuidString)")
-
-                        Button(action: { showDeleteConfirmation = true }) {
-                            Image(systemName: "trash")
-                                .foregroundColor(ColorPalette.text.opacity(0.4))
-                                .font(.subheadline)
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .accessibilityIdentifier("DeleteRecordingButton_\(recording.id.value.uuidString)")
+                    // Analysis button (subtle, right-aligned)
+                    Button(action: onAnalyze) {
+                        Image(systemName: "waveform.path.ecg")
+                            .foregroundColor(ColorPalette.accent.opacity(0.8))
+                            .font(.subheadline)
                     }
+                    .buttonStyle(PlainButtonStyle())
+                    .accessibilityIdentifier("AnalysisNavigationLink_\(recording.id.value.uuidString)")
                 }
             }
             .padding(.vertical, 12)
@@ -192,21 +184,6 @@ private struct RecordingRow: View {
                 .stroke(isSelected ? ColorPalette.primary.opacity(0.3) : Color.clear, lineWidth: 1)
         )
         .accessibilityIdentifier("RecordingRow_\(recording.id.value.uuidString)")
-        .confirmationDialog(
-            "list.delete_confirmation_title".localized,
-            isPresented: $showDeleteConfirmation,
-            titleVisibility: .visible
-        ) {
-            Button("delete".localized, role: .destructive) {
-                onDelete()
-            }
-            .accessibilityIdentifier("DeleteConfirmButton")
-
-            Button("cancel".localized, role: .cancel) {}
-                .accessibilityIdentifier("DeleteCancelButton")
-        } message: {
-            Text("list.delete_confirmation_message".localized)
-        }
     }
 
     /// Format time in seconds to MM:SS format
