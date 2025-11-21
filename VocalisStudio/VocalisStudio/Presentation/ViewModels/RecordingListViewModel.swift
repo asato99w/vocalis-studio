@@ -85,10 +85,27 @@ public class RecordingListViewModel: ObservableObject {
         }
     }
 
-    /// Stop playback
+    /// Pause playback (keeps position)
+    public func pausePlayback() {
+        audioPlayer.pause()
+        playingRecordingId = nil
+    }
+
+    /// Resume playback from current position
+    public func resumePlayback() {
+        guard let recording = selectedRecording else { return }
+        audioPlayer.resume()
+        playingRecordingId = recording.id
+    }
+
+    /// Stop playback completely (resets position)
     public func stopPlayback() async {
         await audioPlayer.stop()
         playingRecordingId = nil
+        if let recording = selectedRecording {
+            currentPlaybackPosition[recording.id] = 0.0
+        }
+        currentTime = 0.0
     }
 
     /// Delete a recording
@@ -153,18 +170,20 @@ public class RecordingListViewModel: ObservableObject {
 
     /// Select a recording and start playback
     public func selectAndPlay(_ recording: Recording) async {
-        // If same recording is selected, toggle playback
+        // If same recording is selected, toggle playback (pause/resume)
         if selectedRecording?.id == recording.id {
             if playingRecordingId == recording.id {
-                await stopPlayback()
+                // Currently playing -> pause
+                pausePlayback()
             } else {
-                await playRecording(recording)
+                // Currently paused -> resume
+                resumePlayback()
                 await startPositionTracking()
             }
             return
         }
 
-        // Stop current playback if any
+        // Different recording selected - stop current and start new
         if playingRecordingId != nil {
             await stopPlayback()
         }
@@ -175,14 +194,16 @@ public class RecordingListViewModel: ObservableObject {
         await startPositionTracking()
     }
 
-    /// Toggle playback for selected recording
+    /// Toggle playback for selected recording (pause/resume)
     public func togglePlayback() async {
-        guard let recording = selectedRecording else { return }
+        guard selectedRecording != nil else { return }
 
-        if await audioPlayer.isPlaying {
-            await stopPlayback()
+        if audioPlayer.isPlaying {
+            // Currently playing -> pause
+            pausePlayback()
         } else {
-            await playRecording(recording)
+            // Currently paused -> resume
+            resumePlayback()
             await startPositionTracking()
         }
     }
