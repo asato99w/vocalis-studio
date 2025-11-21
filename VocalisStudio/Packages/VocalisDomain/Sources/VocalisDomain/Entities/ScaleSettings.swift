@@ -32,8 +32,33 @@ public struct ScaleSettings: Equatable, Codable, Hashable {
     public let endNote: MIDINote
     public let notePattern: NotePattern
     public let tempo: Tempo
-    public let ascendingCount: Int  // Number of chromatic steps to ascend
+    public let keyProgressionPattern: KeyProgressionPattern
+    public let ascendingKeyCount: Int   // Number of chromatic steps to ascend
+    public let descendingKeyCount: Int  // Number of chromatic steps to descend
 
+    /// Backwards compatibility: ascendingCount maps to ascendingKeyCount
+    public var ascendingCount: Int { ascendingKeyCount }
+
+    /// New initializer with full key progression control
+    public init(
+        startNote: MIDINote,
+        endNote: MIDINote,
+        notePattern: NotePattern,
+        tempo: Tempo,
+        keyProgressionPattern: KeyProgressionPattern,
+        ascendingKeyCount: Int,
+        descendingKeyCount: Int
+    ) {
+        self.startNote = startNote
+        self.endNote = endNote
+        self.notePattern = notePattern
+        self.tempo = tempo
+        self.keyProgressionPattern = keyProgressionPattern
+        self.ascendingKeyCount = ascendingKeyCount
+        self.descendingKeyCount = descendingKeyCount
+    }
+
+    /// Backwards compatible initializer
     public init(
         startNote: MIDINote,
         endNote: MIDINote,
@@ -45,7 +70,9 @@ public struct ScaleSettings: Equatable, Codable, Hashable {
         self.endNote = endNote
         self.notePattern = notePattern
         self.tempo = tempo
-        self.ascendingCount = ascendingCount
+        self.keyProgressionPattern = .ascendingThenDescending
+        self.ascendingKeyCount = ascendingCount
+        self.descendingKeyCount = ascendingCount  // Mirror ascending for backwards compatibility
     }
 
     /// Validate scale settings
@@ -107,28 +134,14 @@ public struct ScaleSettings: Equatable, Codable, Hashable {
     }
 
     /// Generate scale elements with key change chords ("dan-daan" style)
-    /// Ascends by chromatic steps (ascendingCount times), then descends back to start
+    /// Follows keyProgressionPattern with specified ascending/descending counts
     /// First scale: [chord] daan → scale
     /// Subsequent: [prev chord] dan → [next chord] daan → scale
     public func generateScaleWithKeyChange() -> [ScaleElement] {
         var elements: [ScaleElement] = []
 
-        // Generate ascending sequence
-        var ascendingRoots: [UInt8] = []
-        var currentRoot = startNote.value
-        for _ in 0..<ascendingCount {
-            ascendingRoots.append(currentRoot)
-            currentRoot += 1  // Chromatic step up
-        }
-
-        // Generate descending sequence (reverse, excluding duplicate at peak)
-        var descendingRoots = Array(ascendingRoots.reversed())
-        if descendingRoots.count > 1 {
-            descendingRoots.removeFirst()  // Remove duplicate peak
-        }
-
-        // Combine ascending + descending
-        let allRoots = ascendingRoots + descendingRoots
+        // Generate root note sequence based on pattern
+        let allRoots = generateKeyRoots()
 
         // Generate elements for each root
         var previousRoot: UInt8? = nil
@@ -157,6 +170,63 @@ public struct ScaleSettings: Equatable, Codable, Hashable {
         }
 
         return elements
+    }
+
+    /// Generate the sequence of root notes based on key progression pattern
+    private func generateKeyRoots() -> [UInt8] {
+        let start = startNote.value
+
+        switch keyProgressionPattern {
+        case .ascendingOnly:
+            // Just ascending: C → C# → D → ...
+            var roots: [UInt8] = []
+            for i in 0..<ascendingKeyCount {
+                roots.append(start + UInt8(i))
+            }
+            return roots
+
+        case .descendingOnly:
+            // Just descending: C → B → Bb → ...
+            var roots: [UInt8] = []
+            for i in 0..<descendingKeyCount {
+                roots.append(start - UInt8(i))
+            }
+            return roots
+
+        case .ascendingThenDescending:
+            // Ascending then descending: C → C# → D → C# → C
+            var ascendingRoots: [UInt8] = []
+            for i in 0..<ascendingKeyCount {
+                ascendingRoots.append(start + UInt8(i))
+            }
+
+            // Descending (skip peak to avoid duplicate)
+            var descendingRoots: [UInt8] = []
+            if let peak = ascendingRoots.last {
+                for i in 1...descendingKeyCount {
+                    descendingRoots.append(peak - UInt8(i))
+                }
+            }
+
+            return ascendingRoots + descendingRoots
+
+        case .descendingThenAscending:
+            // Descending then ascending: C → B → Bb → B → C
+            var descendingRoots: [UInt8] = []
+            for i in 0..<descendingKeyCount {
+                descendingRoots.append(start - UInt8(i))
+            }
+
+            // Ascending (skip valley to avoid duplicate)
+            var ascendingRoots: [UInt8] = []
+            if let valley = descendingRoots.last {
+                for i in 1...ascendingKeyCount {
+                    ascendingRoots.append(valley + UInt8(i))
+                }
+            }
+
+            return descendingRoots + ascendingRoots
+        }
     }
 
     /// Create major triad chord from root note

@@ -28,6 +28,14 @@
 "recording.tempo_unit" = "BPM";
 "recording.ascending_count_label" = "Ascending Count";
 "recording.ascending_count_unit" = "times";
+"recording.pattern_label" = "Progression Pattern";
+"recording.pattern_ascending_only" = "Ascending Only";
+"recording.pattern_descending_only" = "Descending Only";
+"recording.pattern_ascending_then_descending" = "Ascending → Descending";
+"recording.pattern_descending_then_ascending" = "Descending → Ascending";
+"recording.key_ascending_count" = "Key Ascending";
+"recording.key_descending_count" = "Key Descending";
+"recording.key_count_unit" = "times";
 "recording.hide_settings" = "Hide Settings";
 "recording.show_settings" = "Show Settings";
 "recording.realtime_spectrum_title" = "Real-time Spectrum";

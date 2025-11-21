@@ -171,4 +171,134 @@ final class ScaleSettingsTests: XCTestCase {
             }
         }
     }
+
+    // MARK: - Key Progression Pattern Tests
+
+    func testKeyProgressionPattern_AscendingOnly() throws {
+        // Given: Ascending only pattern with 3 steps
+        let settings = ScaleSettings(
+            startNote: try MIDINote(60),  // C4
+            endNote: try MIDINote(72),
+            notePattern: .fiveToneScale,
+            tempo: .standard,
+            keyProgressionPattern: .ascendingOnly,
+            ascendingKeyCount: 3,
+            descendingKeyCount: 0
+        )
+
+        // When
+        let elements = settings.generateScaleWithKeyChange()
+
+        // Then: Should have 3 scales (C4, C#4, D4)
+        // Each scale: chord + silence + 9 notes = 11 elements
+        // First scale: chordLong + silence + 9 notes = 11
+        // Following: chordShort + chordLong + silence + 9 notes = 12
+        // Total: 11 + 12 + 12 = 35 elements
+        let scaleNoteCount = elements.filter { if case .scaleNote = $0 { return true } else { return false } }.count
+        XCTAssertEqual(scaleNoteCount, 27)  // 3 scales × 9 notes
+    }
+
+    func testKeyProgressionPattern_DescendingOnly() throws {
+        // Given: Descending only pattern with 3 steps
+        let settings = ScaleSettings(
+            startNote: try MIDINote(60),  // C4
+            endNote: try MIDINote(72),
+            notePattern: .fiveToneScale,
+            tempo: .standard,
+            keyProgressionPattern: .descendingOnly,
+            ascendingKeyCount: 0,
+            descendingKeyCount: 3
+        )
+
+        // When
+        let elements = settings.generateScaleWithKeyChange()
+
+        // Then: Should have 3 scales going down (C4, B3, Bb3)
+        let scaleNoteCount = elements.filter { if case .scaleNote = $0 { return true } else { return false } }.count
+        XCTAssertEqual(scaleNoteCount, 27)  // 3 scales × 9 notes
+
+        // Verify descending pattern by checking root notes
+        var roots: [UInt8] = []
+        for element in elements {
+            if case .chordLong(let notes) = element {
+                roots.append(notes[0].value)
+            }
+        }
+        XCTAssertEqual(roots, [60, 59, 58])  // C4, B3, Bb3
+    }
+
+    func testKeyProgressionPattern_AscendingThenDescending() throws {
+        // Given: Ascending then descending pattern
+        let settings = ScaleSettings(
+            startNote: try MIDINote(60),  // C4
+            endNote: try MIDINote(72),
+            notePattern: .fiveToneScale,
+            tempo: .standard,
+            keyProgressionPattern: .ascendingThenDescending,
+            ascendingKeyCount: 3,
+            descendingKeyCount: 2
+        )
+
+        // When
+        let elements = settings.generateScaleWithKeyChange()
+
+        // Then: Should have 5 scales (up: C4→C#4→D4, down: C#4→C4)
+        // Note: Peak (D4) is included once, not duplicated
+        let scaleNoteCount = elements.filter { if case .scaleNote = $0 { return true } else { return false } }.count
+        XCTAssertEqual(scaleNoteCount, 45)  // 5 scales × 9 notes
+
+        // Verify key progression order
+        var roots: [UInt8] = []
+        for element in elements {
+            if case .chordLong(let notes) = element {
+                roots.append(notes[0].value)
+            }
+        }
+        XCTAssertEqual(roots, [60, 61, 62, 61, 60])  // C4, C#4, D4, C#4, C4
+    }
+
+    func testKeyProgressionPattern_DescendingThenAscending() throws {
+        // Given: Descending then ascending pattern
+        let settings = ScaleSettings(
+            startNote: try MIDINote(60),  // C4
+            endNote: try MIDINote(72),
+            notePattern: .fiveToneScale,
+            tempo: .standard,
+            keyProgressionPattern: .descendingThenAscending,
+            ascendingKeyCount: 2,
+            descendingKeyCount: 3
+        )
+
+        // When
+        let elements = settings.generateScaleWithKeyChange()
+
+        // Then: Should have 5 scales (down: C4→B3→Bb3, up: B3→C4)
+        let scaleNoteCount = elements.filter { if case .scaleNote = $0 { return true } else { return false } }.count
+        XCTAssertEqual(scaleNoteCount, 45)  // 5 scales × 9 notes
+
+        // Verify key progression order
+        var roots: [UInt8] = []
+        for element in elements {
+            if case .chordLong(let notes) = element {
+                roots.append(notes[0].value)
+            }
+        }
+        XCTAssertEqual(roots, [60, 59, 58, 59, 60])  // C4, B3, Bb3, B3, C4
+    }
+
+    func testBackwardsCompatibility_OldInitializer() throws {
+        // Given: Using old initializer (should default to ascendingThenDescending)
+        let settings = ScaleSettings(
+            startNote: .middleC,
+            endNote: .hiC,
+            notePattern: .fiveToneScale,
+            tempo: .standard,
+            ascendingCount: 3
+        )
+
+        // Then: Should have default pattern
+        XCTAssertEqual(settings.keyProgressionPattern, .ascendingThenDescending)
+        XCTAssertEqual(settings.ascendingKeyCount, 3)
+        XCTAssertEqual(settings.descendingKeyCount, 3)  // Mirrors ascending for backwards compatibility
+    }
 }

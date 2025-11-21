@@ -13,7 +13,15 @@ public class RecordingSettingsViewModel: ObservableObject {
     @Published public var scaleType: ScaleType = .fiveTone
     @Published public var startPitchIndex: Int = 12 // C3 (MIDI 48)
     @Published public var tempo: Int = 120
-    @Published public var ascendingCount: Int = 3
+    @Published public var keyProgressionPattern: KeyProgressionPattern = .ascendingThenDescending
+    @Published public var ascendingKeyCount: Int = 3
+    @Published public var descendingKeyCount: Int = 3
+
+    /// Backwards compatibility
+    public var ascendingCount: Int {
+        get { ascendingKeyCount }
+        set { ascendingKeyCount = newValue }
+    }
 
     public let availablePitches = [
         "C2", "C#2", "D2", "D#2", "E2", "F2", "F#2", "G2", "G#2", "A2", "A#2", "B2",
@@ -25,6 +33,16 @@ public class RecordingSettingsViewModel: ObservableObject {
 
     public var isSettingsEnabled: Bool {
         scaleType != .off
+    }
+
+    /// Whether to show ascending key count control
+    public var showsAscendingKeyCount: Bool {
+        keyProgressionPattern.showsAscendingCount
+    }
+
+    /// Whether to show descending key count control
+    public var showsDescendingKeyCount: Bool {
+        keyProgressionPattern.showsDescendingCount
     }
 
     public init() {}
@@ -62,7 +80,9 @@ public class RecordingSettingsViewModel: ObservableObject {
                 endNote: try MIDINote(UInt8(endNoteNumber)),
                 notePattern: notePattern,
                 tempo: try Tempo(secondsPerNote: secondsPerNote),
-                ascendingCount: ascendingCount  // Use UI setting
+                keyProgressionPattern: keyProgressionPattern,
+                ascendingKeyCount: ascendingKeyCount,
+                descendingKeyCount: descendingKeyCount
             )
             return settings
         } catch {

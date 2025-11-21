@@ -28,6 +28,14 @@
 "recording.tempo_unit" = "BPM";
 "recording.ascending_count_label" = "上昇回数";
 "recording.ascending_count_unit" = "回";
+"recording.pattern_label" = "進行パターン";
+"recording.pattern_ascending_only" = "上昇のみ";
+"recording.pattern_descending_only" = "下降のみ";
+"recording.pattern_ascending_then_descending" = "上昇→下降";
+"recording.pattern_descending_then_ascending" = "下降→上昇";
+"recording.key_ascending_count" = "キー上昇";
+"recording.key_descending_count" = "キー下降";
+"recording.key_count_unit" = "回";
 "recording.hide_settings" = "設定を隠す";
 "recording.show_settings" = "設定を表示";
 "recording.realtime_spectrum_title" = "リアルタイムスペクトル";

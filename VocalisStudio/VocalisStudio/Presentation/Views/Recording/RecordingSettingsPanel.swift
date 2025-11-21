@@ -66,19 +66,57 @@ struct RecordingSettingsPanel: View {
                     .disabled(!viewModel.isSettingsEnabled)
                 }
 
-                // Ascending count
+                // Key progression pattern
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("recording.ascending_count_label".localized)
+                    Text("recording.pattern_label".localized)
                         .font(.caption)
                         .foregroundColor(ColorPalette.text.opacity(0.6))
 
-                    Picker("recording.ascending_count_label".localized, selection: $viewModel.ascendingCount) {
-                        ForEach(1...10, id: \.self) { count in
-                            Text("\(count) " + "recording.ascending_count_unit".localized).tag(count)
-                        }
+                    Picker("recording.pattern_label".localized, selection: $viewModel.keyProgressionPattern) {
+                        Text("recording.pattern_ascending_only".localized).tag(KeyProgressionPattern.ascendingOnly)
+                        Text("recording.pattern_descending_only".localized).tag(KeyProgressionPattern.descendingOnly)
+                        Text("recording.pattern_ascending_then_descending".localized).tag(KeyProgressionPattern.ascendingThenDescending)
+                        Text("recording.pattern_descending_then_ascending".localized).tag(KeyProgressionPattern.descendingThenAscending)
                     }
                     .pickerStyle(.menu)
                     .disabled(!viewModel.isSettingsEnabled)
+                    .accessibilityIdentifier("KeyProgressionPatternPicker")
+                }
+
+                // Ascending key count
+                if viewModel.showsAscendingKeyCount {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("recording.key_ascending_count".localized)
+                            .font(.caption)
+                            .foregroundColor(ColorPalette.text.opacity(0.6))
+
+                        Picker("recording.key_ascending_count".localized, selection: $viewModel.ascendingKeyCount) {
+                            ForEach(1...12, id: \.self) { count in
+                                Text("\(count) " + "recording.key_count_unit".localized).tag(count)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .disabled(!viewModel.isSettingsEnabled)
+                        .accessibilityIdentifier("AscendingKeyCountPicker")
+                    }
+                }
+
+                // Descending key count
+                if viewModel.showsDescendingKeyCount {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("recording.key_descending_count".localized)
+                            .font(.caption)
+                            .foregroundColor(ColorPalette.text.opacity(0.6))
+
+                        Picker("recording.key_descending_count".localized, selection: $viewModel.descendingKeyCount) {
+                            ForEach(1...12, id: \.self) { count in
+                                Text("\(count) " + "recording.key_count_unit".localized).tag(count)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .disabled(!viewModel.isSettingsEnabled)
+                        .accessibilityIdentifier("DescendingKeyCountPicker")
+                    }
                 }
             }
             .padding(12)
@@ -127,13 +165,38 @@ struct RecordingSettingsCompact: View {
                 }
 
                 HStack {
-                    Text("recording.ascending_count_label".localized + ":")
-                    Picker("", selection: $viewModel.ascendingCount) {
-                        ForEach(1...10, id: \.self) { count in
-                            Text("\(count) " + "recording.ascending_count_unit".localized).tag(count)
-                        }
+                    Text("recording.pattern_label".localized + ":")
+                    Picker("", selection: $viewModel.keyProgressionPattern) {
+                        Text("recording.pattern_ascending_only".localized).tag(KeyProgressionPattern.ascendingOnly)
+                        Text("recording.pattern_descending_only".localized).tag(KeyProgressionPattern.descendingOnly)
+                        Text("recording.pattern_ascending_then_descending".localized).tag(KeyProgressionPattern.ascendingThenDescending)
+                        Text("recording.pattern_descending_then_ascending".localized).tag(KeyProgressionPattern.descendingThenAscending)
                     }
                     .pickerStyle(.menu)
+                }
+
+                if viewModel.showsAscendingKeyCount {
+                    HStack {
+                        Text("recording.key_ascending_count".localized + ":")
+                        Picker("", selection: $viewModel.ascendingKeyCount) {
+                            ForEach(1...12, id: \.self) { count in
+                                Text("\(count) " + "recording.key_count_unit".localized).tag(count)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                    }
+                }
+
+                if viewModel.showsDescendingKeyCount {
+                    HStack {
+                        Text("recording.key_descending_count".localized + ":")
+                        Picker("", selection: $viewModel.descendingKeyCount) {
+                            ForEach(1...12, id: \.self) { count in
+                                Text("\(count) " + "recording.key_count_unit".localized).tag(count)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                    }
                 }
             }
         }
