@@ -21,6 +21,7 @@
 "recording.settings_title" = "スケール設定";
 "recording.scale_label" = "スケール選択";
 "recording.scale_five_tone" = "5トーン";
+"recording.scale_octave_repeat" = "オクターブリピート";
 "recording.scale_off" = "オフ";
 "recording.start_pitch_label" = "スタートピッチ";
 "recording.tempo_label" = "テンポ";

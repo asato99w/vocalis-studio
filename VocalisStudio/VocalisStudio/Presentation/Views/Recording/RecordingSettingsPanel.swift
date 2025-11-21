@@ -20,9 +20,10 @@ struct RecordingSettingsPanel: View {
 
                     Picker("recording.scale_label".localized, selection: $viewModel.scaleType) {
                         Text("recording.scale_five_tone".localized).tag(ScaleType.fiveTone)
+                        Text("recording.scale_octave_repeat".localized).tag(ScaleType.octaveRepeat)
                         Text("recording.scale_off".localized).tag(ScaleType.off)
                     }
-                    .pickerStyle(.segmented)
+                    .pickerStyle(.menu)
                     .accessibilityIdentifier("ScaleTypePicker")
                 }
 
@@ -99,9 +100,10 @@ struct RecordingSettingsCompact: View {
                 Text("recording.scale_label".localized + ":")
                 Picker("", selection: $viewModel.scaleType) {
                     Text("recording.scale_five_tone".localized).tag(ScaleType.fiveTone)
+                    Text("recording.scale_octave_repeat".localized).tag(ScaleType.octaveRepeat)
                     Text("recording.scale_off".localized).tag(ScaleType.off)
                 }
-                .pickerStyle(.segmented)
+                .pickerStyle(.menu)
                 .accessibilityIdentifier("ScaleTypePicker")
             }
 

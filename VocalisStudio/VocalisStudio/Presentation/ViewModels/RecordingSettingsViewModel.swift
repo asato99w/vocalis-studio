@@ -4,6 +4,7 @@ import VocalisDomain
 /// Scale type selection for recording
 public enum ScaleType {
     case fiveTone
+    case octaveRepeat
     case off
 }
 
@@ -30,7 +31,7 @@ public class RecordingSettingsViewModel: ObservableObject {
 
     /// Generate ScaleSettings from current UI settings
     public func generateScaleSettings() -> ScaleSettings? {
-        guard scaleType == .fiveTone else {
+        guard scaleType != .off else {
             return nil // Scale off - no settings
         }
 
@@ -44,11 +45,22 @@ public class RecordingSettingsViewModel: ObservableObject {
         // At 120 BPM, each quarter note is 0.5 seconds
         let secondsPerNote = 60.0 / Double(tempo)
 
+        // Map ScaleType to NotePattern
+        let notePattern: NotePattern
+        switch scaleType {
+        case .fiveTone:
+            notePattern = .fiveToneScale
+        case .octaveRepeat:
+            notePattern = .octaveRepeat
+        case .off:
+            return nil
+        }
+
         do {
             let settings = ScaleSettings(
                 startNote: try MIDINote(UInt8(midiNoteNumber)),
                 endNote: try MIDINote(UInt8(endNoteNumber)),
-                notePattern: .fiveToneScale,
+                notePattern: notePattern,
                 tempo: try Tempo(secondsPerNote: secondsPerNote),
                 ascendingCount: ascendingCount  // Use UI setting
             )

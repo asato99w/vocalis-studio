@@ -84,7 +84,7 @@ public struct ScaleSettings: Equatable, Codable, Hashable {
     /// Generate full scale with chromatic progression
     /// Returns all notes across the pitch range
     public func generateScale() -> [MIDINote] {
-        let pattern = notePattern.ascendingDescending()
+        let pattern = notePattern.playbackPattern
         var allNotes: [MIDINote] = []
 
         var currentRoot = startNote.value
@@ -146,7 +146,7 @@ public struct ScaleSettings: Equatable, Codable, Hashable {
             elements.append(.silence(0.2))
 
             // Scale notes
-            let pattern = notePattern.ascendingDescending()
+            let pattern = notePattern.playbackPattern
             for interval in pattern {
                 if let note = try? MIDINote(root + UInt8(interval)) {
                     elements.append(.scaleNote(note))

@@ -21,6 +21,7 @@
 "recording.settings_title" = "Scale Settings";
 "recording.scale_label" = "Scale";
 "recording.scale_five_tone" = "5-Tone";
+"recording.scale_octave_repeat" = "Octave Repeat";
 "recording.scale_off" = "Off";
 "recording.start_pitch_label" = "Start Pitch";
 "recording.tempo_label" = "Tempo";
