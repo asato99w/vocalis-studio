@@ -3,6 +3,7 @@ import Combine
 import OSLog
 import VocalisDomain
 import SubscriptionDomain
+import AudioToolbox
 
 /// ViewModel for recording state management
 /// Manages core recording functionality including countdown, start, stop, and duration monitoring
@@ -179,7 +180,11 @@ public class RecordingStateViewModel: ObservableObject {
                     print("[DIAG] Countdown task cancelled at \(value)")
                     return
                 }
-                await MainActor.run { self.countdownValue = value }
+                await MainActor.run {
+                    self.countdownValue = value
+                    // Play countdown click sound
+                    AudioServicesPlaySystemSound(1104) // Tap sound
+                }
                 print("[DIAG] Countdown: \(value)")
                 try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
             }
