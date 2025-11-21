@@ -7,9 +7,9 @@ struct PlaybackControlPanel: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            if let recording = viewModel.selectedRecording {
-                // Recording info
-                VStack(spacing: 4) {
+            // Recording info or placeholder message
+            VStack(spacing: 4) {
+                if let recording = viewModel.selectedRecording {
                     if let scaleDisplayName = recording.scaleDisplayName {
                         Text(scaleDisplayName)
                             .font(.subheadline)
@@ -20,89 +20,100 @@ struct PlaybackControlPanel: View {
                     Text(recording.formattedDate)
                         .font(.caption)
                         .foregroundColor(ColorPalette.text.opacity(0.6))
+                } else {
+                    Text("list.select_recording".localized)
+                        .font(.subheadline)
+                        .foregroundColor(ColorPalette.text.opacity(0.5))
+
+                    Text(" ")
+                        .font(.caption)
                 }
-                .accessibilityIdentifier("PlaybackControlPanel_RecordingInfo")
+            }
+            .accessibilityIdentifier("PlaybackControlPanel_RecordingInfo")
 
-                // Playback controls
-                HStack(spacing: 32) {
-                    // Previous button
-                    Button(action: {
-                        Task {
-                            await viewModel.playPrevious()
-                        }
-                    }) {
-                        Image(systemName: "backward.fill")
-                            .font(.title2)
-                            .foregroundColor(viewModel.canPlayPrevious ? ColorPalette.text : ColorPalette.text.opacity(0.3))
+            // Playback controls (always visible)
+            HStack(spacing: 32) {
+                // Previous button
+                Button(action: {
+                    Task {
+                        await viewModel.playPrevious()
                     }
-                    .disabled(!viewModel.canPlayPrevious)
-                    .accessibilityIdentifier("PlaybackControlPanel_PreviousButton")
-                    .accessibilityLabel("previous.recording".localized)
-
-                    // Play/Pause button
-                    Button(action: {
-                        Task {
-                            await viewModel.togglePlayback()
-                        }
-                    }) {
-                        Image(systemName: viewModel.playingRecordingId == recording.id ? "pause.circle.fill" : "play.circle.fill")
-                            .font(.system(size: 44))
-                            .foregroundColor(ColorPalette.primary)
-                    }
-                    .accessibilityIdentifier("PlaybackControlPanel_PlayPauseButton")
-                    .accessibilityLabel(viewModel.playingRecordingId == recording.id ? "pause".localized : "play".localized)
-
-                    // Next button
-                    Button(action: {
-                        Task {
-                            await viewModel.playNext()
-                        }
-                    }) {
-                        Image(systemName: "forward.fill")
-                            .font(.title2)
-                            .foregroundColor(viewModel.canPlayNext ? ColorPalette.text : ColorPalette.text.opacity(0.3))
-                    }
-                    .disabled(!viewModel.canPlayNext)
-                    .accessibilityIdentifier("PlaybackControlPanel_NextButton")
-                    .accessibilityLabel("next.recording".localized)
+                }) {
+                    Image(systemName: "backward.fill")
+                        .font(.title2)
+                        .foregroundColor(viewModel.canPlayPrevious ? ColorPalette.text : ColorPalette.text.opacity(0.3))
                 }
+                .disabled(!viewModel.canPlayPrevious)
+                .accessibilityIdentifier("PlaybackControlPanel_PreviousButton")
+                .accessibilityLabel("previous.recording".localized)
 
-                // Slider and time
-                VStack(spacing: 4) {
-                    Slider(
-                        value: Binding(
-                            get: { viewModel.currentPlaybackPosition[recording.id] ?? 0.0 },
-                            set: { newValue in
+                // Play/Pause button
+                Button(action: {
+                    Task {
+                        await viewModel.togglePlayback()
+                    }
+                }) {
+                    let isPlaying = viewModel.selectedRecording.map { viewModel.playingRecordingId == $0.id } ?? false
+                    Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
+                        .font(.system(size: 44))
+                        .foregroundColor(viewModel.selectedRecording != nil ? ColorPalette.primary : ColorPalette.primary.opacity(0.3))
+                }
+                .disabled(viewModel.selectedRecording == nil)
+                .accessibilityIdentifier("PlaybackControlPanel_PlayPauseButton")
+                .accessibilityLabel(viewModel.selectedRecording.map { viewModel.playingRecordingId == $0.id } ?? false ? "pause".localized : "play".localized)
+
+                // Next button
+                Button(action: {
+                    Task {
+                        await viewModel.playNext()
+                    }
+                }) {
+                    Image(systemName: "forward.fill")
+                        .font(.title2)
+                        .foregroundColor(viewModel.canPlayNext ? ColorPalette.text : ColorPalette.text.opacity(0.3))
+                }
+                .disabled(!viewModel.canPlayNext)
+                .accessibilityIdentifier("PlaybackControlPanel_NextButton")
+                .accessibilityLabel("next.recording".localized)
+            }
+
+            // Slider and time (always visible)
+            VStack(spacing: 4) {
+                Slider(
+                    value: Binding(
+                        get: {
+                            if let recording = viewModel.selectedRecording {
+                                return viewModel.currentPlaybackPosition[recording.id] ?? 0.0
+                            }
+                            return 0.0
+                        },
+                        set: { newValue in
+                            if let recording = viewModel.selectedRecording {
                                 Task {
                                     await viewModel.seek(to: newValue, for: recording.id)
                                 }
                             }
-                        ),
-                        in: 0...max(recording.duration.seconds, 0.1)
-                    )
-                    .accentColor(ColorPalette.primary)
-                    .accessibilityIdentifier("PlaybackControlPanel_Slider")
+                        }
+                    ),
+                    in: 0...max(viewModel.selectedRecording?.duration.seconds ?? 1.0, 0.1)
+                )
+                .accentColor(ColorPalette.primary)
+                .disabled(viewModel.selectedRecording == nil)
+                .accessibilityIdentifier("PlaybackControlPanel_Slider")
 
-                    HStack {
-                        Text(formatTime(viewModel.currentPlaybackPosition[recording.id] ?? 0.0))
-                            .font(.caption2)
-                            .foregroundColor(ColorPalette.text.opacity(0.5))
-                            .accessibilityIdentifier("PlaybackControlPanel_CurrentTime")
+                HStack {
+                    Text(formatTime(viewModel.selectedRecording.flatMap { viewModel.currentPlaybackPosition[$0.id] } ?? 0.0))
+                        .font(.caption2)
+                        .foregroundColor(ColorPalette.text.opacity(0.5))
+                        .accessibilityIdentifier("PlaybackControlPanel_CurrentTime")
 
-                        Spacer()
+                    Spacer()
 
-                        Text(formatTime(recording.duration.seconds))
-                            .font(.caption2)
-                            .foregroundColor(ColorPalette.text.opacity(0.5))
-                            .accessibilityIdentifier("PlaybackControlPanel_TotalTime")
-                    }
+                    Text(formatTime(viewModel.selectedRecording?.duration.seconds ?? 0.0))
+                        .font(.caption2)
+                        .foregroundColor(ColorPalette.text.opacity(0.5))
+                        .accessibilityIdentifier("PlaybackControlPanel_TotalTime")
                 }
-            } else {
-                // No recording selected
-                Text("list.select_recording".localized)
-                    .font(.subheadline)
-                    .foregroundColor(ColorPalette.text.opacity(0.5))
-                    .padding(.vertical, 20)
             }
         }
         .padding()
