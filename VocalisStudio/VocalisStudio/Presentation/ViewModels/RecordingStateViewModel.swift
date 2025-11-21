@@ -410,9 +410,13 @@ public class RecordingStateViewModel: ObservableObject {
 
                 // Check if time limit reached
                 if elapsed >= maxDuration {
-                    await MainActor.run {
-                        let tierName = self.currentTier.displayName
-                        self.errorMessage = "録音時間の上限に達しました (\(tierName)プラン: \(Int(maxDuration))秒)"
+                    // Only show error message for free tier (premium stops silently)
+                    let tier = await MainActor.run { self.currentTier }
+                    if tier == .free {
+                        await MainActor.run {
+                            let tierName = self.currentTier.displayName
+                            self.errorMessage = "録音時間の上限に達しました (\(tierName)プラン: \(Int(maxDuration))秒)"
+                        }
                     }
 
                     // Call the auto-stop handler if provided (allows parent coordinator to cleanup pitch detection, etc.)

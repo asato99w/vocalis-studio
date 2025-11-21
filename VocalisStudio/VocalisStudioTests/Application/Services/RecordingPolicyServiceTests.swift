@@ -39,7 +39,7 @@ final class RecordingPolicyServiceTests: XCTestCase {
         let user = User(
             id: UserId(),
             subscriptionStatus: .defaultFree(cohort: .v2_0),
-            recordingStats: RecordingStats(todayCount: 3) // At limit
+            recordingStats: RecordingStats(todayCount: 5) // At limit (free = 5/day)
         )
 
         // When: Check if can start recording
@@ -90,8 +90,8 @@ final class RecordingPolicyServiceTests: XCTestCase {
         XCTAssertEqual(permission, .allowed)
     }
 
-    func testCanStartRecording_PremiumUser_ExceedsDailyLimit_ReturnsDenied() async throws {
-        // Given: Premium user exceeds daily limit
+    func testCanStartRecording_PremiumUser_UnlimitedRecordings_ReturnsAllowed() async throws {
+        // Given: Premium user with many recordings (premium has unlimited daily count)
         let user = User(
             id: UserId(),
             subscriptionStatus: SubscriptionStatus(
@@ -100,18 +100,14 @@ final class RecordingPolicyServiceTests: XCTestCase {
                 isActive: true,
                 expirationDate: Date().addingTimeInterval(30 * 24 * 3600)
             ),
-            recordingStats: RecordingStats(todayCount: 10) // At premium limit
+            recordingStats: RecordingStats(todayCount: 100) // Many recordings
         )
 
         // When: Check if can start recording
         let permission = try await sut.canStartRecording(user: user, settings: nil)
 
-        // Then: Should be denied with daily limit reason
-        if case .denied(let reason) = permission {
-            XCTAssertEqual(reason, .dailyLimitExceeded)
-        } else {
-            XCTFail("Expected denied permission, got \(permission)")
-        }
+        // Then: Should be allowed (premium has unlimited daily count)
+        XCTAssertEqual(permission, .allowed)
     }
 
     func testCanStartRecording_GrandfatherUser_WithScale_ReturnsAllowed() async throws {

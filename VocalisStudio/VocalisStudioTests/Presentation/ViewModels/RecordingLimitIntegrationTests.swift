@@ -88,9 +88,9 @@ final class RecordingLimitIntegrationTests: XCTestCase {
         // Wait for subscription status to update
         try await Task.sleep(nanoseconds: 100_000_000)
 
-        // Then: Premium tier should have 4 second limit (test config)
-        XCTAssertEqual(recordingViewModel.recordingLimit.maxDuration, 4, "Test config should use 4 seconds for faster testing")
-        XCTAssertEqual(recordingViewModel.recordingLimit.durationDescription, "4秒")
+        // Then: Premium tier should have 3 second limit (test config)
+        XCTAssertEqual(recordingViewModel.recordingLimit.maxDuration, 3, "Test config should use 3 seconds for faster testing")
+        XCTAssertEqual(recordingViewModel.recordingLimit.durationDescription, "3秒")
     }
 
     func testPremiumPlusTierHasUnlimitedDuration() async throws {
@@ -138,6 +138,41 @@ final class RecordingLimitIntegrationTests: XCTestCase {
         XCTAssertTrue(recordingViewModel.errorMessage?.contains("録音時間の上限に達しました") == true, "Error message should indicate duration limit")
     }
 
+    func testPremiumDurationLimitEnforcementDuringRecording() async throws {
+        // Given: Premium tier with 3 second limit (test config)
+        subscriptionViewModel.setDebugTier(.premium)
+
+        // Wait for subscription status to update
+        try await Task.sleep(nanoseconds: 100_000_000)
+
+        // Verify premium tier limit
+        XCTAssertEqual(recordingViewModel.recordingLimit.maxDuration, 3, "Test config should use 3 seconds for premium")
+
+        // Set up mock recording session
+        let mockRecordingURL = URL(fileURLWithPath: "/tmp/test_premium_recording.m4a")
+        let mockRecordingSession = RecordingSession(recordingURL: mockRecordingURL)
+        mockStartUseCase.executeResult = mockRecordingSession
+
+        // When: Start recording
+        await recordingViewModel.startRecording()
+
+        // Wait for recording to start (countdown=0 so immediate)
+        try await Task.sleep(nanoseconds: 100_000_000) // 100ms
+
+        // Then: Recording should start
+        XCTAssertEqual(recordingViewModel.recordingState, .recording)
+
+        // Wait for recording duration limit to be reached (3 seconds + buffer)
+        // Using 3.5 seconds to ensure the monitoring task has time to detect and stop
+        try await Task.sleep(nanoseconds: 3_500_000_000)
+
+        // Then: Recording should have stopped automatically
+        XCTAssertEqual(recordingViewModel.recordingState, .idle, "Recording should auto-stop after 3 seconds for premium")
+
+        // And: Error message should NOT be set for premium tier (silent stop)
+        XCTAssertNil(recordingViewModel.errorMessage, "Premium tier should stop silently without error message")
+    }
+
     // MARK: - Count Limit Tests
 
     func testFreeTierHas5RecordingsPerDayLimit() async throws {
@@ -147,19 +182,19 @@ final class RecordingLimitIntegrationTests: XCTestCase {
         // Wait for subscription status to update
         try await Task.sleep(nanoseconds: 100_000_000)
 
-        // Then: Free tier should have 3 recordings/day limit (test config same as production)
-        XCTAssertEqual(recordingViewModel.recordingLimit.dailyCount, 3, "Test config should use 3 recordings/day same as production")
+        // Then: Free tier should have 5 recordings/day limit (matching Paywall display)
+        XCTAssertEqual(recordingViewModel.recordingLimit.dailyCount, 5, "Free tier should have 5 recordings/day limit")
     }
 
-    func testPremiumTierHas10RecordingsPerDay() async throws {
+    func testPremiumTierHasUnlimitedRecordingsPerDay() async throws {
         // Given: Premium tier
         subscriptionViewModel.setDebugTier(.premium)
 
         // Wait for subscription status to update
         try await Task.sleep(nanoseconds: 100_000_000)
 
-        // Then: Premium tier should have 10 recordings/day limit
-        XCTAssertEqual(recordingViewModel.recordingLimit.dailyCount, 10, "Premium tier should have 10 recordings/day limit")
+        // Then: Premium tier should have unlimited recordings/day (matching Paywall display)
+        XCTAssertNil(recordingViewModel.recordingLimit.dailyCount, "Premium tier should have unlimited recordings/day")
     }
 }
 

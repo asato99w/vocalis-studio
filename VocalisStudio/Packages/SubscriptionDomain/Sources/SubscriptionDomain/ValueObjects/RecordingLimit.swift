@@ -30,9 +30,9 @@ public struct RecordingLimit {
         public let premiumMaxDuration: TimeInterval
 
         public init(
-            freeDailyCount: Int = 3,
+            freeDailyCount: Int = 5,
             freeMaxDuration: TimeInterval = 30,
-            premiumDailyCount: Int = 10,
+            premiumDailyCount: Int = .max,
             premiumMaxDuration: TimeInterval = 300
         ) {
             self.freeDailyCount = freeDailyCount
@@ -46,10 +46,10 @@ public struct RecordingLimit {
 
         /// Test configuration with short durations and counts
         public static let test = Configuration(
-            freeDailyCount: 3,
+            freeDailyCount: 5,
             freeMaxDuration: 2,
-            premiumDailyCount: 10,
-            premiumMaxDuration: 4
+            premiumDailyCount: 0, // Unused - premium has unlimited count
+            premiumMaxDuration: 3
         )
     }
 
@@ -60,7 +60,8 @@ public struct RecordingLimit {
         case .free:
             return RecordingLimit(dailyCount: configuration.freeDailyCount, maxDuration: configuration.freeMaxDuration)
         case .premium:
-            return RecordingLimit(dailyCount: configuration.premiumDailyCount, maxDuration: configuration.premiumMaxDuration)
+            // Premium has unlimited daily count but limited duration
+            return RecordingLimit(dailyCount: nil, maxDuration: configuration.premiumMaxDuration)
         case .premiumPlus:
             return RecordingLimit(dailyCount: nil, maxDuration: nil) // Unlimited
         }
