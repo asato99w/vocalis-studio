@@ -1,16 +1,16 @@
 import SwiftUI
 import VocalisDomain
 
-/// Audio settings configuration view
-struct AudioSettingsView: View {
+/// Audio output settings configuration view (volumes and scale sound type)
+struct AudioOutputSettingsView: View {
 
-    @StateObject private var viewModel: AudioSettingsViewModel
+    @StateObject private var viewModel: AudioOutputSettingsViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var showResetAlert = false
     @State private var showSaveError = false
     @State private var saveErrorMessage = ""
 
-    init(viewModel: AudioSettingsViewModel) {
+    init(viewModel: AudioOutputSettingsViewModel) {
         _viewModel = StateObject(wrappedValue: viewModel)
     }
 
@@ -50,20 +50,6 @@ struct AudioSettingsView: View {
                     Text("スケール再生音量と録音再生音量を個別に調整できます")
                 }
 
-                // Detection Sensitivity Section
-                Section {
-                    Picker("検出感度", selection: $viewModel.detectionSensitivity) {
-                        Text("低").tag(AudioDetectionSettings.DetectionSensitivity.low)
-                        Text("標準").tag(AudioDetectionSettings.DetectionSensitivity.normal)
-                        Text("高").tag(AudioDetectionSettings.DetectionSensitivity.high)
-                    }
-                    .pickerStyle(.segmented)
-                } header: {
-                    Text("ピッチ検出感度")
-                } footer: {
-                    Text("低: 大きい音のみ検出\n標準: バランスの取れた検出\n高: 小さい音も検出")
-                }
-
                 // Scale Sound Type Section
                 Section {
                     Picker("音源", selection: $viewModel.scaleSoundType) {
@@ -84,25 +70,6 @@ struct AudioSettingsView: View {
                     }
                 }
 
-                // Confidence Threshold Section
-                Section {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("検出精度")
-                                .font(.body)
-                            Spacer()
-                            Text("\(Int(viewModel.confidenceThreshold * 100))%")
-                                .foregroundColor(.secondary)
-                        }
-
-                        Slider(value: $viewModel.confidenceThreshold, in: 0.1...1.0, step: 0.05)
-                    }
-                } header: {
-                    Text("ピッチ検出精度")
-                } footer: {
-                    Text("検出結果の信頼度閾値。高いほど正確なピッチのみ表示")
-                }
-
                 // Reset Button Section
                 Section {
                     Button(role: .destructive) {
@@ -116,7 +83,7 @@ struct AudioSettingsView: View {
                     }
                 }
             }
-            .navigationTitle("オーディオ設定")
+            .navigationTitle("出力設定")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -138,7 +105,7 @@ struct AudioSettingsView: View {
                     resetSettings()
                 }
             } message: {
-                Text("すべての設定をデフォルト値に戻しますか?")
+                Text("出力設定をデフォルト値に戻しますか?")
             }
             .alert("保存エラー", isPresented: $showSaveError) {
                 Button("OK", role: .cancel) { }
@@ -173,8 +140,8 @@ struct AudioSettingsView: View {
 // MARK: - Preview
 
 #Preview {
-    AudioSettingsView(
-        viewModel: AudioSettingsViewModel(
+    AudioOutputSettingsView(
+        viewModel: AudioOutputSettingsViewModel(
             repository: PreviewAudioSettingsRepository()
         )
     )

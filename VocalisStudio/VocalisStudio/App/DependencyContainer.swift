@@ -172,9 +172,13 @@ public class DependencyContainer {
         )
     }()
 
-    // Audio Settings ViewModel Factory
-    func makeAudioSettingsViewModel() -> AudioSettingsViewModel {
-        AudioSettingsViewModel(repository: audioSettingsRepository)
+    // Audio Settings ViewModel Factories
+    func makeAudioInputSettingsViewModel() -> AudioInputSettingsViewModel {
+        AudioInputSettingsViewModel(repository: audioSettingsRepository)
+    }
+
+    func makeAudioOutputSettingsViewModel() -> AudioOutputSettingsViewModel {
+        AudioOutputSettingsViewModel(repository: audioSettingsRepository)
     }
 
     // MARK: - Setup

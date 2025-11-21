@@ -19,13 +19,21 @@ public struct SettingsView: View {
             }
 
             // Audio Settings Section
-            Section("オーディオ設定") {
+            Section("オーディオ") {
                 NavigationLink {
-                    AudioSettingsView(
-                        viewModel: DependencyContainer.shared.makeAudioSettingsViewModel()
+                    AudioInputSettingsView(
+                        viewModel: DependencyContainer.shared.makeAudioInputSettingsViewModel()
                     )
                 } label: {
-                    Label("音量・検出設定", systemImage: "speaker.wave.2")
+                    Label("入力設定", systemImage: "mic")
+                }
+
+                NavigationLink {
+                    AudioOutputSettingsView(
+                        viewModel: DependencyContainer.shared.makeAudioOutputSettingsViewModel()
+                    )
+                } label: {
+                    Label("出力設定", systemImage: "speaker.wave.2")
                 }
             }
 
