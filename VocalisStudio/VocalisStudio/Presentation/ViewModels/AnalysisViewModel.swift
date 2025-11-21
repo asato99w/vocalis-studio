@@ -189,6 +189,10 @@ public class AnalysisViewModel: ObservableObject {
                 // Only update if still playing (avoid race with completion handler)
                 guard self.isPlaying else { return }
 
+                // Only update if audio player has actually started
+                // This prevents the seekbar from jerking before playback begins
+                guard self.audioPlayer.isPlaying else { return }
+
                 // Sync currentTime with audio player
                 self.currentTime = self.audioPlayer.currentTime
             }
