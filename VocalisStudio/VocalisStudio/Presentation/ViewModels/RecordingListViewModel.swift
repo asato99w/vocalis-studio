@@ -39,46 +39,33 @@ public class RecordingListViewModel: ObservableObject {
         isLoading = false
     }
 
-    /// Play a recording
+    /// Play a recording (assumes any previous playback is already stopped)
     public func playRecording(_ recording: Recording) async {
-        // If this recording is already playing, stop it
-        if playingRecordingId == recording.id {
-            await stopPlayback()
-            return
-        }
+        playingRecordingId = recording.id
 
-        // If another recording is playing, stop it first
-        if playingRecordingId != nil {
-            await stopPlayback()
-        }
-
-        do {
-            playingRecordingId = recording.id
-
-            // Start playback without waiting for completion
-            Task {
-                do {
-                    try await audioPlayer.play(url: recording.fileURL)
-                    // Playback finished naturally
-                    await MainActor.run {
-                        if playingRecordingId == recording.id {
-                            playingRecordingId = nil
-                            stopPositionTracking()
-                            // Reset position to beginning
-                            currentPlaybackPosition[recording.id] = 0.0
-                            currentTime = 0.0
-                        }
+        // Start playback without waiting for completion
+        Task {
+            do {
+                try await audioPlayer.play(url: recording.fileURL)
+                // Playback finished naturally
+                await MainActor.run {
+                    if playingRecordingId == recording.id {
+                        playingRecordingId = nil
+                        stopPositionTracking()
+                        // Reset position to beginning
+                        currentPlaybackPosition[recording.id] = 0.0
+                        currentTime = 0.0
                     }
-                } catch {
-                    await MainActor.run {
-                        errorMessage = error.localizedDescription
-                        if playingRecordingId == recording.id {
-                            playingRecordingId = nil
-                            stopPositionTracking()
-                            // Reset position to beginning on error too
-                            currentPlaybackPosition[recording.id] = 0.0
-                            currentTime = 0.0
-                        }
+                }
+            } catch {
+                await MainActor.run {
+                    errorMessage = error.localizedDescription
+                    if playingRecordingId == recording.id {
+                        playingRecordingId = nil
+                        stopPositionTracking()
+                        // Reset position to beginning on error too
+                        currentPlaybackPosition[recording.id] = 0.0
+                        currentTime = 0.0
                     }
                 }
             }
@@ -176,9 +163,12 @@ public class RecordingListViewModel: ObservableObject {
             return
         }
 
-        // Different recording selected - stop current and start new
+        // Different recording selected - stop current playback immediately
         if playingRecordingId != nil {
-            await stopPlayback()
+            // Use synchronous stop to avoid blocking UI
+            audioPlayer.pause()
+            playingRecordingId = nil
+            stopPositionTracking()
         }
 
         // Select and play new recording
