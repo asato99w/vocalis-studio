@@ -11,6 +11,7 @@ public class RecordingListViewModel: ObservableObject {
     @Published public private(set) var playingRecordingId: RecordingId?
     @Published public private(set) var currentTime: Double = 0.0
     @Published public private(set) var currentPlaybackPosition: [RecordingId: TimeInterval] = [:]
+    @Published public private(set) var selectedRecording: Recording?
 
     private let recordingRepository: RecordingRepositoryProtocol
     private let audioPlayer: AudioPlayerProtocol
@@ -98,6 +99,11 @@ public class RecordingListViewModel: ObservableObject {
                 await stopPlayback()
             }
 
+            // Clear selection if this recording is selected
+            if selectedRecording?.id == recording.id {
+                selectedRecording = nil
+            }
+
             try await recordingRepository.delete(recording.id)
 
             // Reload recordings
@@ -141,5 +147,89 @@ public class RecordingListViewModel: ObservableObject {
         await audioPlayer.seek(to: position)
         currentPlaybackPosition[recordingId] = position
         currentTime = position
+    }
+
+    // MARK: - Selection and Playback Control
+
+    /// Select a recording and start playback
+    public func selectAndPlay(_ recording: Recording) async {
+        // If same recording is selected, toggle playback
+        if selectedRecording?.id == recording.id {
+            if playingRecordingId == recording.id {
+                await stopPlayback()
+            } else {
+                await playRecording(recording)
+                await startPositionTracking()
+            }
+            return
+        }
+
+        // Stop current playback if any
+        if playingRecordingId != nil {
+            await stopPlayback()
+        }
+
+        // Select and play new recording
+        selectedRecording = recording
+        await playRecording(recording)
+        await startPositionTracking()
+    }
+
+    /// Toggle playback for selected recording
+    public func togglePlayback() async {
+        guard let recording = selectedRecording else { return }
+
+        if await audioPlayer.isPlaying {
+            await stopPlayback()
+        } else {
+            await playRecording(recording)
+            await startPositionTracking()
+        }
+    }
+
+    /// Play previous recording in list
+    public func playPrevious() async {
+        guard let current = selectedRecording,
+              let currentIndex = recordings.firstIndex(where: { $0.id == current.id }),
+              currentIndex > 0 else {
+            return
+        }
+
+        let previousRecording = recordings[currentIndex - 1]
+        selectedRecording = previousRecording
+        await playRecording(previousRecording)
+        await startPositionTracking()
+    }
+
+    /// Play next recording in list
+    public func playNext() async {
+        guard let current = selectedRecording,
+              let currentIndex = recordings.firstIndex(where: { $0.id == current.id }),
+              currentIndex < recordings.count - 1 else {
+            return
+        }
+
+        let nextRecording = recordings[currentIndex + 1]
+        selectedRecording = nextRecording
+        await playRecording(nextRecording)
+        await startPositionTracking()
+    }
+
+    /// Check if can play previous recording
+    public var canPlayPrevious: Bool {
+        guard let current = selectedRecording,
+              let currentIndex = recordings.firstIndex(where: { $0.id == current.id }) else {
+            return false
+        }
+        return currentIndex > 0
+    }
+
+    /// Check if can play next recording
+    public var canPlayNext: Bool {
+        guard let current = selectedRecording,
+              let currentIndex = recordings.firstIndex(where: { $0.id == current.id }) else {
+            return false
+        }
+        return currentIndex < recordings.count - 1
     }
 }

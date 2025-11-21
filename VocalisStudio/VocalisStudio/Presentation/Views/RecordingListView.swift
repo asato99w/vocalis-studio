@@ -21,13 +21,20 @@ public struct RecordingListView: View {
     }
 
     public var body: some View {
-        ZStack {
+        VStack(spacing: 0) {
             if viewModel.isLoading {
+                Spacer()
                 ProgressView()
+                Spacer()
             } else if viewModel.recordings.isEmpty {
                 emptyState
             } else {
                 recordingList
+            }
+
+            // Fixed bottom playback control panel
+            if !viewModel.recordings.isEmpty {
+                PlaybackControlPanel(viewModel: viewModel)
             }
         }
         .navigationTitle("list.title".localized)
@@ -78,24 +85,16 @@ public struct RecordingListView: View {
             ForEach(viewModel.recordings) { recording in
                 RecordingRow(
                     recording: recording,
+                    isSelected: viewModel.selectedRecording?.id == recording.id,
                     isPlaying: viewModel.playingRecordingId == recording.id,
-                    viewModel: viewModel,
-                    audioPlayer: audioPlayer,
-                    analyzeRecordingUseCase: analyzeRecordingUseCase,
                     selectedRecording: $selectedRecording,
                     onTap: {
                         Task {
-                            let wasPlaying = viewModel.playingRecordingId == recording.id
-                            await viewModel.playRecording(recording)
-
-                            if wasPlaying {
-                                // Stopped playback
-                                await viewModel.stopPositionTracking()
-                            } else if viewModel.playingRecordingId == recording.id {
-                                // Started playback
-                                await viewModel.startPositionTracking()
-                            }
+                            await viewModel.selectAndPlay(recording)
                         }
+                    },
+                    onAnalyze: {
+                        selectedRecording = recording
                     },
                     onDelete: {
                         Task {
@@ -112,38 +111,44 @@ public struct RecordingListView: View {
 
 private struct RecordingRow: View {
     let recording: Recording
+    let isSelected: Bool
     let isPlaying: Bool
-    let viewModel: RecordingListViewModel
-    let audioPlayer: AudioPlayerProtocol
-    let analyzeRecordingUseCase: AnalyzeRecordingUseCase
     @Binding var selectedRecording: Recording?
     let onTap: () -> Void
+    let onAnalyze: () -> Void
     let onDelete: () -> Void
 
     @State private var showDeleteConfirmation = false
 
     var body: some View {
-        VStack(spacing: 8) {
-            // Top row: Date and scale name
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(recording.formattedDate)
-                        .font(.subheadline)
-                        .foregroundColor(ColorPalette.text)
+        HStack {
+            // Recording info (tappable area)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(recording.formattedDate)
+                    .font(.subheadline)
+                    .foregroundColor(ColorPalette.text)
 
-                    if let scaleDisplayName = recording.scaleDisplayName {
-                        Text(scaleDisplayName)
-                            .font(.caption)
-                            .foregroundColor(ColorPalette.text.opacity(0.6))
-                    }
+                if let scaleDisplayName = recording.scaleDisplayName {
+                    Text(scaleDisplayName)
+                        .font(.caption)
+                        .foregroundColor(ColorPalette.text.opacity(0.6))
                 }
 
-                Spacer()
+                Text(formatTime(recording.duration.seconds))
+                    .font(.caption2)
+                    .foregroundColor(ColorPalette.text.opacity(0.5))
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                onTap()
+            }
 
+            Spacer()
+
+            // Action buttons
+            HStack(spacing: 16) {
                 // Analysis button
-                Button(action: {
-                    selectedRecording = recording
-                }) {
+                Button(action: onAnalyze) {
                     Image(systemName: "waveform.path.ecg")
                         .foregroundColor(ColorPalette.accent)
                         .font(.title3)
@@ -160,46 +165,14 @@ private struct RecordingRow: View {
                 .buttonStyle(PlainButtonStyle())
                 .accessibilityIdentifier("DeleteRecordingButton_\(recording.id.value.uuidString)")
             }
-
-            // Bottom row: Play button and slider on the same line
-            HStack(spacing: 12) {
-                // Play button
-                Button(action: onTap) {
-                    Image(systemName: isPlaying ? "stop.circle.fill" : "play.circle.fill")
-                        .font(.system(size: 32))
-                        .foregroundColor(isPlaying ? ColorPalette.alertActive : ColorPalette.primary)
-                }
-                .buttonStyle(PlainButtonStyle())
-                .accessibilityLabel(isPlaying ? "stop.circle.fill" : "play.circle.fill")
-
-                // Slider and time info
-                VStack(spacing: 4) {
-                    Slider(
-                        value: Binding(
-                            get: { viewModel.currentPlaybackPosition[recording.id] ?? 0.0 },
-                            set: { newValue in
-                                Task {
-                                    await viewModel.seek(to: newValue, for: recording.id)
-                                }
-                            }
-                        ),
-                        in: 0...recording.duration.seconds
-                    )
-                    .accentColor(ColorPalette.primary)
-
-                    HStack {
-                        Text(formatTime(viewModel.currentPlaybackPosition[recording.id] ?? 0.0))
-                            .font(.caption2)
-                            .foregroundColor(ColorPalette.text.opacity(0.5))
-                        Spacer()
-                        Text(formatTime(recording.duration.seconds))
-                            .font(.caption2)
-                            .foregroundColor(ColorPalette.text.opacity(0.5))
-                    }
-                }
-            }
         }
         .padding(.vertical, 8)
+        .padding(.horizontal, 4)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(isSelected ? ColorPalette.primary.opacity(0.1) : Color.clear)
+        )
+        .accessibilityIdentifier("RecordingRow_\(recording.id.value.uuidString)")
         .confirmationDialog(
             "list.delete_confirmation_title".localized,
             isPresented: $showDeleteConfirmation,

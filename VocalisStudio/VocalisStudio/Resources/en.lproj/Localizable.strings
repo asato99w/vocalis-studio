@@ -45,6 +45,13 @@
 "list.empty_message" = "Start practicing from the recording screen";
 "list.delete_confirmation_title" = "Delete Confirmation";
 "list.delete_confirmation_message" = "Are you sure you want to delete this recording?";
+"list.select_recording" = "Select a recording";
+
+// MARK: - Playback Controls
+"play" = "Play";
+"pause" = "Pause";
+"previous.recording" = "Previous recording";
+"next.recording" = "Next recording";
 
 // MARK: - AnalysisView
 "analysis.title" = "Recording Analysis";

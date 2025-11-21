@@ -45,6 +45,13 @@
 "list.empty_message" = "録音画面から練習を始めましょう";
 "list.delete_confirmation_title" = "削除の確認";
 "list.delete_confirmation_message" = "この録音を削除しますか？";
+"list.select_recording" = "録音を選択してください";
+
+// MARK: - Playback Controls
+"play" = "再生";
+"pause" = "一時停止";
+"previous.recording" = "前の録音";
+"next.recording" = "次の録音";
 
 // MARK: - AnalysisView
 "analysis.title" = "録音分析";

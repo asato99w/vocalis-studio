@@ -347,4 +347,396 @@ final class RecordingListViewModelTests: XCTestCase {
         XCTAssertTrue(mockAudioPlayer.seekCalled)
         XCTAssertEqual(mockAudioPlayer.seekToTime, targetTime, accuracy: 0.01)
     }
+
+    // MARK: - Selected Recording Tests
+
+    func testInit_SelectedRecording_IsNil() {
+        // Then
+        XCTAssertNil(sut.selectedRecording)
+    }
+
+    func testSelectAndPlay_SelectsRecordingAndStartsPlayback() async {
+        // Given
+        let recording = Recording(
+            fileURL: URL(fileURLWithPath: "/tmp/test.m4a"),
+            duration: Duration(seconds: 5.0),
+            scaleSettings: ScaleSettings.mvpDefault
+        )
+        mockRepository.recordingsToReturn = [recording]
+        await sut.loadRecordings()
+
+        // When
+        await sut.selectAndPlay(recording)
+
+        // Wait for internal Task to start playback
+        try? await Task.sleep(nanoseconds: 20_000_000) // 20ms
+
+        // Then
+        XCTAssertEqual(sut.selectedRecording?.id, recording.id)
+        XCTAssertTrue(mockAudioPlayer.playCalled)
+    }
+
+    func testSelectAndPlay_AlreadySelected_TogglesPlayback() async {
+        // Given
+        let recording = Recording(
+            fileURL: URL(fileURLWithPath: "/tmp/test.m4a"),
+            duration: Duration(seconds: 5.0),
+            scaleSettings: ScaleSettings.mvpDefault
+        )
+        mockRepository.recordingsToReturn = [recording]
+        await sut.loadRecordings()
+
+        // First select and play
+        await sut.selectAndPlay(recording)
+        mockAudioPlayer.reset()
+
+        // When - select same recording again
+        await sut.selectAndPlay(recording)
+
+        // Then - should stop playback
+        XCTAssertTrue(mockAudioPlayer.stopCalled)
+        XCTAssertEqual(sut.selectedRecording?.id, recording.id) // Selection maintained
+    }
+
+    func testSelectAndPlay_DifferentRecording_SwitchesSelection() async {
+        // Given
+        let recording1 = Recording(
+            fileURL: URL(fileURLWithPath: "/tmp/test1.m4a"),
+            duration: Duration(seconds: 5.0),
+            scaleSettings: ScaleSettings.mvpDefault
+        )
+        let recording2 = Recording(
+            fileURL: URL(fileURLWithPath: "/tmp/test2.m4a"),
+            duration: Duration(seconds: 5.0),
+            scaleSettings: ScaleSettings.mvpDefault
+        )
+        mockRepository.recordingsToReturn = [recording1, recording2]
+        await sut.loadRecordings()
+
+        // First select recording1
+        await sut.selectAndPlay(recording1)
+        try? await Task.sleep(nanoseconds: 20_000_000) // Wait for playback to start
+        mockAudioPlayer.reset()
+
+        // When - select recording2
+        await sut.selectAndPlay(recording2)
+        try? await Task.sleep(nanoseconds: 20_000_000) // Wait for playback to start
+
+        // Then
+        XCTAssertEqual(sut.selectedRecording?.id, recording2.id)
+        XCTAssertTrue(mockAudioPlayer.playCalled)
+        XCTAssertEqual(mockAudioPlayer.playURL, recording2.fileURL)
+    }
+
+    // MARK: - Toggle Playback Tests
+
+    func testTogglePlayback_WhenStopped_StartsPlayback() async {
+        // Given
+        let recording = Recording(
+            fileURL: URL(fileURLWithPath: "/tmp/test.m4a"),
+            duration: Duration(seconds: 5.0),
+            scaleSettings: ScaleSettings.mvpDefault
+        )
+        mockRepository.recordingsToReturn = [recording]
+        await sut.loadRecordings()
+
+        // Select without playing
+        await sut.selectAndPlay(recording)
+        try? await Task.sleep(nanoseconds: 20_000_000) // Wait for playback to start
+        await sut.stopPlayback()
+        mockAudioPlayer.reset()
+
+        // When
+        await sut.togglePlayback()
+        try? await Task.sleep(nanoseconds: 20_000_000) // Wait for playback to start
+
+        // Then
+        XCTAssertTrue(mockAudioPlayer.playCalled)
+    }
+
+    func testTogglePlayback_WhenPlaying_StopsPlayback() async {
+        // Given
+        let recording = Recording(
+            fileURL: URL(fileURLWithPath: "/tmp/test.m4a"),
+            duration: Duration(seconds: 5.0),
+            scaleSettings: ScaleSettings.mvpDefault
+        )
+        mockRepository.recordingsToReturn = [recording]
+        await sut.loadRecordings()
+        await sut.selectAndPlay(recording)
+        mockAudioPlayer.reset()
+        mockAudioPlayer._isPlaying = true
+
+        // When
+        await sut.togglePlayback()
+
+        // Then
+        XCTAssertTrue(mockAudioPlayer.stopCalled)
+    }
+
+    func testTogglePlayback_NoSelection_DoesNothing() async {
+        // Given - no recording selected
+
+        // When
+        await sut.togglePlayback()
+
+        // Then
+        XCTAssertFalse(mockAudioPlayer.playCalled)
+        XCTAssertFalse(mockAudioPlayer.stopCalled)
+    }
+
+    // MARK: - Play Previous/Next Tests
+
+    func testPlayPrevious_PlaysRecordingBeforeCurrent() async {
+        // Given
+        let recording1 = Recording(
+            fileURL: URL(fileURLWithPath: "/tmp/test1.m4a"),
+            duration: Duration(seconds: 5.0),
+            scaleSettings: ScaleSettings.mvpDefault
+        )
+        let recording2 = Recording(
+            fileURL: URL(fileURLWithPath: "/tmp/test2.m4a"),
+            duration: Duration(seconds: 5.0),
+            scaleSettings: ScaleSettings.mvpDefault
+        )
+        mockRepository.recordingsToReturn = [recording1, recording2]
+        await sut.loadRecordings()
+
+        // Select second recording
+        await sut.selectAndPlay(recording2)
+        try? await Task.sleep(nanoseconds: 20_000_000) // Wait for playback to start
+        mockAudioPlayer.reset()
+
+        // When
+        await sut.playPrevious()
+        try? await Task.sleep(nanoseconds: 20_000_000) // Wait for playback to start
+
+        // Then
+        XCTAssertEqual(sut.selectedRecording?.id, recording1.id)
+        XCTAssertTrue(mockAudioPlayer.playCalled)
+        XCTAssertEqual(mockAudioPlayer.playURL, recording1.fileURL)
+    }
+
+    func testPlayPrevious_AtFirstRecording_DoesNothing() async {
+        // Given
+        let recording1 = Recording(
+            fileURL: URL(fileURLWithPath: "/tmp/test1.m4a"),
+            duration: Duration(seconds: 5.0),
+            scaleSettings: ScaleSettings.mvpDefault
+        )
+        let recording2 = Recording(
+            fileURL: URL(fileURLWithPath: "/tmp/test2.m4a"),
+            duration: Duration(seconds: 5.0),
+            scaleSettings: ScaleSettings.mvpDefault
+        )
+        mockRepository.recordingsToReturn = [recording1, recording2]
+        await sut.loadRecordings()
+
+        // Select first recording
+        await sut.selectAndPlay(recording1)
+        mockAudioPlayer.reset()
+
+        // When
+        await sut.playPrevious()
+
+        // Then - should stay on first recording
+        XCTAssertEqual(sut.selectedRecording?.id, recording1.id)
+        XCTAssertFalse(mockAudioPlayer.playCalled)
+    }
+
+    func testPlayNext_PlaysRecordingAfterCurrent() async {
+        // Given
+        let recording1 = Recording(
+            fileURL: URL(fileURLWithPath: "/tmp/test1.m4a"),
+            duration: Duration(seconds: 5.0),
+            scaleSettings: ScaleSettings.mvpDefault
+        )
+        let recording2 = Recording(
+            fileURL: URL(fileURLWithPath: "/tmp/test2.m4a"),
+            duration: Duration(seconds: 5.0),
+            scaleSettings: ScaleSettings.mvpDefault
+        )
+        mockRepository.recordingsToReturn = [recording1, recording2]
+        await sut.loadRecordings()
+
+        // Select first recording
+        await sut.selectAndPlay(recording1)
+        try? await Task.sleep(nanoseconds: 20_000_000) // Wait for playback to start
+        mockAudioPlayer.reset()
+
+        // When
+        await sut.playNext()
+        try? await Task.sleep(nanoseconds: 20_000_000) // Wait for playback to start
+
+        // Then
+        XCTAssertEqual(sut.selectedRecording?.id, recording2.id)
+        XCTAssertTrue(mockAudioPlayer.playCalled)
+        XCTAssertEqual(mockAudioPlayer.playURL, recording2.fileURL)
+    }
+
+    func testPlayNext_AtLastRecording_DoesNothing() async {
+        // Given
+        let recording1 = Recording(
+            fileURL: URL(fileURLWithPath: "/tmp/test1.m4a"),
+            duration: Duration(seconds: 5.0),
+            scaleSettings: ScaleSettings.mvpDefault
+        )
+        let recording2 = Recording(
+            fileURL: URL(fileURLWithPath: "/tmp/test2.m4a"),
+            duration: Duration(seconds: 5.0),
+            scaleSettings: ScaleSettings.mvpDefault
+        )
+        mockRepository.recordingsToReturn = [recording1, recording2]
+        await sut.loadRecordings()
+
+        // Select last recording
+        await sut.selectAndPlay(recording2)
+        mockAudioPlayer.reset()
+
+        // When
+        await sut.playNext()
+
+        // Then - should stay on last recording
+        XCTAssertEqual(sut.selectedRecording?.id, recording2.id)
+        XCTAssertFalse(mockAudioPlayer.playCalled)
+    }
+
+    func testPlayPrevious_NoSelection_DoesNothing() async {
+        // Given
+        let recording = Recording(
+            fileURL: URL(fileURLWithPath: "/tmp/test.m4a"),
+            duration: Duration(seconds: 5.0),
+            scaleSettings: ScaleSettings.mvpDefault
+        )
+        mockRepository.recordingsToReturn = [recording]
+        await sut.loadRecordings()
+
+        // When - no selection
+        await sut.playPrevious()
+
+        // Then
+        XCTAssertNil(sut.selectedRecording)
+        XCTAssertFalse(mockAudioPlayer.playCalled)
+    }
+
+    func testPlayNext_NoSelection_DoesNothing() async {
+        // Given
+        let recording = Recording(
+            fileURL: URL(fileURLWithPath: "/tmp/test.m4a"),
+            duration: Duration(seconds: 5.0),
+            scaleSettings: ScaleSettings.mvpDefault
+        )
+        mockRepository.recordingsToReturn = [recording]
+        await sut.loadRecordings()
+
+        // When - no selection
+        await sut.playNext()
+
+        // Then
+        XCTAssertNil(sut.selectedRecording)
+        XCTAssertFalse(mockAudioPlayer.playCalled)
+    }
+
+    // MARK: - Can Play Previous/Next Tests
+
+    func testCanPlayPrevious_WhenAtFirst_ReturnsFalse() async {
+        // Given
+        let recording1 = Recording(
+            fileURL: URL(fileURLWithPath: "/tmp/test1.m4a"),
+            duration: Duration(seconds: 5.0),
+            scaleSettings: ScaleSettings.mvpDefault
+        )
+        let recording2 = Recording(
+            fileURL: URL(fileURLWithPath: "/tmp/test2.m4a"),
+            duration: Duration(seconds: 5.0),
+            scaleSettings: ScaleSettings.mvpDefault
+        )
+        mockRepository.recordingsToReturn = [recording1, recording2]
+        await sut.loadRecordings()
+        await sut.selectAndPlay(recording1)
+
+        // Then
+        XCTAssertFalse(sut.canPlayPrevious)
+    }
+
+    func testCanPlayPrevious_WhenNotAtFirst_ReturnsTrue() async {
+        // Given
+        let recording1 = Recording(
+            fileURL: URL(fileURLWithPath: "/tmp/test1.m4a"),
+            duration: Duration(seconds: 5.0),
+            scaleSettings: ScaleSettings.mvpDefault
+        )
+        let recording2 = Recording(
+            fileURL: URL(fileURLWithPath: "/tmp/test2.m4a"),
+            duration: Duration(seconds: 5.0),
+            scaleSettings: ScaleSettings.mvpDefault
+        )
+        mockRepository.recordingsToReturn = [recording1, recording2]
+        await sut.loadRecordings()
+        await sut.selectAndPlay(recording2)
+
+        // Then
+        XCTAssertTrue(sut.canPlayPrevious)
+    }
+
+    func testCanPlayNext_WhenAtLast_ReturnsFalse() async {
+        // Given
+        let recording1 = Recording(
+            fileURL: URL(fileURLWithPath: "/tmp/test1.m4a"),
+            duration: Duration(seconds: 5.0),
+            scaleSettings: ScaleSettings.mvpDefault
+        )
+        let recording2 = Recording(
+            fileURL: URL(fileURLWithPath: "/tmp/test2.m4a"),
+            duration: Duration(seconds: 5.0),
+            scaleSettings: ScaleSettings.mvpDefault
+        )
+        mockRepository.recordingsToReturn = [recording1, recording2]
+        await sut.loadRecordings()
+        await sut.selectAndPlay(recording2)
+
+        // Then
+        XCTAssertFalse(sut.canPlayNext)
+    }
+
+    func testCanPlayNext_WhenNotAtLast_ReturnsTrue() async {
+        // Given
+        let recording1 = Recording(
+            fileURL: URL(fileURLWithPath: "/tmp/test1.m4a"),
+            duration: Duration(seconds: 5.0),
+            scaleSettings: ScaleSettings.mvpDefault
+        )
+        let recording2 = Recording(
+            fileURL: URL(fileURLWithPath: "/tmp/test2.m4a"),
+            duration: Duration(seconds: 5.0),
+            scaleSettings: ScaleSettings.mvpDefault
+        )
+        mockRepository.recordingsToReturn = [recording1, recording2]
+        await sut.loadRecordings()
+        await sut.selectAndPlay(recording1)
+
+        // Then
+        XCTAssertTrue(sut.canPlayNext)
+    }
+
+    // MARK: - Delete Selected Recording Tests
+
+    func testDeleteRecording_WhenSelected_ClearsSelection() async {
+        // Given
+        let recording = Recording(
+            fileURL: URL(fileURLWithPath: "/tmp/test.m4a"),
+            duration: Duration(seconds: 5.0),
+            scaleSettings: ScaleSettings.mvpDefault
+        )
+        mockRepository.recordingsToReturn = [recording]
+        await sut.loadRecordings()
+        await sut.selectAndPlay(recording)
+
+        // When
+        mockRepository.recordingsToReturn = []
+        await sut.deleteRecording(recording)
+
+        // Then
+        XCTAssertNil(sut.selectedRecording)
+    }
 }
