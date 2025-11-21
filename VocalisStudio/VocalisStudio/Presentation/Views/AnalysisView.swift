@@ -156,7 +156,8 @@ public struct AnalysisView: View {
                             expandedGraph = .pitchAnalysis
                         }
                     },
-                    onPlayPause: { viewModel.togglePlayback() }
+                    onPlayPause: { viewModel.togglePlayback() },
+                    onSeek: { time in viewModel.seek(to: time) }
                 )
                 .frame(maxHeight: .infinity)
             }
@@ -201,7 +202,8 @@ public struct AnalysisView: View {
                             expandedGraph = .pitchAnalysis
                         }
                     },
-                    onPlayPause: { viewModel.togglePlayback() }
+                    onPlayPause: { viewModel.togglePlayback() },
+                    onSeek: { time in viewModel.seek(to: time) }
                 )
                 .frame(height: 200)
             }
@@ -248,7 +250,8 @@ public struct AnalysisView: View {
                                 expandedGraph = nil
                             }
                         },
-                        onPlayPause: { viewModel.togglePlayback() }
+                        onPlayPause: { viewModel.togglePlayback() },
+                        onSeek: { time in viewModel.seek(to: time) }
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
@@ -660,6 +663,21 @@ struct PitchAnalysisView: View {
     var onExpand: (() -> Void)? = nil
     var onCollapse: (() -> Void)? = nil
     var onPlayPause: (() -> Void)? = nil
+    var onSeek: ((Double) -> Void)? = nil
+
+    // Scroll manager for 2D scrolling (reusing SpectrogramScrollManager)
+    @State private var scrollManager = SpectrogramScrollManager()
+
+    // Drag state for horizontal seek
+    @State private var lastDragTranslation: CGSize = .zero
+
+    // Coordinate system and renderer
+    private let coordinateSystem = PitchGraphCoordinateSystem()
+    private let renderer = PitchGraphRenderer()
+
+    // Drag gesture state
+    @State private var dragStartLocation: CGPoint = .zero
+    @State private var isDraggingVertically: Bool? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -670,14 +688,40 @@ struct PitchAnalysisView: View {
                 .accessibilityIdentifier("PitchGraphTitle")
 
             GeometryReader { geometry in
+                let viewportWidth = geometry.size.width
+                let viewportHeight = geometry.size.height
+                let canvasHeight = coordinateSystem.calculateCanvasHeight()
+                let leftPadding = coordinateSystem.calculateLeftPadding(viewportWidth: viewportWidth)
+                let dataDuration = pitchData?.timeStamps.last ?? 10.0
+                let canvasWidth = coordinateSystem.calculateCanvasWidth(dataDuration: dataDuration, leftPadding: leftPadding)
+
                 Canvas { context, size in
+                    var mutableContext = context
                     if let data = pitchData, !data.timeStamps.isEmpty {
-                        drawPitchGraph(context: context, size: size, data: data)
+                        drawPitchGraphCanvas(
+                            context: &mutableContext,
+                            viewportSize: size,
+                            canvasHeight: canvasHeight,
+                            canvasWidth: canvasWidth,
+                            leftPadding: leftPadding,
+                            data: data
+                        )
                     } else {
-                        drawPlaceholder(context: context, size: size)
+                        renderer.drawPlaceholder(context: mutableContext, size: size)
                     }
-                    drawLegend(context: context, size: size)
+                    drawLegend(context: mutableContext, size: size)
                 }
+                .gesture(
+                    DragGesture()
+                        .onChanged { value in
+                            handleDrag(value: value, viewportHeight: viewportHeight, canvasHeight: canvasHeight)
+                        }
+                        .onEnded { _ in
+                            scrollManager.endDrag()
+                            isDraggingVertically = nil
+                            lastDragTranslation = .zero
+                        }
+                )
                 .overlay(alignment: .topTrailing) {
                     if !isExpanded, let onExpand = onExpand {
                         Button(action: onExpand) {
@@ -705,6 +749,33 @@ struct PitchAnalysisView: View {
                         .accessibilityIdentifier("PitchGraphCollapseButton")
                     }
                 }
+                .onAppear {
+                    // Wait for layout to be ready, then initialize position
+                    DispatchQueue.main.async {
+                        initializeScrollPosition(
+                            viewportWidth: viewportWidth,
+                            viewportHeight: viewportHeight,
+                            canvasHeight: canvasHeight,
+                            leftPadding: leftPadding
+                        )
+                    }
+                }
+                .onChange(of: isExpanded) { _, _ in
+                    initializeScrollPosition(
+                        viewportWidth: viewportWidth,
+                        viewportHeight: viewportHeight,
+                        canvasHeight: canvasHeight,
+                        leftPadding: leftPadding
+                    )
+                }
+                .onChange(of: currentTime) { _, newTime in
+                    scrollManager.updateTimeScroll(
+                        currentTime: newTime,
+                        viewportWidth: viewportWidth,
+                        pixelsPerSecond: PitchGraphConstants.pixelsPerSecond,
+                        canvasLeftPadding: leftPadding
+                    )
+                }
             }
             .background(ColorPalette.secondary)
             .cornerRadius(8)
@@ -717,167 +788,173 @@ struct PitchAnalysisView: View {
         }
     }
 
-    private func drawPitchGraph(context: GraphicsContext, size: CGSize, data: PitchAnalysisData) {
-        let frequencies = data.frequencies
-        guard !frequencies.isEmpty else { return }
+    // MARK: - Scroll Position Management
 
-        // Calculate frequency range with expansion
-        let baseMinFreq = frequencies.min() ?? 200.0
-        let baseMaxFreq = frequencies.max() ?? 800.0
+    private func initializeScrollPosition(
+        viewportWidth: CGFloat,
+        viewportHeight: CGFloat,
+        canvasHeight: CGFloat,
+        leftPadding: CGFloat
+    ) {
+        scrollManager.initializePosition(
+            viewportWidth: viewportWidth,
+            viewportHeight: viewportHeight,
+            canvasHeight: canvasHeight,
+            currentTime: currentTime,
+            pixelsPerSecond: PitchGraphConstants.pixelsPerSecond,
+            canvasLeftPadding: leftPadding
+        )
+    }
 
-        // Expanded view: show wider frequency range
-        let minFreq = isExpanded ? max(100.0, baseMinFreq - 100) : baseMinFreq
-        let maxFreq = isExpanded ? min(2000.0, baseMaxFreq + 200) : baseMaxFreq
-        let freqRange = maxFreq - minFreq
-        guard freqRange > 0 else { return }
+    private func handleDrag(value: DragGesture.Value, viewportHeight: CGFloat, canvasHeight: CGFloat) {
+        // Determine drag direction on first movement
+        if isDraggingVertically == nil {
+            let dx = abs(value.translation.width)
+            let dy = abs(value.translation.height)
+            if dx > 5 || dy > 5 {
+                isDraggingVertically = dy > dx
+            }
+        }
 
-        // Fixed pixel density (pixels per second)
-        // Expanded view: LOWER density = WIDER time range displayed
-        let pixelsPerSecond: CGFloat = isExpanded ? 30 : 50
-        let leftMargin: CGFloat = 40
-        let rightMargin: CGFloat = 10
-        let topMargin: CGFloat = 50
-        let bottomMargin: CGFloat = 30
+        // Handle vertical drag for frequency scrolling
+        if isDraggingVertically == true {
+            scrollManager.handleVerticalDrag(
+                translation: value.translation.height,
+                viewportHeight: viewportHeight,
+                canvasHeight: canvasHeight
+            )
+        } else if isDraggingVertically == false {
+            // Handle horizontal drag for seek
+            let dataDuration = pitchData?.timeStamps.last ?? 10.0
+            let deltaX = value.translation.width - lastDragTranslation.width
+            let deltaTime = -Double(deltaX) / Double(PitchGraphConstants.pixelsPerSecond)
+            let newTime = max(0, min(dataDuration, currentTime + deltaTime))
 
-        let graphWidth = size.width - leftMargin - rightMargin
-        let graphHeight = size.height - topMargin - bottomMargin
-        let centerX = leftMargin + graphWidth / 2  // Playback position at center
+            lastDragTranslation = value.translation
+            onSeek?(newTime)
+        }
+    }
 
-        // Calculate time window based on graph width and density
-        let timeWindow = Double(graphWidth / pixelsPerSecond)
+    // MARK: - Canvas Drawing
+
+    private func drawPitchGraphCanvas(
+        context: inout GraphicsContext,
+        viewportSize: CGSize,
+        canvasHeight: CGFloat,
+        canvasWidth: CGFloat,
+        leftPadding: CGFloat,
+        data: PitchAnalysisData
+    ) {
+        let viewportWidth = viewportSize.width
+        let viewportHeight = viewportSize.height
+
+        // Create clipping region for graph area
+        let clipRect = CGRect(
+            x: PitchGraphConstants.leftMargin,
+            y: 0,
+            width: viewportWidth - PitchGraphConstants.leftMargin - PitchGraphConstants.rightMargin,
+            height: viewportHeight - PitchGraphConstants.bottomMargin
+        )
+
+        // Draw main graph content with clipping (using a copy of context)
+        var clippedContext = context
+        clippedContext.clip(to: Path(clipRect))
+
+        // Apply canvas offset for scrolling
+        clippedContext.translateBy(x: scrollManager.canvasOffsetX, y: scrollManager.paperTop)
+
+        // Draw background grid
+        renderer.drawBackground(
+            context: clippedContext,
+            canvasHeight: canvasHeight,
+            canvasWidth: canvasWidth,
+            leftPadding: leftPadding
+        )
 
         // Draw target scale lines if available
         if let settings = scaleSettings {
-            drawTargetScaleLines(context: context, leftMargin: leftMargin, topMargin: topMargin,
-                               graphWidth: graphWidth, graphHeight: graphHeight,
-                               minFreq: minFreq, freqRange: freqRange, settings: settings)
-        }
-
-        // Draw detected pitch line (only visible range)
-        var path = Path()
-        var pathStarted = false
-
-        for (index, timestamp) in data.timeStamps.enumerated() {
-            let timeOffset = timestamp - currentTime  // Offset from current time
-
-            // Only draw if within visible time window (-3 to +3 seconds from current)
-            guard abs(timeOffset) <= timeWindow / 2 else { continue }
-
-            let frequency = frequencies[index]
-            let x = centerX + CGFloat(timeOffset) * pixelsPerSecond
-            let y = topMargin + graphHeight - CGFloat((frequency - minFreq) / freqRange) * graphHeight
-
-            if !pathStarted {
-                path.move(to: CGPoint(x: x, y: y))
-                pathStarted = true
-            } else {
-                path.addLine(to: CGPoint(x: x, y: y))
-            }
-
-            // Draw confidence indicator (dot size based on confidence)
-            let confidence = data.confidences[index]
-            let dotSize = CGFloat(confidence * 6.0 + 2.0)
-            context.fill(
-                Path(ellipseIn: CGRect(x: x - dotSize/2, y: y - dotSize/2, width: dotSize, height: dotSize)),
-                with: .color(.blue.opacity(Double(confidence)))
+            let targetFrequencies = getTargetFrequencies(from: settings)
+            renderer.drawTargetScaleLines(
+                context: clippedContext,
+                canvasHeight: canvasHeight,
+                targetFrequencies: targetFrequencies,
+                leftPadding: leftPadding,
+                canvasWidth: canvasWidth
             )
         }
 
-        if pathStarted {
-            context.stroke(path, with: .color(.blue), lineWidth: 1.5)
-        }
-
-        // Draw playback position line at center
-        context.stroke(
-            Path { path in
-                path.move(to: CGPoint(x: centerX, y: topMargin))
-                path.addLine(to: CGPoint(x: centerX, y: topMargin + graphHeight))
-            },
-            with: .color(.white),
-            lineWidth: 2
+        // Prepare pitch data for renderer
+        let pitchPoints = preparePitchData(from: data)
+        renderer.drawPitchData(
+            context: clippedContext,
+            canvasHeight: canvasHeight,
+            pitchData: pitchPoints,
+            leftPadding: leftPadding
         )
 
-        // Draw frequency axis labels
-        drawFrequencyAxis(context: context, leftMargin: leftMargin, topMargin: topMargin,
-                         graphHeight: graphHeight, minFreq: minFreq, maxFreq: maxFreq)
+        // Draw frequency labels (fixed X, scrolling Y) - use original context without clipping
+        renderer.drawFrequencyLabels(
+            context: context,
+            canvasHeight: canvasHeight,
+            viewportHeight: viewportHeight,
+            paperTop: scrollManager.paperTop
+        )
 
-        // Draw time axis labels
-        drawTimeAxis(context: context, leftMargin: leftMargin, topMargin: topMargin,
-                    graphWidth: graphWidth, graphHeight: graphHeight, bottomMargin: bottomMargin,
-                    centerTime: currentTime, timeWindow: timeWindow, pixelsPerSecond: pixelsPerSecond)
+        // Draw time labels (scrolling X, fixed Y)
+        let dataDuration = data.timeStamps.last ?? 10.0
+        renderer.drawTimeLabels(
+            context: context,
+            dataDuration: dataDuration,
+            leftPadding: leftPadding,
+            viewportWidth: viewportWidth,
+            viewportHeight: viewportHeight,
+            canvasOffsetX: scrollManager.canvasOffsetX
+        )
+
+        // Draw playback position line (fully fixed)
+        renderer.drawPlaybackPosition(
+            context: context,
+            viewportWidth: viewportWidth,
+            viewportHeight: viewportHeight
+        )
     }
 
-    private func drawTargetScaleLines(context: GraphicsContext, leftMargin: CGFloat, topMargin: CGFloat,
-                                     graphWidth: CGFloat, graphHeight: CGFloat,
-                                     minFreq: Float, freqRange: Float, settings: ScaleSettings) {
-        // Draw horizontal reference lines for target notes
-        // Generate notes from start to end using intervals
-        var notes: [MIDINote] = []
+    private func preparePitchData(from data: PitchAnalysisData) -> [(time: Double, frequency: Double, confidence: Float)] {
+        var result: [(Double, Double, Float)] = []
+
+        for (index, timestamp) in data.timeStamps.enumerated() {
+            let frequency = Double(data.frequencies[index])
+            let confidence = data.confidences[index]
+
+            // Filter out frequencies outside display range
+            guard frequency >= PitchGraphConstants.minFrequency &&
+                  frequency <= PitchGraphConstants.maxFrequency else { continue }
+
+            result.append((timestamp, frequency, confidence))
+        }
+
+        return result
+    }
+
+    private func getTargetFrequencies(from settings: ScaleSettings) -> [Double] {
+        var frequencies: [Double] = []
         let startValue = settings.startNote.value
         let endValue = settings.endNote.value
 
-        // Generate all notes in the range using the pattern intervals
         var currentOctaveStart = Int(startValue)
         while currentOctaveStart <= Int(endValue) {
             for interval in settings.notePattern.intervals {
                 let noteValue = UInt8(currentOctaveStart + interval)
                 if noteValue >= startValue && noteValue <= endValue {
                     if let note = try? MIDINote(noteValue) {
-                        notes.append(note)
+                        frequencies.append(note.frequency)
                     }
                 }
             }
-            currentOctaveStart += 12  // Next octave
+            currentOctaveStart += 12
         }
 
-        for note in notes {
-            let frequency = Float(note.frequency)
-            let y = topMargin + graphHeight - CGFloat((frequency - minFreq) / freqRange) * graphHeight
-
-            var path = Path()
-            path.move(to: CGPoint(x: leftMargin, y: y))
-            path.addLine(to: CGPoint(x: leftMargin + graphWidth, y: y))
-
-            context.stroke(path, with: .color(.gray.opacity(0.3)), style: StrokeStyle(lineWidth: 1, dash: [5, 5]))
-        }
-    }
-
-    private func drawFrequencyAxis(context: GraphicsContext, leftMargin: CGFloat, topMargin: CGFloat,
-                                   graphHeight: CGFloat, minFreq: Float, maxFreq: Float) {
-        let labels = [maxFreq, (maxFreq + minFreq) / 2, minFreq]
-        let positions: [CGFloat] = [0, 0.5, 1.0]
-
-        for (label, position) in zip(labels, positions) {
-            let y = topMargin + graphHeight * position
-            let text = Text(String(format: "%.0fHz", label)).font(.caption2).foregroundColor(.secondary)
-            context.draw(text, at: CGPoint(x: leftMargin - 25, y: y))
-        }
-    }
-
-    private func drawTimeAxis(context: GraphicsContext, leftMargin: CGFloat, topMargin: CGFloat,
-                             graphWidth: CGFloat, graphHeight: CGFloat, bottomMargin: CGFloat,
-                             centerTime: Double, timeWindow: Double, pixelsPerSecond: CGFloat) {
-        // Calculate half window based on actual time window
-        let halfWindow = timeWindow / 2
-
-        // Draw time labels at -halfWindow, 0s (center), +halfWindow
-        let timeOffsets: [Double] = [-halfWindow, 0, halfWindow]
-        let positions: [CGFloat] = [0, 0.5, 1.0]
-
-        for (offset, position) in zip(timeOffsets, positions) {
-            let time = centerTime + offset
-            guard time >= 0 else { continue }  // Don't show negative times
-
-            let x = leftMargin + graphWidth * position
-            let y = topMargin + graphHeight + 15
-            let text = Text(String(format: "%.1fs", time)).font(.caption2).foregroundColor(.secondary)
-            context.draw(text, at: CGPoint(x: x, y: y))
-        }
-    }
-
-    private func drawPlaceholder(context: GraphicsContext, size: CGSize) {
-        let text = Text("ピッチデータなし").font(.caption).foregroundColor(.secondary)
-        context.draw(text, at: CGPoint(x: size.width / 2, y: size.height / 2))
+        return frequencies
     }
 
     private func drawLegend(context: GraphicsContext, size: CGSize) {
