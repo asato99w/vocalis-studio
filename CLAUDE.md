@@ -45,7 +45,7 @@ This is a native iOS project using Xcode's build system:
 
 ### Test Management
 
-The project uses multiple test schemes for efficient test execution. **See `VocalisStudio/claudedocs/test-scheme-management.md` for detailed documentation.**
+The project uses multiple test schemes for efficient test execution. **See `VocalisStudio/claudedocs/active/test-scheme-management.md` for detailed documentation.**
 
 **Quick Test Commands**:
 ```bash
@@ -133,7 +133,7 @@ VocalisStudio/
 
 ## Test-Driven Development (TDD) - CRITICAL RULES
 
-**⚠️ MANDATORY: Read `docs/TDD_PRINCIPLES.md` for full details**
+**⚠️ MANDATORY: Read `docs/guides/TDD_PRINCIPLES.md` for full details**
 
 ### Absolute Rules (NO EXCEPTIONS)
 
@@ -299,9 +299,9 @@ stopRecordingUseCase.setRecordingContext(
 
 ### Reference Documents
 
-- **Full TDD Guidelines**: `docs/TDD_PRINCIPLES.md` (comprehensive explanation)
-- **MVP Specification**: `docs/MVP_SPECIFICATION.md` (what to build)
-- **Architecture Design**: `docs/MVP_ARCHITECTURE.md` (how to structure)
+- **Full TDD Guidelines**: `docs/guides/TDD_PRINCIPLES.md` (comprehensive explanation)
+- **MVP Specification**: `docs/specifications/MVP_SPECIFICATION.md` (what to build)
+- **Architecture Design**: `docs/architecture/MVP_ARCHITECTURE.md` (how to structure)
 
 ## Code Organization Rules
 
@@ -349,7 +349,7 @@ When debugging issues (especially UI tests or runtime bugs), **ALWAYS attempt to
 ### Log Retrieval Best Practices
 
 **⚠️ IMPORTANT**: Refer to detailed logging guide for specific methods:
-- **`VocalisStudio/claudedocs/log_capture_guide_v2.md`** - Comprehensive logging methods and troubleshooting
+- **`VocalisStudio/claudedocs/active/log_capture_guide_v2.md`** - Comprehensive logging methods and troubleshooting
 
 **Quick Reference**:
 - **FileLogger** (推奨) - UIテスト後の解析で確実
@@ -363,17 +363,17 @@ When debugging issues (especially UI tests or runtime bugs), **ALWAYS attempt to
 
 ## Important Files to Reference
 
-- **`docs/TECHNICAL_SPEC.md`**: Detailed TDD/DDD guidelines and coding standards
-- **`docs/ARCHITECTURE.md`**: Clean Architecture implementation details
-- **`docs/PROJECT_OVERVIEW.md`**: Business requirements and project vision
-- **`docs/ROADMAP.md`**: Development milestones and feature priorities
+- **`docs/business/TECHNICAL_SPEC.md`**: Detailed TDD/DDD guidelines and coding standards
+- **`docs/architecture/ARCHITECTURE.md`**: Clean Architecture implementation details
+- **`docs/business/PROJECT_OVERVIEW.md`**: Business requirements and project vision
+- **`docs/business/ROADMAP.md`**: Development milestones and feature priorities
 
 ## UI Test Execution - Critical Reference Documents
 
 **⚠️ MANDATORY: Always consult these documents when working with UI tests**
 
 ### 1. Test Scheme Management
-**File**: `VocalisStudio/claudedocs/test-scheme-management.md`
+**File**: `VocalisStudio/claudedocs/active/test-scheme-management.md`
 
 **When to reference**:
 - Before running any UI tests
@@ -387,7 +387,7 @@ When debugging issues (especially UI tests or runtime bugs), **ALWAYS attempt to
 - Default scheme is `VocalisStudio-UIOnly` (UI tests only)
 
 ### 2. Log Capture Guide
-**File**: `VocalisStudio/claudedocs/log_capture_guide_v2.md`
+**File**: `VocalisStudio/claudedocs/active/log_capture_guide_v2.md`
 
 **When to reference**:
 - When debugging UI test failures
@@ -400,7 +400,7 @@ When debugging issues (especially UI tests or runtime bugs), **ALWAYS attempt to
 - Always report log retrieval failures to user immediately
 
 ### 3. Screenshot Extraction
-**File**: `VocalisStudio/claudedocs/UITEST_SCREENSHOT_EXTRACTION.md`
+**File**: `VocalisStudio/claudedocs/active/UITEST_SCREENSHOT_EXTRACTION.md`
 
 **When to reference**:
 - After UI test execution to verify visual state
@@ -413,7 +413,7 @@ When debugging issues (especially UI tests or runtime bugs), **ALWAYS attempt to
 - Always check screenshots for visual verification of UI tests
 
 ### 4. UI Test Failure Investigation Report
-**File**: `VocalisStudio/claudedocs/UI_TEST_FAILURE_INVESTIGATION_REPORT.md`
+**File**: `VocalisStudio/claudedocs/active/UI_TEST_FAILURE_INVESTIGATION_REPORT.md`
 
 **When to reference**:
 - **⚠️ CRITICAL: ALWAYS before running UI tests** (mandatory reference)
