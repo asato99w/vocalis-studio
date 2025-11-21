@@ -121,56 +121,75 @@ private struct RecordingRow: View {
     @State private var showDeleteConfirmation = false
 
     var body: some View {
-        HStack {
-            // Recording info (tappable area)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(recording.formattedDate)
-                    .font(.subheadline)
-                    .foregroundColor(ColorPalette.text)
+        HStack(spacing: 0) {
+            // Selection indicator bar
+            Rectangle()
+                .fill(isSelected ? ColorPalette.primary : Color.clear)
+                .frame(width: 4)
 
+            // Main content
+            VStack(alignment: .leading, spacing: 8) {
+                // Scale name (primary info)
                 if let scaleDisplayName = recording.scaleDisplayName {
                     Text(scaleDisplayName)
-                        .font(.caption)
-                        .foregroundColor(ColorPalette.text.opacity(0.6))
+                        .font(.headline)
+                        .foregroundColor(ColorPalette.text)
+                } else {
+                    Text("recording.title".localized)
+                        .font(.headline)
+                        .foregroundColor(ColorPalette.text)
                 }
 
-                Text(formatTime(recording.duration.seconds))
-                    .font(.caption2)
-                    .foregroundColor(ColorPalette.text.opacity(0.5))
+                // Date and duration on same line
+                HStack {
+                    Text(recording.formattedDate)
+                        .font(.caption)
+                        .foregroundColor(ColorPalette.text.opacity(0.6))
+
+                    Text("•")
+                        .font(.caption)
+                        .foregroundColor(ColorPalette.text.opacity(0.4))
+
+                    Text(formatTime(recording.duration.seconds))
+                        .font(.caption)
+                        .foregroundColor(ColorPalette.text.opacity(0.6))
+
+                    Spacer()
+
+                    // Action buttons (subtle, right-aligned)
+                    HStack(spacing: 12) {
+                        Button(action: onAnalyze) {
+                            Image(systemName: "waveform.path.ecg")
+                                .foregroundColor(ColorPalette.accent.opacity(0.8))
+                                .font(.subheadline)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .accessibilityIdentifier("AnalysisNavigationLink_\(recording.id.value.uuidString)")
+
+                        Button(action: { showDeleteConfirmation = true }) {
+                            Image(systemName: "trash")
+                                .foregroundColor(ColorPalette.text.opacity(0.4))
+                                .font(.subheadline)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .accessibilityIdentifier("DeleteRecordingButton_\(recording.id.value.uuidString)")
+                    }
+                }
             }
+            .padding(.vertical, 12)
+            .padding(.horizontal, 12)
             .contentShape(Rectangle())
             .onTapGesture {
                 onTap()
             }
-
-            Spacer()
-
-            // Action buttons
-            HStack(spacing: 16) {
-                // Analysis button
-                Button(action: onAnalyze) {
-                    Image(systemName: "waveform.path.ecg")
-                        .foregroundColor(ColorPalette.accent)
-                        .font(.title3)
-                }
-                .buttonStyle(PlainButtonStyle())
-                .accessibilityIdentifier("AnalysisNavigationLink_\(recording.id.value.uuidString)")
-
-                // Delete button
-                Button(action: { showDeleteConfirmation = true }) {
-                    Image(systemName: "trash")
-                        .foregroundColor(ColorPalette.alertActive)
-                        .font(.title3)
-                }
-                .buttonStyle(PlainButtonStyle())
-                .accessibilityIdentifier("DeleteRecordingButton_\(recording.id.value.uuidString)")
-            }
         }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 4)
         .background(
             RoundedRectangle(cornerRadius: 8)
-                .fill(isSelected ? ColorPalette.primary.opacity(0.1) : Color.clear)
+                .fill(isSelected ? ColorPalette.primary.opacity(0.05) : ColorPalette.background)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(isSelected ? ColorPalette.primary.opacity(0.3) : Color.clear, lineWidth: 1)
         )
         .accessibilityIdentifier("RecordingRow_\(recording.id.value.uuidString)")
         .confirmationDialog(
