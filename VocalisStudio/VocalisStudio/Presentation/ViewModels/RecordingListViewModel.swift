@@ -170,16 +170,9 @@ public class RecordingListViewModel: ObservableObject {
 
     /// Select a recording and start playback
     public func selectAndPlay(_ recording: Recording) async {
-        // If same recording is selected, toggle playback (pause/resume)
+        // If same recording is already selected, do nothing
+        // (pause/resume is handled by the panel's play button)
         if selectedRecording?.id == recording.id {
-            if playingRecordingId == recording.id {
-                // Currently playing -> pause
-                pausePlayback()
-            } else {
-                // Currently paused -> resume
-                resumePlayback()
-                await startPositionTracking()
-            }
             return
         }
 
