@@ -768,6 +768,17 @@ struct PitchAnalysisView: View {
                         leftPadding: leftPadding
                     )
                 }
+                .onChange(of: pitchData?.frequencies.count) { _, newCount in
+                    // Re-initialize scroll position when pitch data is loaded
+                    if let count = newCount, count > 0 {
+                        initializeScrollPosition(
+                            viewportWidth: viewportWidth,
+                            viewportHeight: viewportHeight,
+                            canvasHeight: canvasHeight,
+                            leftPadding: leftPadding
+                        )
+                    }
+                }
                 .onChange(of: currentTime) { _, newTime in
                     scrollManager.updateTimeScroll(
                         currentTime: newTime,
@@ -796,6 +807,29 @@ struct PitchAnalysisView: View {
         canvasHeight: CGFloat,
         leftPadding: CGFloat
     ) {
+        // Calculate target frequency to center (based on initial pitch data)
+        var targetFrequency: Double? = nil
+        if let data = pitchData, !data.frequencies.isEmpty {
+            // Use pitch data from the first 3 seconds for initial positioning
+            let initialDuration = 3.0
+            var initialFrequencies: [Float] = []
+
+            for i in 0..<data.timeStamps.count {
+                if data.timeStamps[i] <= initialDuration {
+                    initialFrequencies.append(data.frequencies[i])
+                } else {
+                    break
+                }
+            }
+
+            // Fall back to all frequencies if no data in first 3 seconds
+            let frequenciesToUse = initialFrequencies.isEmpty ? data.frequencies : initialFrequencies
+
+            if let minFreq = frequenciesToUse.min(), let maxFreq = frequenciesToUse.max() {
+                targetFrequency = (Double(minFreq) + Double(maxFreq)) / 2
+            }
+        }
+
         scrollManager.initializePosition(
             viewportWidth: viewportWidth,
             viewportHeight: viewportHeight,
@@ -804,6 +838,23 @@ struct PitchAnalysisView: View {
             pixelsPerSecond: PitchGraphConstants.pixelsPerSecond,
             canvasLeftPadding: leftPadding
         )
+
+        // Adjust Y position to center on detected pitch range
+        if let targetFreq = targetFrequency {
+            let coordinateSystem = PitchGraphCoordinateSystem()
+            let targetCanvasY = coordinateSystem.frequencyToCanvasY(frequency: targetFreq, canvasHeight: canvasHeight)
+
+            // Calculate paperTop to center targetCanvasY in viewport
+            let idealPaperTop = viewportHeight / 2 - targetCanvasY
+
+            // Clamp to valid range
+            let maxPaperTop: CGFloat = 0
+            let minPaperTop = viewportHeight - canvasHeight
+            let clampedPaperTop = max(minPaperTop, min(maxPaperTop, idealPaperTop))
+
+            scrollManager.paperTop = clampedPaperTop
+            scrollManager.lastPaperTop = scrollManager.paperTop
+        }
     }
 
     private func handleDrag(value: DragGesture.Value, viewportHeight: CGFloat, canvasHeight: CGFloat) {
