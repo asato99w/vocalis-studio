@@ -46,7 +46,7 @@ public class AVAudioPlayerWrapper: NSObject, AudioPlayerProtocol {
         audioPlayer?.currentTime = time
     }
 
-    public func play(url: URL) async throws {
+    public func play(url: URL, withPitchDetection: Bool) async throws {
         // Check if file exists
         guard FileManager.default.fileExists(atPath: url.path) else {
             throw AudioPlayerError.fileNotFound
@@ -61,9 +61,14 @@ public class AVAudioPlayerWrapper: NSObject, AudioPlayerProtocol {
             let settings = settingsRepository.get()
             audioPlayer?.volume = settings.recordingPlaybackVolume
 
-            // Configure audio session for playback with recording support
-            // Use playAndRecord to be compatible with pitch detection
-            try AudioSessionManager.shared.configureForRecordingAndPlayback()
+            // Configure audio session based on whether pitch detection is needed
+            if withPitchDetection {
+                // Use playAndRecord for pitch detection support
+                try AudioSessionManager.shared.configureForRecordingAndPlayback()
+            } else {
+                // Use playback for maximum volume (no recording needed)
+                try AudioSessionManager.shared.configureForPlayback()
+            }
             try AudioSessionManager.shared.activate()
 
             // Play

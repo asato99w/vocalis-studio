@@ -141,7 +141,8 @@ public class AnalysisViewModel: ObservableObject {
             Task { [weak self] in
                 guard let self = self else { return }
                 do {
-                    try await self.audioPlayer.play(url: self.recording.fileURL)
+                    // Use pitch detection for analysis view playback
+                    try await self.audioPlayer.play(url: self.recording.fileURL, withPitchDetection: true)
 
                     // Playback finished - check state to determine next action
                     await MainActor.run {

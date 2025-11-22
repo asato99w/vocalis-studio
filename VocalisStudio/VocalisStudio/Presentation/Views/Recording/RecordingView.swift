@@ -339,7 +339,7 @@ private class PreviewMockAudioPlayer: AudioPlayerProtocol {
     var currentTime: TimeInterval = 0
     var duration: TimeInterval = 10.0
 
-    func play(url: URL) async throws {
+    func play(url: URL, withPitchDetection: Bool) async throws {
         isPlaying = true
     }
 

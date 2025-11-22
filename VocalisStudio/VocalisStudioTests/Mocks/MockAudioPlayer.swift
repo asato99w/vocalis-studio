@@ -15,6 +15,7 @@ final class MockAudioPlayer: AudioPlayerProtocol {
     var _currentTime: TimeInterval = 0.0
     var _duration: TimeInterval = 10.0
     var playDurationNanoseconds: UInt64 = 10_000_000 // 10ms default
+    var playWithPitchDetection: Bool = false
 
     var isPlaying: Bool {
         _isPlaying
@@ -28,9 +29,10 @@ final class MockAudioPlayer: AudioPlayerProtocol {
         return _duration
     }
 
-    func play(url: URL) async throws {
+    func play(url: URL, withPitchDetection: Bool) async throws {
         playCalled = true
         playURL = url
+        playWithPitchDetection = withPitchDetection
 
         if playShouldFail {
             throw AudioPlayerError.playbackFailed("Mock playback error")
@@ -75,5 +77,6 @@ final class MockAudioPlayer: AudioPlayerProtocol {
         playShouldFail = false
         _isPlaying = false
         _currentTime = 0.0
+        playWithPitchDetection = false
     }
 }

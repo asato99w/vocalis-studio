@@ -368,7 +368,7 @@ class RecordingStateMockAudioPlayer: AudioPlayerProtocol {
     var playCalled = false
     var stopCalled = false
 
-    func play(url: URL) async throws {
+    func play(url: URL, withPitchDetection: Bool) async throws {
         playCalled = true
         isPlaying = true
     }
