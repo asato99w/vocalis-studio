@@ -10,39 +10,49 @@ struct RealtimeDisplayArea: View {
     let pitchAccuracy: PitchAccuracy
     let spectrum: [Float]?
 
+    /// Whether to show the realtime display content
+    private var shouldShowContent: Bool {
+        recordingState == .recording || isPlayingRecording
+    }
+
     var body: some View {
-        VStack(spacing: 12) {
-            // Frequency spectrum bar chart
-            VStack(alignment: .leading, spacing: 6) {
-                Text("recording.realtime_spectrum_title".localized)
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
+        if shouldShowContent {
+            VStack(spacing: 12) {
+                // Frequency spectrum bar chart
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("recording.realtime_spectrum_title".localized)
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
 
-                FrequencySpectrumView(
-                    spectrum: spectrum,
-                    isActive: recordingState == .recording || isPlayingRecording
-                )
-                .frame(maxHeight: .infinity)
+                    FrequencySpectrumView(
+                        spectrum: spectrum,
+                        isActive: recordingState == .recording || isPlayingRecording
+                    )
+                    .frame(maxHeight: .infinity)
+                }
+
+                Divider()
+
+                // Pitch indicator
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("recording.pitch_indicator_title".localized)
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+
+                    PitchIndicator(
+                        isActive: recordingState == .recording,
+                        isPlayingRecording: isPlayingRecording,
+                        targetPitch: targetPitch,
+                        detectedPitch: detectedPitch,
+                        pitchAccuracy: pitchAccuracy
+                    )
+                }
             }
-
-            Divider()
-
-            // Pitch indicator
-            VStack(alignment: .leading, spacing: 6) {
-                Text("recording.pitch_indicator_title".localized)
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-
-                PitchIndicator(
-                    isActive: recordingState == .recording,
-                    isPlayingRecording: isPlayingRecording,
-                    targetPitch: targetPitch,
-                    detectedPitch: detectedPitch,
-                    pitchAccuracy: pitchAccuracy
-                )
-            }
+            .padding(12)
+        } else {
+            // Empty state when not recording or playing - minimal space usage
+            EmptyView()
         }
-        .padding(12)
     }
 }
 

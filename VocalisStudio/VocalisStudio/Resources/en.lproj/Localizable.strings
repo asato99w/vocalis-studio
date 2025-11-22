@@ -50,6 +50,7 @@
 "recording.pitch_indicator_title" = "Pitch Indicator";
 "recording.pitch_target" = "Target:";
 "recording.pitch_detected" = "Detected:";
+"recording.realtime_placeholder" = "Start recording or playback to display";
 "recording.start_button" = "Start Recording";
 "recording.stop_button" = "Stop Recording";
 "recording.play_last_button" = "Play Last Recording";
