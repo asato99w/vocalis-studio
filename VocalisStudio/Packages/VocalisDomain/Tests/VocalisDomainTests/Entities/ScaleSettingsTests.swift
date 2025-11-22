@@ -301,4 +301,142 @@ final class ScaleSettingsTests: XCTestCase {
         XCTAssertEqual(settings.ascendingKeyCount, 3)
         XCTAssertEqual(settings.descendingKeyCount, 3)  // Mirrors ascending for backwards compatibility
     }
+
+    // MARK: - Key Step Interval Tests
+
+    func testKeyStepInterval_WholeTone_AscendingOnly() throws {
+        // Given: Whole tone interval (2 semitones) with 3 steps
+        let settings = ScaleSettings(
+            startNote: try MIDINote(60),  // C4
+            endNote: try MIDINote(72),
+            notePattern: .fiveToneScale,
+            tempo: .standard,
+            keyProgressionPattern: .ascendingOnly,
+            ascendingKeyCount: 3,
+            descendingKeyCount: 0,
+            keyStepInterval: 2  // Whole tone
+        )
+
+        // When
+        let elements = settings.generateScaleWithKeyChange()
+
+        // Then: Should have 3 scales with whole tone intervals (C4, D4, E4)
+        var roots: [UInt8] = []
+        for element in elements {
+            if case .chordLong(let notes) = element {
+                roots.append(notes[0].value)
+            }
+        }
+        XCTAssertEqual(roots, [60, 62, 64])  // C4, D4, E4 (whole tone steps)
+    }
+
+    func testKeyStepInterval_MinorThird_Descending() throws {
+        // Given: Minor third interval (3 semitones) with descending pattern
+        let settings = ScaleSettings(
+            startNote: try MIDINote(60),  // C4
+            endNote: try MIDINote(72),
+            notePattern: .fiveToneScale,
+            tempo: .standard,
+            keyProgressionPattern: .descendingOnly,
+            ascendingKeyCount: 0,
+            descendingKeyCount: 3,
+            keyStepInterval: 3  // Minor third
+        )
+
+        // When
+        let elements = settings.generateScaleWithKeyChange()
+
+        // Then: Should have 3 scales with minor third intervals (C4, A3, F#3)
+        var roots: [UInt8] = []
+        for element in elements {
+            if case .chordLong(let notes) = element {
+                roots.append(notes[0].value)
+            }
+        }
+        XCTAssertEqual(roots, [60, 57, 54])  // C4, A3, F#3 (minor third steps down)
+    }
+
+    func testKeyStepInterval_Default_IsSemitone() throws {
+        // Given: Default settings (should use semitone interval)
+        let settings = ScaleSettings(
+            startNote: try MIDINote(60),
+            endNote: try MIDINote(72),
+            notePattern: .fiveToneScale,
+            tempo: .standard,
+            keyProgressionPattern: .ascendingOnly,
+            ascendingKeyCount: 3,
+            descendingKeyCount: 0
+        )
+
+        // Then: Default keyStepInterval should be 1 (semitone)
+        XCTAssertEqual(settings.keyStepInterval, 1)
+
+        // When
+        let elements = settings.generateScaleWithKeyChange()
+
+        // Then: Should use semitone intervals (C4, C#4, D4)
+        var roots: [UInt8] = []
+        for element in elements {
+            if case .chordLong(let notes) = element {
+                roots.append(notes[0].value)
+            }
+        }
+        XCTAssertEqual(roots, [60, 61, 62])  // C4, C#4, D4 (semitone steps)
+    }
+
+    func testSeparateKeyStepIntervals_AscendingThenDescending() throws {
+        // Given: Different intervals for ascending (whole tone) and descending (minor third)
+        let settings = ScaleSettings(
+            startNote: try MIDINote(60),  // C4
+            endNote: try MIDINote(72),
+            notePattern: .fiveToneScale,
+            tempo: .standard,
+            keyProgressionPattern: .ascendingThenDescending,
+            ascendingKeyCount: 3,
+            descendingKeyCount: 2,
+            ascendingKeyStepInterval: 2,   // Whole tone
+            descendingKeyStepInterval: 3   // Minor third
+        )
+
+        // When
+        let elements = settings.generateScaleWithKeyChange()
+
+        // Then: Ascending with whole tones (C4→D4→E4), descending with minor thirds (E4→C#4→Bb3)
+        var roots: [UInt8] = []
+        for element in elements {
+            if case .chordLong(let notes) = element {
+                roots.append(notes[0].value)
+            }
+        }
+        // C4=60, D4=62, E4=64, then down by minor thirds: C#4=61, Bb3=58
+        XCTAssertEqual(roots, [60, 62, 64, 61, 58])
+    }
+
+    func testSeparateKeyStepIntervals_DescendingThenAscending() throws {
+        // Given: Different intervals for descending (whole tone) and ascending (major third)
+        let settings = ScaleSettings(
+            startNote: try MIDINote(60),  // C4
+            endNote: try MIDINote(72),
+            notePattern: .fiveToneScale,
+            tempo: .standard,
+            keyProgressionPattern: .descendingThenAscending,
+            ascendingKeyCount: 2,
+            descendingKeyCount: 3,
+            ascendingKeyStepInterval: 4,   // Major third
+            descendingKeyStepInterval: 2   // Whole tone
+        )
+
+        // When
+        let elements = settings.generateScaleWithKeyChange()
+
+        // Then: Descending with whole tones (C4→Bb3→Ab3), ascending with major thirds (Ab3→C4→E4)
+        var roots: [UInt8] = []
+        for element in elements {
+            if case .chordLong(let notes) = element {
+                roots.append(notes[0].value)
+            }
+        }
+        // C4=60, Bb3=58, Ab3=56, then up by major thirds: C4=60, E4=64
+        XCTAssertEqual(roots, [60, 58, 56, 60, 64])
+    }
 }

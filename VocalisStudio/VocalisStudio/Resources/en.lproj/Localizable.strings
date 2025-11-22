@@ -36,6 +36,14 @@
 "recording.key_ascending_count" = "Key Ascending";
 "recording.key_descending_count" = "Key Descending";
 "recording.key_count_unit" = "times";
+"recording.ascending_interval" = "Ascending Interval";
+"recording.descending_interval" = "Descending Interval";
+"recording.count_label" = "Count:";
+"recording.interval_label" = "Interval:";
+"recording.interval_semitone" = "Semitone";
+"recording.interval_whole_tone" = "Whole Tone";
+"recording.interval_minor_third" = "Minor Third";
+"recording.interval_major_third" = "Major Third";
 "recording.hide_settings" = "Hide Settings";
 "recording.show_settings" = "Show Settings";
 "recording.realtime_spectrum_title" = "Real-time Spectrum";

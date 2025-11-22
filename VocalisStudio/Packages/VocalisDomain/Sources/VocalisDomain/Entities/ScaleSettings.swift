@@ -33,13 +33,18 @@ public struct ScaleSettings: Equatable, Codable, Hashable {
     public let notePattern: NotePattern
     public let tempo: Tempo
     public let keyProgressionPattern: KeyProgressionPattern
-    public let ascendingKeyCount: Int   // Number of chromatic steps to ascend
-    public let descendingKeyCount: Int  // Number of chromatic steps to descend
+    public let ascendingKeyCount: Int   // Number of steps to ascend
+    public let descendingKeyCount: Int  // Number of steps to descend
+    public let ascendingKeyStepInterval: Int   // Interval for ascending (1=semitone, 2=whole tone, etc.)
+    public let descendingKeyStepInterval: Int  // Interval for descending
 
     /// Backwards compatibility: ascendingCount maps to ascendingKeyCount
     public var ascendingCount: Int { ascendingKeyCount }
 
-    /// New initializer with full key progression control
+    /// Backwards compatibility: keyStepInterval maps to ascendingKeyStepInterval
+    public var keyStepInterval: Int { ascendingKeyStepInterval }
+
+    /// New initializer with separate ascending/descending intervals
     public init(
         startNote: MIDINote,
         endNote: MIDINote,
@@ -47,7 +52,9 @@ public struct ScaleSettings: Equatable, Codable, Hashable {
         tempo: Tempo,
         keyProgressionPattern: KeyProgressionPattern,
         ascendingKeyCount: Int,
-        descendingKeyCount: Int
+        descendingKeyCount: Int,
+        ascendingKeyStepInterval: Int = 1,  // Default: semitone
+        descendingKeyStepInterval: Int = 1  // Default: semitone
     ) {
         self.startNote = startNote
         self.endNote = endNote
@@ -56,6 +63,32 @@ public struct ScaleSettings: Equatable, Codable, Hashable {
         self.keyProgressionPattern = keyProgressionPattern
         self.ascendingKeyCount = ascendingKeyCount
         self.descendingKeyCount = descendingKeyCount
+        self.ascendingKeyStepInterval = ascendingKeyStepInterval
+        self.descendingKeyStepInterval = descendingKeyStepInterval
+    }
+
+    /// Convenience initializer with single interval for both directions
+    public init(
+        startNote: MIDINote,
+        endNote: MIDINote,
+        notePattern: NotePattern,
+        tempo: Tempo,
+        keyProgressionPattern: KeyProgressionPattern,
+        ascendingKeyCount: Int,
+        descendingKeyCount: Int,
+        keyStepInterval: Int  // Single interval for both
+    ) {
+        self.init(
+            startNote: startNote,
+            endNote: endNote,
+            notePattern: notePattern,
+            tempo: tempo,
+            keyProgressionPattern: keyProgressionPattern,
+            ascendingKeyCount: ascendingKeyCount,
+            descendingKeyCount: descendingKeyCount,
+            ascendingKeyStepInterval: keyStepInterval,
+            descendingKeyStepInterval: keyStepInterval
+        )
     }
 
     /// Backwards compatible initializer
@@ -73,6 +106,8 @@ public struct ScaleSettings: Equatable, Codable, Hashable {
         self.keyProgressionPattern = .ascendingThenDescending
         self.ascendingKeyCount = ascendingCount
         self.descendingKeyCount = ascendingCount  // Mirror ascending for backwards compatibility
+        self.ascendingKeyStepInterval = 1  // Default: semitone
+        self.descendingKeyStepInterval = 1  // Default: semitone
     }
 
     /// Validate scale settings
@@ -175,53 +210,55 @@ public struct ScaleSettings: Equatable, Codable, Hashable {
     /// Generate the sequence of root notes based on key progression pattern
     private func generateKeyRoots() -> [UInt8] {
         let start = startNote.value
+        let ascInterval = UInt8(ascendingKeyStepInterval)
+        let descInterval = UInt8(descendingKeyStepInterval)
 
         switch keyProgressionPattern {
         case .ascendingOnly:
-            // Just ascending: C → C# → D → ...
+            // Just ascending: C → D → E → ... (using ascending interval)
             var roots: [UInt8] = []
             for i in 0..<ascendingKeyCount {
-                roots.append(start + UInt8(i))
+                roots.append(start + UInt8(i) * ascInterval)
             }
             return roots
 
         case .descendingOnly:
-            // Just descending: C → B → Bb → ...
+            // Just descending: C → Bb → Ab → ... (using descending interval)
             var roots: [UInt8] = []
             for i in 0..<descendingKeyCount {
-                roots.append(start - UInt8(i))
+                roots.append(start - UInt8(i) * descInterval)
             }
             return roots
 
         case .ascendingThenDescending:
-            // Ascending then descending: C → C# → D → C# → C
+            // Ascending with ascending interval
             var ascendingRoots: [UInt8] = []
             for i in 0..<ascendingKeyCount {
-                ascendingRoots.append(start + UInt8(i))
+                ascendingRoots.append(start + UInt8(i) * ascInterval)
             }
 
-            // Descending (skip peak to avoid duplicate)
+            // Descending with descending interval (skip peak to avoid duplicate)
             var descendingRoots: [UInt8] = []
             if let peak = ascendingRoots.last {
                 for i in 1...descendingKeyCount {
-                    descendingRoots.append(peak - UInt8(i))
+                    descendingRoots.append(peak - UInt8(i) * descInterval)
                 }
             }
 
             return ascendingRoots + descendingRoots
 
         case .descendingThenAscending:
-            // Descending then ascending: C → B → Bb → B → C
+            // Descending with descending interval
             var descendingRoots: [UInt8] = []
             for i in 0..<descendingKeyCount {
-                descendingRoots.append(start - UInt8(i))
+                descendingRoots.append(start - UInt8(i) * descInterval)
             }
 
-            // Ascending (skip valley to avoid duplicate)
+            // Ascending with ascending interval (skip valley to avoid duplicate)
             var ascendingRoots: [UInt8] = []
             if let valley = descendingRoots.last {
                 for i in 1...ascendingKeyCount {
-                    ascendingRoots.append(valley + UInt8(i))
+                    ascendingRoots.append(valley + UInt8(i) * ascInterval)
                 }
             }
 

@@ -83,39 +83,81 @@ struct RecordingSettingsPanel: View {
                     .accessibilityIdentifier("KeyProgressionPatternPicker")
                 }
 
-                // Ascending key count
+                // Ascending key count and interval (combined row)
                 if viewModel.showsAscendingKeyCount {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("recording.key_ascending_count".localized)
                             .font(.caption)
                             .foregroundColor(ColorPalette.text.opacity(0.6))
 
-                        Picker("recording.key_ascending_count".localized, selection: $viewModel.ascendingKeyCount) {
-                            ForEach(1...12, id: \.self) { count in
-                                Text("\(count) " + "recording.key_count_unit".localized).tag(count)
+                        HStack(spacing: 8) {
+                            Text("recording.count_label".localized)
+                                .font(.callout)
+
+                            Picker("recording.key_ascending_count".localized, selection: $viewModel.ascendingKeyCount) {
+                                ForEach(1...12, id: \.self) { count in
+                                    Text("\(count) " + "recording.key_count_unit".localized).tag(count)
+                                }
                             }
+                            .pickerStyle(.menu)
+                            .disabled(!viewModel.isSettingsEnabled)
+                            .accessibilityIdentifier("AscendingKeyCountPicker")
+
+                            Text("recording.interval_label".localized)
+                                .font(.callout)
+
+                            Picker("recording.ascending_interval".localized, selection: $viewModel.ascendingKeyStepInterval) {
+                                Text("recording.interval_semitone".localized).tag(1)
+                                Text("recording.interval_whole_tone".localized).tag(2)
+                                Text("recording.interval_minor_third".localized).tag(3)
+                                Text("recording.interval_major_third".localized).tag(4)
+                            }
+                            .pickerStyle(.menu)
+                            .disabled(!viewModel.isSettingsEnabled)
+                            .accessibilityIdentifier("AscendingKeyStepIntervalPicker")
                         }
-                        .pickerStyle(.menu)
-                        .disabled(!viewModel.isSettingsEnabled)
-                        .accessibilityIdentifier("AscendingKeyCountPicker")
+                        .padding(8)
+                        .background(ColorPalette.background.opacity(0.5))
+                        .cornerRadius(8)
                     }
                 }
 
-                // Descending key count
+                // Descending key count and interval (combined row)
                 if viewModel.showsDescendingKeyCount {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("recording.key_descending_count".localized)
                             .font(.caption)
                             .foregroundColor(ColorPalette.text.opacity(0.6))
 
-                        Picker("recording.key_descending_count".localized, selection: $viewModel.descendingKeyCount) {
-                            ForEach(1...12, id: \.self) { count in
-                                Text("\(count) " + "recording.key_count_unit".localized).tag(count)
+                        HStack(spacing: 8) {
+                            Text("recording.count_label".localized)
+                                .font(.callout)
+
+                            Picker("recording.key_descending_count".localized, selection: $viewModel.descendingKeyCount) {
+                                ForEach(1...12, id: \.self) { count in
+                                    Text("\(count) " + "recording.key_count_unit".localized).tag(count)
+                                }
                             }
+                            .pickerStyle(.menu)
+                            .disabled(!viewModel.isSettingsEnabled)
+                            .accessibilityIdentifier("DescendingKeyCountPicker")
+
+                            Text("recording.interval_label".localized)
+                                .font(.callout)
+
+                            Picker("recording.descending_interval".localized, selection: $viewModel.descendingKeyStepInterval) {
+                                Text("recording.interval_semitone".localized).tag(1)
+                                Text("recording.interval_whole_tone".localized).tag(2)
+                                Text("recording.interval_minor_third".localized).tag(3)
+                                Text("recording.interval_major_third".localized).tag(4)
+                            }
+                            .pickerStyle(.menu)
+                            .disabled(!viewModel.isSettingsEnabled)
+                            .accessibilityIdentifier("DescendingKeyStepIntervalPicker")
                         }
-                        .pickerStyle(.menu)
-                        .disabled(!viewModel.isSettingsEnabled)
-                        .accessibilityIdentifier("DescendingKeyCountPicker")
+                        .padding(8)
+                        .background(ColorPalette.background.opacity(0.5))
+                        .cornerRadius(8)
                     }
                 }
             }
@@ -176,26 +218,60 @@ struct RecordingSettingsCompact: View {
                 }
 
                 if viewModel.showsAscendingKeyCount {
-                    HStack {
-                        Text("recording.key_ascending_count".localized + ":")
-                        Picker("", selection: $viewModel.ascendingKeyCount) {
-                            ForEach(1...12, id: \.self) { count in
-                                Text("\(count) " + "recording.key_count_unit".localized).tag(count)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("recording.key_ascending_count".localized)
+                            .font(.caption)
+                            .foregroundColor(ColorPalette.text.opacity(0.6))
+                        HStack {
+                            Text("recording.count_label".localized)
+                            Picker("", selection: $viewModel.ascendingKeyCount) {
+                                ForEach(1...12, id: \.self) { count in
+                                    Text("\(count) " + "recording.key_count_unit".localized).tag(count)
+                                }
                             }
+                            .pickerStyle(.menu)
+
+                            Text("recording.interval_label".localized)
+                            Picker("", selection: $viewModel.ascendingKeyStepInterval) {
+                                Text("recording.interval_semitone".localized).tag(1)
+                                Text("recording.interval_whole_tone".localized).tag(2)
+                                Text("recording.interval_minor_third".localized).tag(3)
+                                Text("recording.interval_major_third".localized).tag(4)
+                            }
+                            .pickerStyle(.menu)
                         }
-                        .pickerStyle(.menu)
+                        .padding(6)
+                        .background(ColorPalette.background.opacity(0.5))
+                        .cornerRadius(6)
                     }
                 }
 
                 if viewModel.showsDescendingKeyCount {
-                    HStack {
-                        Text("recording.key_descending_count".localized + ":")
-                        Picker("", selection: $viewModel.descendingKeyCount) {
-                            ForEach(1...12, id: \.self) { count in
-                                Text("\(count) " + "recording.key_count_unit".localized).tag(count)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("recording.key_descending_count".localized)
+                            .font(.caption)
+                            .foregroundColor(ColorPalette.text.opacity(0.6))
+                        HStack {
+                            Text("recording.count_label".localized)
+                            Picker("", selection: $viewModel.descendingKeyCount) {
+                                ForEach(1...12, id: \.self) { count in
+                                    Text("\(count) " + "recording.key_count_unit".localized).tag(count)
+                                }
                             }
+                            .pickerStyle(.menu)
+
+                            Text("recording.interval_label".localized)
+                            Picker("", selection: $viewModel.descendingKeyStepInterval) {
+                                Text("recording.interval_semitone".localized).tag(1)
+                                Text("recording.interval_whole_tone".localized).tag(2)
+                                Text("recording.interval_minor_third".localized).tag(3)
+                                Text("recording.interval_major_third".localized).tag(4)
+                            }
+                            .pickerStyle(.menu)
                         }
-                        .pickerStyle(.menu)
+                        .padding(6)
+                        .background(ColorPalette.background.opacity(0.5))
+                        .cornerRadius(6)
                     }
                 }
             }

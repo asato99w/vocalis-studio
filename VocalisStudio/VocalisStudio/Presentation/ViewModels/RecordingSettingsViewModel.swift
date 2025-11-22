@@ -16,6 +16,8 @@ public class RecordingSettingsViewModel: ObservableObject {
     @Published public var keyProgressionPattern: KeyProgressionPattern = .ascendingThenDescending
     @Published public var ascendingKeyCount: Int = 3
     @Published public var descendingKeyCount: Int = 3
+    @Published public var ascendingKeyStepInterval: Int = 1 // 1=semitone, 2=whole tone, etc.
+    @Published public var descendingKeyStepInterval: Int = 1
 
     /// Backwards compatibility
     public var ascendingCount: Int {
@@ -82,7 +84,9 @@ public class RecordingSettingsViewModel: ObservableObject {
                 tempo: try Tempo(secondsPerNote: secondsPerNote),
                 keyProgressionPattern: keyProgressionPattern,
                 ascendingKeyCount: ascendingKeyCount,
-                descendingKeyCount: descendingKeyCount
+                descendingKeyCount: descendingKeyCount,
+                ascendingKeyStepInterval: ascendingKeyStepInterval,
+                descendingKeyStepInterval: descendingKeyStepInterval
             )
             return settings
         } catch {

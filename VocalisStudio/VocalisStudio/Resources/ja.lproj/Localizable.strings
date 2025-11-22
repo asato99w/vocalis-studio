@@ -36,6 +36,14 @@
 "recording.key_ascending_count" = "キー上昇";
 "recording.key_descending_count" = "キー下降";
 "recording.key_count_unit" = "回";
+"recording.ascending_interval" = "上昇間隔";
+"recording.descending_interval" = "下降間隔";
+"recording.count_label" = "回数:";
+"recording.interval_label" = "間隔:";
+"recording.interval_semitone" = "半音";
+"recording.interval_whole_tone" = "全音";
+"recording.interval_minor_third" = "短3度";
+"recording.interval_major_third" = "長3度";
 "recording.hide_settings" = "設定を隠す";
 "recording.show_settings" = "設定を表示";
 "recording.realtime_spectrum_title" = "リアルタイムスペクトル";

@@ -126,7 +126,7 @@ final class RecordingListViewModelTests: XCTestCase {
         XCTAssertEqual(mockAudioPlayer.playURL, recording.fileURL)
     }
 
-    func testPlayRecording_AlreadyPlaying_StopsAndReturns() async {
+    func testPlayRecording_CalledTwice_StartsNewPlayback() async {
         // Given
         let recording = Recording(
             fileURL: URL(fileURLWithPath: "/tmp/test.m4a"),
@@ -134,18 +134,25 @@ final class RecordingListViewModelTests: XCTestCase {
             scaleSettings: ScaleSettings.mvpDefault
         )
 
+        // Set longer play duration so playback doesn't complete during test
+        mockAudioPlayer.playDurationNanoseconds = 500_000_000 // 500ms
+
         // Start playback first
         await sut.playRecording(recording)
 
-        // When - play the same recording again (should stop and return)
+        // Reset mock to track second call
+        mockAudioPlayer.reset()
+        mockAudioPlayer.playDurationNanoseconds = 500_000_000 // 500ms
+
+        // When - play the same recording again (starts new playback task)
         await sut.playRecording(recording)
 
-        // Wait for stop to complete
-        try? await Task.sleep(nanoseconds: 30_000_000) // 30ms
+        // Wait briefly for playback to start
+        try? await Task.sleep(nanoseconds: 20_000_000) // 20ms
 
-        // Then - playingRecordingId should be nil (stopped)
-        XCTAssertNil(sut.playingRecordingId)
-        XCTAssertTrue(mockAudioPlayer.stopCalled)
+        // Then - playingRecordingId should be set and play was called again
+        XCTAssertEqual(sut.playingRecordingId, recording.id)
+        XCTAssertTrue(mockAudioPlayer.playCalled)
     }
 
     func testPlayRecording_DifferentRecording_StopsCurrentAndPlaysNew() async {
@@ -376,7 +383,7 @@ final class RecordingListViewModelTests: XCTestCase {
         XCTAssertTrue(mockAudioPlayer.playCalled)
     }
 
-    func testSelectAndPlay_AlreadySelected_TogglesPlayback() async {
+    func testSelectAndPlay_AlreadySelected_DoesNothing() async {
         // Given
         let recording = Recording(
             fileURL: URL(fileURLWithPath: "/tmp/test.m4a"),
@@ -390,12 +397,13 @@ final class RecordingListViewModelTests: XCTestCase {
         await sut.selectAndPlay(recording)
         mockAudioPlayer.reset()
 
-        // When - select same recording again
+        // When - select same recording again (should do nothing - pause/resume is handled by toggle button)
         await sut.selectAndPlay(recording)
 
-        // Then - should stop playback
-        XCTAssertTrue(mockAudioPlayer.stopCalled)
-        XCTAssertEqual(sut.selectedRecording?.id, recording.id) // Selection maintained
+        // Then - selection maintained, no playback actions
+        XCTAssertEqual(sut.selectedRecording?.id, recording.id)
+        XCTAssertFalse(mockAudioPlayer.playCalled) // No new play call
+        XCTAssertFalse(mockAudioPlayer.stopCalled) // No stop call
     }
 
     func testSelectAndPlay_DifferentRecording_SwitchesSelection() async {
@@ -430,7 +438,7 @@ final class RecordingListViewModelTests: XCTestCase {
 
     // MARK: - Toggle Playback Tests
 
-    func testTogglePlayback_WhenStopped_StartsPlayback() async {
+    func testTogglePlayback_WhenPaused_ResumesPlayback() async {
         // Given
         let recording = Recording(
             fileURL: URL(fileURLWithPath: "/tmp/test.m4a"),
@@ -440,21 +448,24 @@ final class RecordingListViewModelTests: XCTestCase {
         mockRepository.recordingsToReturn = [recording]
         await sut.loadRecordings()
 
-        // Select without playing
+        // Select and start playback
+        mockAudioPlayer.playDurationNanoseconds = 500_000_000 // 500ms
         await sut.selectAndPlay(recording)
         try? await Task.sleep(nanoseconds: 20_000_000) // Wait for playback to start
-        await sut.stopPlayback()
+
+        // Pause playback (not stop)
+        sut.pausePlayback()
         mockAudioPlayer.reset()
+        mockAudioPlayer._isPlaying = false
 
-        // When
+        // When - toggle should resume
         await sut.togglePlayback()
-        try? await Task.sleep(nanoseconds: 20_000_000) // Wait for playback to start
 
-        // Then
-        XCTAssertTrue(mockAudioPlayer.playCalled)
+        // Then - resume was called (not play)
+        XCTAssertTrue(mockAudioPlayer.resumeCalled)
     }
 
-    func testTogglePlayback_WhenPlaying_StopsPlayback() async {
+    func testTogglePlayback_WhenPlaying_PausesPlayback() async {
         // Given
         let recording = Recording(
             fileURL: URL(fileURLWithPath: "/tmp/test.m4a"),
@@ -463,15 +474,17 @@ final class RecordingListViewModelTests: XCTestCase {
         )
         mockRepository.recordingsToReturn = [recording]
         await sut.loadRecordings()
+        mockAudioPlayer.playDurationNanoseconds = 500_000_000 // 500ms
         await sut.selectAndPlay(recording)
+        try? await Task.sleep(nanoseconds: 20_000_000) // Wait for playback to start
         mockAudioPlayer.reset()
         mockAudioPlayer._isPlaying = true
 
-        // When
+        // When - toggle should pause
         await sut.togglePlayback()
 
-        // Then
-        XCTAssertTrue(mockAudioPlayer.stopCalled)
+        // Then - pause was called (not stop)
+        XCTAssertTrue(mockAudioPlayer.pauseCalled)
     }
 
     func testTogglePlayback_NoSelection_DoesNothing() async {

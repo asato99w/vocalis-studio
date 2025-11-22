@@ -132,8 +132,9 @@ final class PlaybackUITests: XCTestCase {
         XCTAssertTrue(stopButton.waitForExistence(timeout: 10), "Stop recording button should appear during recording")
 
         // Continue recording for playback verification
-        // 3 seconds needed to allow playback initialization (2s) + buffer for verification
-        Thread.sleep(forTimeInterval: 3.0)
+        // 6 seconds needed to ensure recording is long enough for playback test
+        // (playback test waits ~5s before checking stop button)
+        Thread.sleep(forTimeInterval: 6.0)
 
         // 📸 Screenshot 2: During recording
         let screenshot2 = app.screenshot()
