@@ -99,6 +99,20 @@
 "settings.info_section" = "情報";
 "settings.version_label" = "バージョン";
 
+// MARK: - Presets
+"preset.title" = "プリセット";
+"preset.save_button" = "現在の設定を保存";
+"preset.load_button" = "プリセットを選択";
+"preset.save_dialog_title" = "プリセットを保存";
+"preset.name_placeholder" = "プリセット名を入力";
+"preset.save" = "保存";
+"preset.empty_title" = "プリセットがありません";
+"preset.empty_message" = "現在の設定を保存して、次回から素早く読み込めます";
+"preset.save_error" = "プリセットの保存に失敗しました";
+"preset.delete_error" = "プリセットの削除に失敗しました";
+"preset.delete_confirmation_title" = "削除の確認";
+"preset.delete_confirmation_message" = "このプリセットを削除しますか？";
+
 // MARK: - Scale Notes
 "scale.note_do" = "ド";
 "scale.note_re" = "レ";

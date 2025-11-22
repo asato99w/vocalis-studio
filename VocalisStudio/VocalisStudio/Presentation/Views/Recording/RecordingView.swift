@@ -8,6 +8,7 @@ import OSLog
 public struct RecordingView: View {
     @StateObject private var viewModel: RecordingViewModel
     @StateObject private var settingsViewModel = RecordingSettingsViewModel()
+    @StateObject private var presetViewModel = DependencyContainer.shared.makeScalePresetViewModel()
     @StateObject private var localization = LocalizationManager.shared
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
     @Environment(\.uiTestAnimationsDisabled) var uiTestAnimationsDisabled
@@ -86,7 +87,7 @@ public struct RecordingView: View {
         HStack(spacing: 0) {
             // Left side: Settings panel (collapsible)
             if isSettingsPanelVisible {
-                RecordingSettingsPanel(viewModel: settingsViewModel)
+                RecordingSettingsPanel(viewModel: settingsViewModel, presetViewModel: presetViewModel)
                     .frame(width: 240)
                     .transition(.move(edge: .leading))
 
@@ -152,7 +153,7 @@ public struct RecordingView: View {
 
                 // Settings panel (collapsible)
                 if isSettingsPanelVisible {
-                    RecordingSettingsCompact(viewModel: settingsViewModel)
+                    RecordingSettingsCompact(viewModel: settingsViewModel, presetViewModel: presetViewModel)
                         .transition(.opacity.combined(with: .move(edge: .top)))
                 }
 

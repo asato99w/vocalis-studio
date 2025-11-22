@@ -4,13 +4,37 @@ import VocalisDomain
 /// Full recording settings panel for landscape layout
 struct RecordingSettingsPanel: View {
     @ObservedObject var viewModel: RecordingSettingsViewModel
+    @ObservedObject var presetViewModel: ScalePresetViewModel
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text("recording.settings_title".localized)
-                    .font(.headline)
-                    .padding(.bottom, 4)
+                HStack {
+                    Text("recording.settings_title".localized)
+                        .font(.headline)
+
+                    Spacer()
+
+                    // Preset buttons
+                    HStack(spacing: 8) {
+                        Button {
+                            presetViewModel.isShowingPresetList = true
+                        } label: {
+                            Image(systemName: "bookmark")
+                                .font(.subheadline)
+                        }
+                        .accessibilityIdentifier("LoadPresetButton")
+
+                        Button {
+                            presetViewModel.isShowingSaveDialog = true
+                        } label: {
+                            Image(systemName: "bookmark.fill")
+                                .font(.subheadline)
+                        }
+                        .accessibilityIdentifier("SavePresetButton")
+                    }
+                }
+                .padding(.bottom, 4)
 
                 // Scale selection
                 VStack(alignment: .leading, spacing: 6) {
@@ -164,17 +188,45 @@ struct RecordingSettingsPanel: View {
             .padding(12)
         }
         .background(ColorPalette.secondary)
+        .sheet(isPresented: $presetViewModel.isShowingPresetList) {
+            PresetListView(presetViewModel: presetViewModel, settingsViewModel: viewModel)
+        }
+        .sheet(isPresented: $presetViewModel.isShowingSaveDialog) {
+            SavePresetDialog(presetViewModel: presetViewModel, settingsViewModel: viewModel)
+        }
     }
 }
 
 /// Compact recording settings panel for portrait layout
 struct RecordingSettingsCompact: View {
     @ObservedObject var viewModel: RecordingSettingsViewModel
+    @ObservedObject var presetViewModel: ScalePresetViewModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("recording.settings_title".localized)
-                .font(.headline)
+            HStack {
+                Text("recording.settings_title".localized)
+                    .font(.headline)
+
+                Spacer()
+
+                // Preset buttons
+                HStack(spacing: 8) {
+                    Button {
+                        presetViewModel.isShowingPresetList = true
+                    } label: {
+                        Image(systemName: "bookmark")
+                            .font(.subheadline)
+                    }
+
+                    Button {
+                        presetViewModel.isShowingSaveDialog = true
+                    } label: {
+                        Image(systemName: "bookmark.fill")
+                            .font(.subheadline)
+                    }
+                }
+            }
 
             HStack {
                 Text("recording.scale_label".localized + ":")
@@ -279,5 +331,11 @@ struct RecordingSettingsCompact: View {
         .padding()
         .background(ColorPalette.secondary)
         .cornerRadius(12)
+        .sheet(isPresented: $presetViewModel.isShowingPresetList) {
+            PresetListView(presetViewModel: presetViewModel, settingsViewModel: viewModel)
+        }
+        .sheet(isPresented: $presetViewModel.isShowingSaveDialog) {
+            SavePresetDialog(presetViewModel: presetViewModel, settingsViewModel: viewModel)
+        }
     }
 }

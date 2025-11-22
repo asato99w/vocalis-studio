@@ -81,6 +81,10 @@ public class DependencyContainer {
         UserDefaultsAudioSettingsRepository()
     }()
 
+    private lazy var scalePresetRepository: ScalePresetRepositoryProtocol = {
+        UserDefaultsScalePresetRepository()
+    }()
+
     // MARK: - Application Layer
 
     // Domain Services
@@ -133,6 +137,19 @@ public class DependencyContainer {
         RestorePurchasesUseCase(repository: subscriptionRepository)
     }()
 
+    // Scale Preset Use Cases
+    private lazy var saveScalePresetUseCase: SaveScalePresetUseCase = {
+        SaveScalePresetUseCase(repository: scalePresetRepository)
+    }()
+
+    private lazy var loadScalePresetsUseCase: LoadScalePresetsUseCase = {
+        LoadScalePresetsUseCase(repository: scalePresetRepository)
+    }()
+
+    private lazy var deleteScalePresetUseCase: DeleteScalePresetUseCase = {
+        DeleteScalePresetUseCase(repository: scalePresetRepository)
+    }()
+
     // MARK: - Presentation Layer
 
     public lazy var recordingViewModel: RecordingViewModel = {
@@ -179,6 +196,14 @@ public class DependencyContainer {
 
     func makeAudioOutputSettingsViewModel() -> AudioOutputSettingsViewModel {
         AudioOutputSettingsViewModel(repository: audioSettingsRepository)
+    }
+
+    func makeScalePresetViewModel() -> ScalePresetViewModel {
+        ScalePresetViewModel(
+            saveUseCase: saveScalePresetUseCase,
+            loadUseCase: loadScalePresetsUseCase,
+            deleteUseCase: deleteScalePresetUseCase
+        )
     }
 
     // MARK: - Setup
