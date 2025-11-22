@@ -2,6 +2,11 @@ import Foundation
 import VocalisDomain
 import AVFoundation
 
+/// Notification posted when audio playback finishes
+public extension Notification.Name {
+    static let audioPlaybackDidFinish = Notification.Name("audioPlaybackDidFinish")
+}
+
 /// Wrapper for AVAudioPlayer
 public class AVAudioPlayerWrapper: NSObject, AudioPlayerProtocol {
 
@@ -107,6 +112,11 @@ public class AVAudioPlayerWrapper: NSObject, AudioPlayerProtocol {
 extension AVAudioPlayerWrapper: AVAudioPlayerDelegate {
 
     public func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        // Post notification for UI update
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: .audioPlaybackDidFinish, object: nil)
+        }
+
         if flag {
             playbackContinuation?.resume()
         } else {

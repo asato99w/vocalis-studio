@@ -16,6 +16,7 @@ public class RecordingListViewModel: ObservableObject {
     private let recordingRepository: RecordingRepositoryProtocol
     private let audioPlayer: AudioPlayerProtocol
     private var positionTrackingTask: Task<Void, Never>?
+    private var playbackFinishObserver: NSObjectProtocol?
 
     public init(
         recordingRepository: RecordingRepositoryProtocol,
@@ -23,6 +24,32 @@ public class RecordingListViewModel: ObservableObject {
     ) {
         self.recordingRepository = recordingRepository
         self.audioPlayer = audioPlayer
+
+        // Observe playback finish notification
+        playbackFinishObserver = NotificationCenter.default.addObserver(
+            forName: .audioPlaybackDidFinish,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.handlePlaybackFinished()
+            }
+        }
+    }
+
+    deinit {
+        if let observer = playbackFinishObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+    }
+
+    /// Handle playback finished notification
+    private func handlePlaybackFinished() {
+        guard let recordingId = playingRecordingId else { return }
+        playingRecordingId = nil
+        stopPositionTracking()
+        currentPlaybackPosition[recordingId] = 0.0
+        currentTime = 0.0
     }
 
     /// Load all recordings
@@ -124,7 +151,7 @@ public class RecordingListViewModel: ObservableObject {
         positionTrackingTask = Task { @MainActor in
             while !Task.isCancelled {
                 if let recordingId = playingRecordingId {
-                    let position = await audioPlayer.currentTime
+                    let position = audioPlayer.currentTime
                     currentTime = position
                     currentPlaybackPosition[recordingId] = position
                 }
@@ -141,14 +168,14 @@ public class RecordingListViewModel: ObservableObject {
 
     /// Seek to a specific position
     public func seekToPosition(_ time: Double) async {
-        await audioPlayer.seek(to: time)
+        audioPlayer.seek(to: time)
         currentTime = time
     }
 
     /// Seek to a specific position for a specific recording
     public func seek(to position: TimeInterval, for recordingId: RecordingId) async {
         guard playingRecordingId == recordingId else { return }
-        await audioPlayer.seek(to: position)
+        audioPlayer.seek(to: position)
         currentPlaybackPosition[recordingId] = position
         currentTime = position
     }
@@ -171,8 +198,14 @@ public class RecordingListViewModel: ObservableObject {
             stopPositionTracking()
         }
 
-        // Select and play new recording
+        // Select recording and update UI immediately
         selectedRecording = recording
+        playingRecordingId = recording.id  // Update UI before async operation
+
+        // Pre-configure audio session to reduce latency
+        try? AudioSessionManager.shared.configureForPlayback()
+        try? AudioSessionManager.shared.activate()
+
         await playRecording(recording)
         await startPositionTracking()
     }
